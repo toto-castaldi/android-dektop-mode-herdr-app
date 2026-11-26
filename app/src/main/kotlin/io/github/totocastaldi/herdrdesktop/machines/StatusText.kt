@@ -11,13 +11,21 @@ import io.github.totocastaldi.herdrdesktop.coreclient.protocol.Compatibility
 
 private const val MILLIS_PER_SECOND = 1_000L
 
+/** Test tag of the status line of machine [id]. */
+fun machineStatusTag(id: String) = "machine-status-$id"
+
+/** Test tag of the card of machine [id]. */
+fun machineRowTag(id: String) = "machine-row-$id"
+
 @Composable
 fun statusText(status: MachineStatus): String = when (status) {
     MachineStatus.Disconnected -> stringResource(R.string.status_disconnected)
 
     MachineStatus.Connecting -> stringResource(R.string.status_connecting)
 
-    is MachineStatus.Connected -> stringResource(R.string.status_connected, status.coreVersion)
+    is MachineStatus.Connected -> status.availableUpdate?.let {
+        stringResource(R.string.status_connected_update, status.coreVersion, it)
+    } ?: stringResource(R.string.status_connected, status.coreVersion)
 
     is MachineStatus.Unreachable ->
         stringResource(R.string.status_unreachable, status.reason, (status.retryInMillis / MILLIS_PER_SECOND).toInt())
