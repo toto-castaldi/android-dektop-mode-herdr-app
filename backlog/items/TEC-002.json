@@ -5,7 +5,8 @@
   "epic": "EPIC-001",
   "type": "Task",
   "priority": "P0",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "task/TEC-002-scaffold-progetto-android",
   "dependencies": [],
   "requirements": [
     "REQ-NFR-004"
@@ -25,5 +26,8 @@
     "L'APK di debug si installa sul Pixel 11 Pro e si apre come finestra ridimensionabile in Desktop Mode.",
     "Il comando dei test strumentali (connectedDebugAndroidTest) esiste ed è documentato in AGENTS.md §6 e in design/test-strategy.",
     "design/configuration e design/modules descrivono struttura dei moduli Gradle e posizione di ogni modulo; la voce corrispondente è tolta dalle Open decisions."
-  ]
+  ],
+  "outcome": "Scaffold Gradle 9.9.2 (wrapper con checksum) e version catalog con JDK 21, AGP 9.5.3, Kotlin 2.4.21 (≥ 2.3 richiesto da sshlib), Compose BOM 2026.11.01, ktlint 1.8.0 (plugin 14.2.0), detekt 1.23.8; moduli :app (applicazione Compose), :core-client e :terminal (librerie Android, senza dipendenza da :app). API level letto dal Pixel 11 Pro con adb shell getprop ro.build.version.sdk: 37 (Android 17) = minSdk e targetSdk; compileSdk 37.2. Quality gate (ktlintCheck detekt compileDebugKotlin testDebugUnitTest assembleDebug) verde anche da clone pulito; test JVM TerminalSizeTest (3 test). connectedDebugAndroidTest sul Pixel 11 Pro: MainActivityTest 1/1 verde. Desktop Mode verificato sul Pixel 11 Pro con monitor esterno LG 2560x1440 (displayId 15) via adb su Wi-Fi: am start --display 15 apre l'app in finestra freeform (1280x800dp, barra con riduci/massimizza/chiudi), am task resize la ridimensiona a 2000x1100 px senza riavviare il processo, screenshot del display esterno controllato; resizeMode=RESIZE_MODE_RESIZEABLE. Logcat del processo dell'app: solo righe di sistema, nessuna chiave, password o contenuto di terminali. Dipendenze incluse nell'app (AndroidX, Compose) Apache-2.0; JUnit solo nei test. Aggiornati README (prerequisiti, comandi, struttura), AGENTS.md §4 e §6, design/configuration, design/modules, design/test-strategy; tolta la voce dalle Open decisions di design/README.",
+  "changelog": "Added: prima app minima che si apre come finestra ridimensionabile in Android Desktop Mode",
+  "closed_at": "2026-11-26"
 }

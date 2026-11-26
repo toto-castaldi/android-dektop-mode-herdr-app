@@ -11,7 +11,7 @@ Progetto indipendente e open source, rilasciato sotto licenza Apache-2.0. Non è
 
 ## Stato
 
-In sviluppo verso la v0.1.0. Il codice non esiste ancora: la prima parte del lavoro prevede gli studi sull'API di herdr-core, sul core nel Linux Terminal e sul rendering del terminale, e lo scaffold del progetto. Lo stato aggiornato si vede con:
+In sviluppo verso la v0.1.0. Esiste lo scaffold del progetto: un'app minima che si apre come finestra ridimensionabile in Desktop Mode. Lo stato aggiornato si vede con:
 
 ```bash
 python3 .agents/tools/backlog.py status
@@ -19,18 +19,28 @@ python3 .agents/tools/backlog.py status
 
 ## Prerequisiti
 
+- JDK 21 (per esempio OpenJDK 21 della distribuzione).
+- Android SDK con le licenze accettate (`sdkmanager --licenses`) e `ANDROID_HOME` impostato, oppure `sdk.dir=<percorso dell'SDK>` in `local.properties` (file locale, fuori dal repository). Basta `cmdline-tools`: platform e build-tools necessari li installa il build.
+- Gradle non va installato: si usa il wrapper `./gradlew`, che scarica la versione fissata. Le versioni di plugin e dipendenze sono in `gradle/libs.versions.toml`.
 - Python 3.10+ per gli strumenti del backlog.
-- JDK, Android SDK e Gradle wrapper, con le versioni che fisserà lo scaffold del progetto.
-- Un dispositivo Android con Desktop Mode e Linux Terminal, collegato via `adb`, per i test sul dispositivo.
+- Per i test sul dispositivo: `adb` (Android SDK platform-tools) e un dispositivo Android con Desktop Mode e Linux Terminal, visibile in `adb devices`. Riferimento: Pixel 11 Pro.
 
 ## Comandi
-
-Dopo lo scaffold:
 
 ```bash
 ./gradlew ktlintCheck detekt compileDebugKotlin testDebugUnitTest assembleDebug   # quality gate
 ./gradlew connectedDebugAndroidTest                                               # test sul dispositivo
+./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo
+./gradlew ktlintFormat                                                            # corregge lo stile Kotlin
 ```
+
+L'APK di debug è in `app/build/outputs/apk/debug/app-debug.apk`.
+
+## Struttura
+
+- `app/` — applicazione Android: UI Compose e Desktop Mode.
+- `core-client/` — libreria: SSH e API di herdr-core.
+- `terminal/` — libreria: emulazione e rendering del terminale.
 
 ## Documentazione
 

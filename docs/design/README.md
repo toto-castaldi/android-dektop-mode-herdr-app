@@ -26,4 +26,3 @@ Decisions still to be closed and the backlog items that will close them:
 
 - Esecuzione di herdr-core nel Linux Terminal di Android e come l'app lo raggiunge e lo installa — SPIKE-002
 - Emulatore e renderer del terminale (libghostty via JNI, terminal-view di Termux, renderer Compose proprio) e soglie di REQ-NFR-003 — SPIKE-003
-- Struttura dei moduli Gradle, minSdk e targetSdk (dalla versione Android del dispositivo di riferimento), versioni di JDK, Kotlin e Android Gradle Plugin — TEC-002
