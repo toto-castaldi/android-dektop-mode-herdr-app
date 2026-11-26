@@ -45,6 +45,7 @@ import org.junit.runner.RunWith
  * `agents-e2e.pub` in the app's external files directory) must be authorized on the host, ideally with a forced
  * command that reaches a separate core session (`HC_SESSION`). Programs report their status with OSC 7501
  * (`printf` in the shell of a tab, and a worker started by it); the test ends the terminals it started.
+ * `-e agHostKey SHA256:…` checks the presented host key before confirming it.
  * `-e agDisplay <id>` opens the app on that display (Desktop Mode); `-e agPauseMillis <ms>` holds each step on
  * screen; `-e agDeleteKey true` deletes the test key at the end.
  */
@@ -59,6 +60,9 @@ class AgentsE2ETest {
     private val port = args.getString("agPort")?.toInt() ?: Machine.DEFAULT_PORT
     private val pause = args.getString("agPauseMillis")?.toLong() ?: 0L
     private val display = args.getString("agDisplay")?.toInt()
+
+    /** Expected `SHA256:` fingerprint of the host key; when given, any other key fails the test. */
+    private val hostKey: String? = args.getString("agHostKey")
     private val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as HerdrApp
     private val container get() = app.container
     private var scenario: ActivityScenario<MainActivity>? = null
@@ -132,6 +136,7 @@ class AgentsE2ETest {
         container.connections.connect(added.id)
         rule.waitUntil(TIMEOUT_MILLIS) { container.connections.status(added.id) is MachineStatus.HostKeyUnconfirmed }
         val presented = (container.connections.status(added.id) as MachineStatus.HostKeyUnconfirmed).presented
+        hostKey?.let { assertEquals("host key of $host", it, presented.fingerprint) }
         container.connections.confirmHostKey(added.id, presented)
         rule.waitUntil(TIMEOUT_MILLIS) { container.workspaces.state(added.id).value is WorkspaceState.Ready }
         rule.onNode(
