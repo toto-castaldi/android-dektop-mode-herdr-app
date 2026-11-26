@@ -42,6 +42,7 @@ import io.github.totocastaldi.herdrdesktop.AppContainer
 import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.MachineStatus
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.status
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreOperation
 import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshKeyStore
 import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshPublicKey
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.LocalMachine
@@ -60,6 +61,7 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
     var publicKey by remember { mutableStateOf(container.keys.publicKey(SshKeyStore.DEFAULT_ALIAS)) }
     var editing by remember { mutableStateOf<EditTarget?>(null) }
     var removing by remember { mutableStateOf<Machine?>(null) }
+    var confirmingCore by remember { mutableStateOf<Pair<Machine, CoreOperation>?>(null) }
     var dismissedChanged by remember { mutableStateOf(emptySet<String>()) }
     val localUi = remember { LocalUiState() }
     val scope = rememberCoroutineScope()
@@ -86,7 +88,8 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
                             },
                             disconnect = { container.connections.disconnect(machine.id) },
                             edit = { editing = EditTarget(machine) },
-                            remove = { removing = machine }
+                            remove = { removing = machine },
+                            proposeCore = { confirmingCore = machine to it }
                         )
                     )
                 }
@@ -106,13 +109,9 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
         )
     }
 
-    removing?.let { machine ->
-        RemoveDialog(machine, onDismiss = { removing = null }) {
-            container.connections.forget(machine.id)
-            container.machines.remove(machine.id)
-            removing = null
-        }
-    }
+    removing?.let { RemoveDialog(container, it) { removing = null } }
+
+    confirmingCore?.let { CoreConfirmPrompt(container, it) { confirmingCore = null } }
 
     LocalDialogs(container, localUi, publicKey) { dismissedChanged = dismissedChanged - LocalMachine.ID }
 
@@ -134,11 +133,17 @@ private class MachineActions(
     val connect: () -> Unit,
     val disconnect: () -> Unit,
     val edit: () -> Unit,
-    val remove: () -> Unit
+    val remove: () -> Unit,
+    val proposeCore: (CoreOperation) -> Unit
 )
 
 @Composable
-private fun RemoveDialog(machine: Machine, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+private fun RemoveDialog(container: AppContainer, machine: Machine, onDismiss: () -> Unit) {
+    val onConfirm = {
+        container.connections.forget(machine.id)
+        container.machines.remove(machine.id)
+        onDismiss()
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.machine_remove_title, machine.name)) },
@@ -261,9 +266,12 @@ private fun MachineRow(
                 )
                 Text(statusText(status), color = statusColor(status), style = MaterialTheme.typography.bodyMedium)
                 if (local != null) LocalMachineHelp(status, local)
+                CoreInstallHelp(status, actions.proposeCore)
                 if (status == MachineStatus.LocalNetworkDenied) LocalNetworkDeniedHelp(openAppSettings)
             }
-            if (status.isRetrying()) {
+            if (status is MachineStatus.CoreInstalling) {
+                // The install or update command runs to its end: no connect or disconnect meanwhile.
+            } else if (status.isRetrying()) {
                 OutlinedButton(onClick = actions.disconnect) { Text(stringResource(R.string.machine_disconnect)) }
             } else {
                 Button(onClick = actions.connect) { Text(stringResource(R.string.machine_connect)) }
@@ -281,7 +289,8 @@ private fun MachineRow(
 /** True while the connection is up, being set up or waiting to retry; false when it waits for the user. */
 private fun MachineStatus.isRetrying(): Boolean = when (this) {
     MachineStatus.Disconnected, is MachineStatus.HostKeyChanged, MachineStatus.AuthFailed,
-    MachineStatus.CoreMissing, is MachineStatus.CoreIncompatible, MachineStatus.LocalTerminalMissing,
+    is MachineStatus.CoreMissing, is MachineStatus.CoreIncompatible, is MachineStatus.CoreInstallFailed,
+    MachineStatus.LocalTerminalMissing,
     MachineStatus.LocalNetworkPermissionNeeded, MachineStatus.LocalNetworkDenied -> false
 
     is MachineStatus.LocalTerminalNotConfigured -> retryInMillis != null

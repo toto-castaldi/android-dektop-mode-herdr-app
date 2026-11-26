@@ -2,6 +2,10 @@ package io.github.totocastaldi.herdrdesktop.coreclient.connection
 
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKey
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKeyDecision
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandResult
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandRunner
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreInstaller
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreOperation
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.LocalMachine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.Machine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineRepository
@@ -53,15 +57,22 @@ data class DeviceAccess(
  * Keeps one connection per machine the user connected, and its [MachineStatus]. A dropped or
  * unreachable connection is retried with exponential backoff; authentication, host key and core
  * problems stop the retries until the user acts. Closing the app does not touch the core.
+ * herdr-core is installed or updated through [commands] only when the user asks ([installCore], [updateCore]).
  */
+// Every parameter but the first three has a default and is passed by name; the functions are the
+// lifecycle of one connection per machine and share its job and status (install entry points are in CoreOperations.kt).
+@Suppress("LongParameterList", "TooManyFunctions")
 class ConnectionManager(
     private val machines: MachineRepository,
     private val transport: CoreTransport,
     private val scope: CoroutineScope,
     private val policy: ConnectionPolicy = ConnectionPolicy(),
     private val log: ConnectionLog = ConnectionLog { _, _ -> },
-    private val device: DeviceAccess = DeviceAccess()
+    private val device: DeviceAccess = DeviceAccess(),
+    commands: CommandRunner = CommandRunner { _, _, _ -> CommandResult.NotRun("commands not supported") }
 ) {
+    private val installer = CoreInstaller(commands)
+
     private val state = MutableStateFlow<Map<String, MachineStatus>>(emptyMap())
     val statuses: StateFlow<Map<String, MachineStatus>> = state.asStateFlow()
 
@@ -135,6 +146,29 @@ class ConnectionManager(
         }
     }
 
+    /** Runs the confirmed [operation] on [id], then connects again if it succeeded; see [installCore]. */
+    internal fun startOperation(id: String, operation: CoreOperation) {
+        jobs.stop(id)
+        val job = scope.launch {
+            val machine = machines.get(id) ?: return@launch
+            set(id, MachineStatus.CoreInstalling(operation, ""))
+            val result = installer.run(machine, operation) { output ->
+                set(id, MachineStatus.CoreInstalling(operation, output), log = false)
+            }
+            currentCoroutineContext().ensureActive()
+            when (result) {
+                is CommandResult.Exited -> if (result.succeeded) {
+                    run(id)
+                } else {
+                    set(id, MachineStatus.CoreInstallFailed(operation, result.status, result.output))
+                }
+
+                is CommandResult.NotRun -> set(id, MachineStatus.CoreInstallFailed(operation, null, result.reason))
+            }
+        }
+        synchronized(jobs) { jobs[id] = job }
+    }
+
     /** Forgets the machine's connection state, for example after removing it. */
     fun forget(id: String) {
         jobs.stop(id)
@@ -188,8 +222,13 @@ class ConnectionManager(
 
             is OpenResult.Opened -> when (val handshake = CoreSession.handshake(opened.stream, scope)) {
                 is HandshakeResult.Ready -> serve(machine, handshake)
-                HandshakeResult.CoreMissing -> Outcome(MachineStatus.CoreMissing)
+
+                HandshakeResult.CoreMissing -> Outcome(
+                    MachineStatus.CoreMissing(installer.missingPrerequisites(machine))
+                )
+
                 is HandshakeResult.Incompatible -> Outcome(MachineStatus.CoreIncompatible(handshake.compatibility))
+
                 is HandshakeResult.Failed -> Outcome(reason = handshake.reason)
             }
         }
@@ -212,9 +251,9 @@ class ConnectionManager(
         return Outcome(reason = "connection lost", connected = true)
     }
 
-    private fun set(id: String, status: MachineStatus) {
+    private fun set(id: String, status: MachineStatus, log: Boolean = true) {
         state.update { it + (id to status) }
-        machines.get(id)?.let { log.statusChanged(it, status) }
+        if (log) machines.get(id)?.let { this.log.statusChanged(it, status) }
     }
 }
 
