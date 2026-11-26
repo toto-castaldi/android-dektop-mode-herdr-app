@@ -1,6 +1,10 @@
 # Configuration and local runtime
 
-- **Prerequisiti di sviluppo:** JDK e Android SDK nelle versioni bloccate dallo scaffold; Gradle solo tramite il wrapper del repository; `adb` e il Pixel 11 Pro per test strumentali ed end-to-end.
+- **Prerequisiti di sviluppo:** JDK 21, Android SDK con `ANDROID_HOME` impostato (o `sdk.dir` in `local.properties`, fuori dal repository) e le licenze accettate; Gradle solo tramite il wrapper del repository, che scarica la distribuzione con checksum verificato. Platform e build-tools mancanti vengono installati dall'Android Gradle Plugin al primo build. `adb` e il Pixel 11 Pro servono per test strumentali ed end-to-end.
+- **Toolchain bloccata:** versione di Gradle e checksum in `gradle/wrapper/gradle-wrapper.properties`; JDK, compileSdk, minSdk, targetSdk, Android Gradle Plugin, Kotlin, ktlint, detekt e tutte le dipendenze in `gradle/libs.versions.toml`. I moduli usano il Kotlin integrato nell'Android Gradle Plugin e la toolchain Java del version catalog. Si aggiorna una versione solo nel version catalog o nel wrapper.
+- **API level:** minSdk e targetSdk sono l'API level del Pixel 11 Pro di riferimento (`adb shell getprop ro.build.version.sdk`); compileSdk è lo stesso API level con la minor release più recente richiesta da AndroidX.
+- **Struttura Gradle:** progetto radice `herdr-desktop-android` con tre moduli, uno per modulo logico (`docs/design/modules.md`): `:app` (applicazione Android), `:core-client` e `:terminal` (librerie Android). Il package base è `io.github.totocastaldi.herdrdesktop`; ogni libreria ha il proprio sottopackage (`.coreclient`, `.terminal`). I sorgenti stanno in `src/main/kotlin`, i test JVM in `src/test/kotlin`, quelli strumentali in `src/androidTest/kotlin`.
+- **Controlli statici:** ktlint (stile `android_studio`, regole in `.editorconfig`) e detekt (configurazione predefinita più `config/detekt/detekt.yml`) sono applicati dal build radice a ogni modulo.
+- **Desktop Mode:** l'activity principale è ridimensionabile e gestisce da sé i cambi di dimensione e densità della finestra, con dimensione iniziale e minima dichiarate nel manifest.
 - **Configurazione dell'app:** nessuna variabile d'ambiente né file di configurazione con segreti; macchine e chiavi si configurano dall'app.
-- **Comandi:** quelli del quality gate in `AGENTS.md` §6.
-- Struttura dei moduli Gradle, minSdk, targetSdk e versioni della toolchain sono decisioni aperte (vedi `README.md`, Open decisions).
+- **Comandi:** quelli del quality gate e dei test strumentali in `AGENTS.md` §6.

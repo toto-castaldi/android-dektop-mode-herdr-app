@@ -33,7 +33,7 @@ The scope of the current version is defined in `docs/requirements/README.md`. Do
 
 Unless a different decision is recorded in the backlog and in the technical design:
 
-- Kotlin su Android; minSdk e targetSdk = API level del Pixel 11 Pro di riferimento (fissati dallo scaffold)
+- Kotlin su Android (JDK 21); minSdk e targetSdk = API level del Pixel 11 Pro di riferimento, nel version catalog (`docs/design/configuration.md`)
 - Gradle (Kotlin DSL) solo tramite il wrapper, dipendenze nel version catalog
 - Jetpack Compose; libreria SSH ed emulatore del terminale decisi dagli spike
 - Nessun database: macchine in storage locale dell'app, chiavi nell'Android Keystore, stato di lavoro sul core
@@ -61,9 +61,9 @@ Closing gate (`docs/PROCESS.md` §6):
 ./gradlew assembleDebug
 ```
 
-Preparation: JDK e Android SDK delle versioni indicate nel README; Gradle scarica le dipendenze al primo avvio. I comandi sono creati dallo scaffold: fino ad allora il gate non può girare e gli item di sola documentazione non ne hanno bisogno.
+Preparation: JDK 21 e Android SDK con `ANDROID_HOME` impostato (o `sdk.dir` in `local.properties`), come indicato nel README; il wrapper scarica Gradle e Gradle scarica dipendenze, platform e build-tools al primo avvio. Gli item di sola documentazione non hanno bisogno del gate.
 
-Integration and end-to-end suites: `./gradlew connectedDebugAndroidTest` con il Pixel 11 Pro collegato via `adb`, negli item che toccano UI, Keystore o Desktop Mode; verifiche end-to-end con un herdr-core reale (remoto e nel Linux Terminal) per i criteri che coinvolgono il core. Non simulare il core per dichiarare verificata un'integrazione.
+Integration and end-to-end suites: `./gradlew connectedDebugAndroidTest` (test strumentali in `src/androidTest/kotlin`) con il Pixel 11 Pro collegato via `adb` e visibile in `adb devices`, negli item che toccano UI, Keystore o Desktop Mode; verifiche end-to-end con un herdr-core reale (remoto e nel Linux Terminal) per i criteri che coinvolgono il core. Non simulare il core per dichiarare verificata un'integrazione.
 
 ## 7. Definition of Done additions
 

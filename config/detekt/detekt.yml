@@ -1,0 +1,12 @@
+# Overrides of the detekt default configuration (buildUponDefaultConfig = true).
+naming:
+  FunctionNaming:
+    # Composable functions are named in PascalCase.
+    ignoreAnnotated:
+      - Composable
+
+style:
+  UnusedPrivateMember:
+    # Compose previews are used by the IDE only.
+    ignoreAnnotated:
+      - Preview
