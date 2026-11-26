@@ -6,7 +6,8 @@
   "module": "MOD-002",
   "type": "User Story",
   "priority": "P2",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "us/US-011-segnalare-aggiornamenti-herdr-core",
   "dependencies": [
     "US-003"
   ],
