@@ -9,7 +9,8 @@
   "status": "Todo",
   "dependencies": [
     "US-004",
-    "SPIKE-003"
+    "SPIKE-003",
+    "TEC-004"
   ],
   "requirements": [
     "REQ-WS-002",

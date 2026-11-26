@@ -1,0 +1,29 @@
+{
+  "id": "TEC-004",
+  "title": "Build di libghostty-vt e binding JNI nel modulo terminal",
+  "version": "v0.1.0",
+  "epic": "EPIC-003",
+  "module": "MOD-003",
+  "type": "Task",
+  "priority": "P0",
+  "status": "Todo",
+  "dependencies": [
+    "SPIKE-003"
+  ],
+  "design_references": [
+    "ADR-001",
+    "design/modules",
+    "design/configuration",
+    "AGENTS §6"
+  ],
+  "description": "Integrare nella build Gradle del modulo terminal la compilazione di libghostty-vt (ADR-001) e un binding JNI minimo, in modo riproducibile da un clone pulito, come base per US-005.",
+  "acceptance_criteria": [
+    "Da un clone pulito ./gradlew assembleDebug compila libghostty-vt (serie 1.x, versione fissata) per arm64-v8a con Zig 0.17.x e NDK r29, con versioni e checksum di sorgenti e toolchain fissati nel version catalog o nella configurazione documentata; un checksum errato fa fallire la build.",
+    "Il modulo terminal espone un binding JNI a grana grossa (scrittura dei byte con le risposte automatiche, snapshot dello schermo, codifica di un tasto) dietro un'interfaccia Kotlin; un test strumentale sul Pixel 11 Pro scrive una sequenza con colori e Unicode e legge lo snapshot atteso.",
+    "Il quality gate di AGENTS.md §6 passa con la nuova preparazione (Zig e NDK), descritta nel README e in docs/design/configuration.md; i test unitari JVM del gate non richiedono la libreria nativa.",
+    "Un file NOTICE nell'APK e nel repository riporta le licenze di libghostty-vt e delle dipendenze linkate (MIT, Apache-2.0/MIT, Apache-2.0/BSD-3, Unicode-3.0), tutte compatibili con Apache-2.0."
+  ],
+  "remarks": [
+    "Follow-up di SPIKE-003; il prototipo esplorativo con la build Zig/NDK funzionante era in tmp/spike-003-prototype/ del clone del worker di SPIKE-003."
+  ]
+}
