@@ -46,7 +46,8 @@ sealed interface HandshakeResult {
  * JSON-RPC session with a core in framed mode. Created by [handshake]; [closed] completes
  * when the stream ends.
  */
-class CoreSession private constructor(private val stream: CoreStream, scope: CoroutineScope, leftover: ByteArray) {
+class CoreSession private constructor(private val stream: CoreStream, scope: CoroutineScope, leftover: ByteArray) :
+    CoreRpc {
     private val ids = AtomicLong(FIRST_ID)
     private val pending = ConcurrentHashMap<Long, CompletableDeferred<JsonElement>>()
     private val writeLock = Mutex()
@@ -88,7 +89,7 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
     }
 
     /** Calls [method] on channel 0 and returns its `result`; throws [RpcException] on a JSON-RPC error. */
-    suspend fun call(method: String, params: JsonObject? = null): JsonElement {
+    override suspend fun call(method: String, params: JsonObject?): JsonElement {
         val id = ids.getAndIncrement()
         val waiter = CompletableDeferred<JsonElement>()
         pending[id] = waiter
@@ -106,7 +107,7 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
 
     /** True if the core answers `server.status` within [timeoutMillis]; a JSON-RPC error is an answer too. */
     suspend fun ping(timeoutMillis: Long): Boolean = withTimeoutOrNull(timeoutMillis) {
-        val result = runCatching { call("server.status") }
+        val result = runCatching { call("server.status", null) }
         result.isSuccess || result.exceptionOrNull() is RpcException
     } == true
 

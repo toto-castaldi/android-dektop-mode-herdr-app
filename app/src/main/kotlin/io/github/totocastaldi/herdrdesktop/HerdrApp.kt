@@ -12,6 +12,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshKeyStore
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.FileMachineStore
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineRepository
 import io.github.totocastaldi.herdrdesktop.coreclient.ssh.SshlibTransport
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceManager
 import io.github.totocastaldi.herdrdesktop.machines.AndroidLocalNetworkAccess
 import io.github.totocastaldi.herdrdesktop.machines.LinuxTerminal
 import java.io.File
@@ -50,6 +51,9 @@ class AppContainer(app: Application) {
         device = DeviceAccess(localTerminal = linuxTerminal, localNetwork = localNetwork),
         commands = ssh
     )
+
+    /** Spaces and tabs of the connected machines, read from their cores. */
+    val workspaces = WorkspaceManager(connections.sessions, scope)
 
     /** Machines whose host key is already confirmed are connected at start. */
     fun connectConfirmedMachines() {

@@ -4,8 +4,8 @@ Modello concettuale. La fonte di verità di spazi, tab, pane, terminali e agenti
 
 - **Macchina** (salvata nell'app): nome, host, porta, utente, metodo di autenticazione (riferimento a una chiave del Keystore o password), impronta della host key confermata. "Questo dispositivo" è una macchina predefinita: sempre presente, con host, porta, utente e chiave fissi.
 - **Chiave SSH** (Keystore): alias, tipo, chiave pubblica esportabile.
-- **Spazio** (dal core): nome opzionale, cartella, tab ordinate.
-- **Tab** (dal core): nome opzionale, albero di pane.
+- **Spazio** (dal core, documento dell'app): nome opzionale (senza nome mostra la cartella del suo primo terminale, altrimenti la propria), cartella, tab ordinate.
+- **Tab** (dal core, documento dell'app): nome opzionale (senza nome mostra la sua posizione, da 1), albero di pane. Una nuova tab parte dalla cartella corrente del terminale attivo, altrimenti dalla cartella dello spazio, altrimenti da quella predefinita del core.
 - **Pane** (dal core): divisione orizzontale o verticale con proporzioni, oppure foglia collegata a un terminale.
 - **Terminale** (dal core): indirizzo (ad esempio `t7`, o `vps/t7` su un'altra macchina), cartella, dimensioni, programma.
 - **Agente** (dal core): terminale, stato (Working, Blocked, Done, Idle), terminale che lo ha avviato se è un worker.
@@ -14,5 +14,6 @@ Modello concettuale. La fonte di verità di spazi, tab, pane, terminali e agenti
 
 - **Macchine:** file JSON privato dell'app `files/machines.json` (`FileMachineStore`, sostituito in modo atomico a ogni modifica), formato `{"version": 1, "machines": [...]}`; ogni macchina ha `id` (UUID), `name`, `host`, `port`, `user`, `key_alias` oppure `sealed_password` (Base64 di `iv || ciphertext` AES-GCM, chiave nel Keystore), `host_key_type` e `host_key` (Base64 del blob SSH confermato). Una modifica di host o porta dimentica la host key confermata. La macchina locale ha `id` `local`, `host` `127.0.0.1`, `port` 2222, `user` `droid`, `key_alias` `herdr-ssh-default`; nell'elenco salvato è la prima.
 - **Chiave SSH:** una chiave dell'app nel Keystore con alias `herdr-ssh-default`, condivisa dalle macchine che usano l'autenticazione a chiave; la chiave pubblica si esporta come riga `authorized_keys` con commento `herdr-desktop-android`.
+- **Spazi e tab:** documento `herdr-android` su ogni core (`WorkspaceCodec`), separato dal `herdr-app` dell'app desktop ma con la stessa forma: `{"spaces": [{"id", "name", "folder", "tabs": [{"id", "name", "root"}]}]}`, dove `root` è un albero di nodi `{"id", "type": "row" | "column", "children", "size": {"weight"}}` e foglie `{"id", "type": "block", "content": {"terminal": "t7"}}`. Nomi vuoti significano "senza nome"; id nello stile dell'app desktop (`sp…`, `tb…`, `p…`). I campi sconosciuti vengono conservati e riscritti com'erano. Una tab nuova ha come radice una `row` con lo stesso id della tab e una sola foglia di peso 1.
 - **Stato di collegamento:** solo in memoria (`ConnectionManager.statuses`): non collegata, collegamento in corso, connessa (nome e versione del core), non raggiungibile (motivo e prossimo tentativo), autenticazione fallita, host key da confermare, host key cambiata, core assente, core incompatibile; per la macchina locale anche Linux Terminal assente, non attivo, in avvio, non configurato.
 - Il formato dei dati scambiati con il core è quello del protocollo di herdr-core (`integrations.md`).

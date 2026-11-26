@@ -23,7 +23,8 @@ kotlin {
 
 dependencies {
     api(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.serialization.json)
+    // CoreRpc and RpcError expose JSON types.
+    api(libs.kotlinx.serialization.json)
     implementation(libs.sshlib)
 
     testImplementation(libs.junit)

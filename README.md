@@ -42,6 +42,9 @@ python3 .agents/tools/backlog.py status
   -Pandroid.testInstrumentationRunnerArguments.coreHost=<host> \
   -Pandroid.testInstrumentationRunnerArguments.coreUser=<utente> \
   -Pandroid.testInstrumentationRunnerArguments.coreCase=install                   # installazione reale del core (oppure =update, =fail; corePort, coreDisplay)
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.wsHost=<host> \
+  -Pandroid.testInstrumentationRunnerArguments.wsUser=<utente>                    # spazi e tab su un core reale (wsPort, wsDisplay, wsRestart=setup|verify, wsDeleteKey)
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo
 ./gradlew ktlintFormat                                                            # corregge lo stile Kotlin
 ```

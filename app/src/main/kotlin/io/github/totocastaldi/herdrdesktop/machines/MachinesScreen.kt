@@ -55,7 +55,7 @@ import kotlinx.coroutines.withContext
 
 /** Machine list with status, key management and host key confirmation (REQ-CONN-001, REQ-NFR-001). */
 @Composable
-fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
+fun MachinesScreen(container: AppContainer, onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
     val machines by container.machines.machines.collectAsState()
     val statuses by container.connections.statuses.collectAsState()
     var publicKey by remember { mutableStateOf(container.keys.publicKey(SshKeyStore.DEFAULT_ALIAS)) }
@@ -87,6 +87,7 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
                                 container.connections.connect(machine.id)
                             },
                             disconnect = { container.connections.disconnect(machine.id) },
+                            open = { onOpen(machine.id) },
                             edit = { editing = EditTarget(machine) },
                             remove = { removing = machine },
                             proposeCore = { confirmingCore = machine to it }
@@ -132,6 +133,7 @@ private fun Header(onAdd: () -> Unit) {
 private class MachineActions(
     val connect: () -> Unit,
     val disconnect: () -> Unit,
+    val open: () -> Unit,
     val edit: () -> Unit,
     val remove: () -> Unit,
     val proposeCore: (CoreOperation) -> Unit
@@ -268,6 +270,10 @@ private fun MachineRow(
                 if (local != null) LocalMachineHelp(status, local)
                 CoreInstallHelp(status, actions.proposeCore)
                 if (status == MachineStatus.LocalNetworkDenied) LocalNetworkDeniedHelp(openAppSettings)
+            }
+            if (status is MachineStatus.Connected) {
+                Button(onClick = actions.open) { Text(stringResource(R.string.machine_open)) }
+                Spacer(Modifier.width(8.dp))
             }
             if (status is MachineStatus.CoreInstalling) {
                 // The install or update command runs to its end: no connect or disconnect meanwhile.
