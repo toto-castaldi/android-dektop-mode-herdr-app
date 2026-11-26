@@ -1,5 +1,6 @@
 package io.github.totocastaldi.herdrdesktop.coreclient.workspace
 
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentRecord
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.CoreRpc
 import io.github.totocastaldi.herdrdesktop.coreclient.protocol.RpcException
 import kotlinx.serialization.json.JsonArray
@@ -26,7 +27,11 @@ class CoreTerminals(private val rpc: CoreRpc) {
     suspend fun runShell(folder: String?): TerminalInfo {
         val params = buildJsonObject {
             if (!folder.isNullOrBlank()) put("cwd", folder)
-            putJsonObject("labels") { put(APP_LABEL, APP_LABEL_VALUE) }
+            putJsonObject("labels") {
+                put(APP_LABEL, APP_LABEL_VALUE)
+                // Shared Herdr rule: a terminal a client starts has nothing unseen yet.
+                put(AgentRecord.SEEN_LABEL, "0")
+            }
         }
         val result = rpc.call("terminal.run", params) as JsonObject
         return checkNotNull(result.toTerminal()) { "terminal.run returned no address" }

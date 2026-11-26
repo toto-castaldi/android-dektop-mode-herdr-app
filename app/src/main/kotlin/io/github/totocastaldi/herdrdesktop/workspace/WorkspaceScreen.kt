@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,9 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.totocastaldi.herdrdesktop.AppContainer
 import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.WindowTarget
+import io.github.totocastaldi.herdrdesktop.agents.PaneFocus
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentsManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Space
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceNames
@@ -45,8 +50,8 @@ private const val REFRESH_MILLIS = 5_000L
 fun WorkspaceScreen(
     container: AppContainer,
     machineId: String,
-    initialSpace: String?,
-    onNewWindow: (spaceId: String?) -> Unit,
+    focus: PaneFocus?,
+    window: WindowOptions,
     onBack: () -> Unit
 ) {
     val manager = container.workspaces
@@ -59,8 +64,27 @@ fun WorkspaceScreen(
         }
     }
     val actions = remember(manager, machineId) { ManagerActions(manager, machineId) }
-    WorkspaceContent(machine?.name.orEmpty(), state, actions, WindowOptions(initialSpace, onNewWindow), onBack)
+    val shown = rememberShownAgents(container.agents, machineId)
+    val agents = AgentLink(focus?.takeIf { it.machineId == machineId }, shown)
+    WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack, WorkspaceLinks(agents, window))
 }
+
+/**
+ * Tells [agents] which terminals of [machineId] are on screen while the app is in the foreground (resumed), so
+ * that Done agents the user looks at become Idle; nothing is on screen once the screen leaves.
+ */
+@Composable
+private fun rememberShownAgents(agents: AgentsManager, machineId: String): (Set<String>) -> Unit {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val resumed = lifecycle.currentStateFlow.collectAsState().value.isAtLeast(Lifecycle.State.RESUMED)
+    var shown by remember(machineId) { mutableStateOf(emptySet<String>()) }
+    LaunchedEffect(machineId, shown, resumed) { agents.setLooking(machineId, if (resumed) shown else emptySet()) }
+    DisposableEffect(machineId) { onDispose { agents.setLooking(machineId, emptySet()) } }
+    return { shown = it }
+}
+
+/** Link with the agents sidebar: the pane to bring to the front and where to report the terminals on screen. */
+class AgentLink(val focus: PaneFocus? = null, val onShown: (Set<String>) -> Unit = {})
 
 /** What the user can do on spaces and tabs; each action is sent to the core. */
 interface WorkspaceActions {
@@ -118,6 +142,9 @@ private class ManagerActions(private val m: WorkspaceManager, private val id: St
 /** The space a window opens on and how it opens another window (none when null). */
 class WindowOptions(val initialSpace: String? = null, val onNewWindow: ((spaceId: String?) -> Unit)? = null)
 
+/** What the screen shares with the rest of its window: the agents sidebar and the window itself. */
+class WorkspaceLinks(val agents: AgentLink = AgentLink(), val window: WindowOptions = WindowOptions())
+
 /**
  * Spaces and tabs of one window. The selection belongs to the window and survives resizing, display and
  * density changes; [WindowOptions.onNewWindow] opens another window on another space ([WindowTarget.otherSpace]).
@@ -127,11 +154,11 @@ fun WorkspaceContent(
     machineName: String,
     state: WorkspaceState,
     actions: WorkspaceActions,
-    window: WindowOptions = WindowOptions(),
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    links: WorkspaceLinks = WorkspaceLinks()
 ) {
-    var selectedSpace by rememberSaveable { mutableStateOf(window.initialSpace) }
-    val onNewWindow = window.onNewWindow
+    var selectedSpace by rememberSaveable { mutableStateOf(links.window.initialSpace) }
+    val onNewWindow = links.window.onNewWindow
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -148,9 +175,13 @@ fun WorkspaceContent(
             HorizontalDivider()
             when (state) {
                 WorkspaceState.Unavailable -> Message(stringResource(R.string.workspace_unavailable))
+
                 WorkspaceState.Loading -> Message(stringResource(R.string.workspace_loading))
+
                 is WorkspaceState.Failed -> Message(stringResource(R.string.workspace_failed, state.reason))
-                is WorkspaceState.Ready -> ReadyContent(state, actions, selectedSpace) { selectedSpace = it }
+
+                is WorkspaceState.Ready ->
+                    ReadyContent(state, actions, links.agents, selectedSpace) { selectedSpace = it }
             }
         }
     }
@@ -165,6 +196,7 @@ internal fun Message(text: String) {
 private fun ReadyContent(
     state: WorkspaceState.Ready,
     actions: WorkspaceActions,
+    agents: AgentLink,
     selectedSpace: String?,
     onSelectSpace: (String) -> Unit
 ) {
@@ -182,8 +214,18 @@ private fun ReadyContent(
         known = spaces.flatMap { s -> s.tabs.map { it.id } + s.id }.toSet()
     }
 
+    // An agent selected in the sidebar brings its space and tab to the front.
+    LaunchedEffect(agents.focus) {
+        agents.focus?.location?.let {
+            onSelectSpace(it.spaceId)
+            selectedTabs[it.spaceId] = it.tabId
+        }
+    }
+
     val space = spaces.firstOrNull { it.id == selectedSpace } ?: spaces.firstOrNull()
     val tab = space?.let { s -> s.tabs.firstOrNull { it.id == selectedTabs[s.id] } ?: s.tabs.firstOrNull() }
+    val onScreen = tab?.terminals.orEmpty().toSet()
+    LaunchedEffect(onScreen) { agents.onShown(onScreen) }
     val controls = Controls(actions) { prompt = it }
     val spaceLabel = { index: Int, s: Space -> WorkspaceNames.displayName(s, state::cwdOf) ?: "${index + 1}" }
 

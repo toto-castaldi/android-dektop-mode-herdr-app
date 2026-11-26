@@ -23,6 +23,14 @@ class WorkspaceRulesTest {
     )
 
     @Test
+    fun `the pane of a terminal is found with its tab and space`() {
+        val split = ws.copy(spaces = ws.spaces + Space("d", tabs = listOf(tab("d1", "t8", "t9"))))
+        assertEquals(PaneLocation("a", "a1", "a1-p0"), ws.paneOf("t1"))
+        assertEquals(PaneLocation("d", "d1", "d1-p1"), split.paneOf("t9"))
+        assertNull(ws.paneOf("t7"))
+    }
+
+    @Test
     fun `a named space shows its name`() {
         assertEquals("Server", WorkspaceNames.displayName(ws.space("b")!!, cwdOf))
         assertEquals("x", WorkspaceNames.displayName(Space("s", name = "  x  "), cwdOf))

@@ -18,13 +18,15 @@ fun ConnectionManager.installCore(id: String) {
 
 /**
  * Updates herdr-core on [id] after the user confirmed: allowed when the core is too old for the app,
- * or after a failed update. On success the app connects again.
+ * when a newer version is available for a connected core, or after a failed update. On success the
+ * app connects again.
  */
 fun ConnectionManager.updateCore(id: String) {
     val current = status(id)
     require(
         (current is MachineStatus.CoreIncompatible && current.compatibility is Compatibility.CoreUpdateNeeded) ||
+            (current is MachineStatus.Connected && current.availableUpdate != null) ||
             (current is MachineStatus.CoreInstallFailed && current.operation == CoreOperation.UPDATE)
-    ) { "herdr-core can be updated only where it is too old" }
+    ) { "herdr-core can be updated only where it is too old or a newer version is available" }
     startOperation(id, CoreOperation.UPDATE)
 }

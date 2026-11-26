@@ -6,6 +6,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandResult
 import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandRunner
 import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreInstaller
 import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreOperation
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreUpdateCheck
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.LocalMachine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.Machine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineRepository
@@ -13,6 +14,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.machine.isLocal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -72,6 +74,7 @@ class ConnectionManager(
     commands: CommandRunner = CommandRunner { _, _, _ -> CommandResult.NotRun("commands not supported") }
 ) {
     private val installer = CoreInstaller(commands)
+    private val updates = CoreUpdateCheck(commands)
 
     private val state = MutableStateFlow<Map<String, MachineStatus>>(emptyMap())
     val statuses: StateFlow<Map<String, MachineStatus>> = state.asStateFlow()
@@ -183,12 +186,17 @@ class ConnectionManager(
     private suspend fun run(id: String) {
         var retry = policy.initialRetryMillis
         var machine = machines.get(id)
+        // Available updates are checked on the first connection of a run, not on automatic reconnections.
+        var checkUpdate = true
         while (machine != null) {
             set(id, MachineStatus.Connecting)
-            val outcome = attempt(machine)
+            val outcome = attempt(machine, checkUpdate)
             // A disconnect may have cancelled this run while the attempt was ending.
             currentCoroutineContext().ensureActive()
-            if (outcome.connected) retry = policy.initialRetryMillis
+            if (outcome.connected) {
+                retry = policy.initialRetryMillis
+                checkUpdate = false
+            }
             set(id, outcome.status ?: retryStatus(machine, outcome.reason, outcome.refused, terminalPhase, retry))
             if (outcome.status != null) return
             delay(retry)
@@ -206,7 +214,7 @@ class ConnectionManager(
         val refused: Boolean = false
     )
 
-    private suspend fun attempt(machine: Machine): Outcome {
+    private suspend fun attempt(machine: Machine, checkUpdate: Boolean): Outcome {
         device.blockingStatus(machine)?.let { return Outcome(it) }
         return when (val opened = transport.open(machine)) {
             is OpenResult.Unreachable -> Outcome(reason = opened.reason, refused = opened.refused)
@@ -226,7 +234,7 @@ class ConnectionManager(
             is OpenResult.HostKeyRejected -> Outcome(opened.decision.toStatus())
 
             is OpenResult.Opened -> when (val handshake = CoreSession.handshake(opened.stream, scope)) {
-                is HandshakeResult.Ready -> serve(machine, handshake)
+                is HandshakeResult.Ready -> serve(machine, handshake, checkUpdate)
 
                 HandshakeResult.CoreMissing -> Outcome(
                     MachineStatus.CoreMissing(installer.missingPrerequisites(machine))
@@ -239,23 +247,43 @@ class ConnectionManager(
         }
     }
 
-    /** Keeps a ready session until it closes or stops answering pings. */
-    private suspend fun serve(machine: Machine, ready: HandshakeResult.Ready): Outcome {
+    /**
+     * Keeps a ready session until it closes or stops answering pings; meanwhile, if [checkUpdate], asks
+     * the machine whether a newer core is published and adds it to the status.
+     */
+    private suspend fun serve(machine: Machine, ready: HandshakeResult.Ready, checkUpdate: Boolean): Outcome {
         val session = ready.session
         if (machine.isLocal) terminalPhase = TerminalPhase.UNKNOWN
-        set(machine.id, MachineStatus.Connected(ready.hello.core?.name, ready.hello.version))
+        val connected = MachineStatus.Connected(ready.hello.core?.name, ready.hello.version)
+        set(machine.id, connected)
         sessionState.update { it + (machine.id to session) }
         try {
-            var alive = true
-            while (alive) {
-                val closed = withTimeoutOrNull(policy.pingIntervalMillis) { session.closed.await() }
-                alive = closed == null && session.ping(policy.pingTimeoutMillis)
+            coroutineScope {
+                val check = if (checkUpdate) launch { reportUpdate(machine, connected) } else null
+                var alive = true
+                while (alive) {
+                    val closed = withTimeoutOrNull(policy.pingIntervalMillis) { session.closed.await() }
+                    alive = closed == null && session.ping(policy.pingTimeoutMillis)
+                }
+                check?.cancel()
             }
         } finally {
             sessionState.update { if (it[machine.id] === session) it - machine.id else it }
             withContext(NonCancellable) { session.close() }
         }
         return Outcome(reason = "connection lost", connected = true)
+    }
+
+    /** Adds the newer published version, if any, to [connected] while it is still the machine's status. */
+    private suspend fun reportUpdate(machine: Machine, connected: MachineStatus.Connected) {
+        val latest = updates.availableUpdate(machine, connected.coreVersion) ?: return
+        val withUpdate = connected.copy(availableUpdate = latest)
+        var changed = false
+        state.update { all ->
+            changed = all[machine.id] == connected
+            if (changed) all + (machine.id to withUpdate) else all
+        }
+        if (changed) log.statusChanged(machine, withUpdate)
     }
 
     private fun set(id: String, status: MachineStatus, log: Boolean = true) {

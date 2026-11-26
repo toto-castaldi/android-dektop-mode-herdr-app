@@ -37,6 +37,7 @@
     <string name="status_disconnected">Non collegata</string>
     <string name="status_connecting">Collegamento in corso…</string>
     <string name="status_connected">Connessa · herdr-core %1$s</string>
+    <string name="status_connected_update">Connessa · herdr-core %1$s · aggiornamento disponibile: %2$s</string>
     <string name="status_unreachable">Non raggiungibile (%1$s) · nuovo tentativo tra %2$d s</string>
     <string name="status_auth_failed">Autenticazione fallita</string>
     <string name="status_host_key_unconfirmed">Host key da confermare</string>
@@ -66,6 +67,7 @@
     <string name="core_missing_hello">hello fallito (%1$s).</string>
     <string name="core_install">Installa herdr-core</string>
     <string name="core_update">Aggiorna herdr-core</string>
+    <string name="core_help_update_available">È disponibile herdr-core %2$s (versione installata: %1$s). L\'app continua a usare il core installato finché non lo aggiorni.</string>
     <string name="core_retry">Riprova</string>
     <string name="core_no_output">Nessun output dal comando.</string>
     <string name="core_confirm_install_title">Installare herdr-core su %1$s?</string>
@@ -138,5 +140,13 @@
     <string name="workspace_close_tab_text">I suoi terminali vengono terminati sul core.</string>
     <string name="workspace_terminal">%1$s · %2$s</string>
     <string name="workspace_terminal_gone">%1$s · terminale non più attivo</string>
+    <string name="agents_title">Agenti</string>
+    <string name="agents_none">Nessun agente sulle macchine collegate.</string>
+    <string name="agents_where">%1$s · %2$s</string>
+    <string name="agents_no_pane">%1$s · %2$s · senza pane</string>
+    <string name="agent_working">Working</string>
+    <string name="agent_blocked">Blocked</string>
+    <string name="agent_done">Done</string>
+    <string name="agent_idle">Idle</string>
     <string name="workspace_terminal_preview">Il contenuto del terminale non è ancora mostrato in questa versione.</string>
 </resources>

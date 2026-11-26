@@ -20,6 +20,7 @@ class WorkspaceClientTest {
         assertEquals(listOf("t1"), space.tabs.single().terminals)
         assertEquals(setOf(WorkspaceCodec.DOC_NAME), core.docs.keys)
         assertEquals("herdr-android", core.terminals.getValue("t1").labels["app"])
+        assertEquals("0", core.terminals.getValue("t1").labels["herdr.seen"])
         assertEquals(1L, snapshot.version)
     }
 

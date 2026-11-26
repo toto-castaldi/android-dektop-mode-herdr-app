@@ -86,7 +86,7 @@ class WorkspaceContentTest {
     private fun text(id: Int, vararg args: Any) = rule.activity.getString(id, *args)
 
     private fun show(s: WorkspaceState = state) = rule.setContent {
-        MaterialTheme { WorkspaceContent("walle", s, actions) {} }
+        MaterialTheme { WorkspaceContent("walle", s, actions, onBack = {}) }
     }
 
     @Test
@@ -152,7 +152,18 @@ class WorkspaceContentTest {
         val opened = mutableListOf<String?>()
         rule.setContent {
             MaterialTheme {
-                WorkspaceContent("walle", state, actions, WindowOptions(onNewWindow = { opened += it })) {}
+                WorkspaceContent(
+                    "walle",
+                    state,
+                    actions,
+                    {},
+                    WorkspaceLinks(
+                        window = WindowOptions(onNewWindow = {
+                            opened +=
+                                it
+                        })
+                    )
+                )
             }
         }
         rule.onNodeWithText(text(R.string.workspace_new_window)).performClick()
@@ -164,7 +175,10 @@ class WorkspaceContentTest {
     @Test
     fun windowOpensOnTheRequestedSpace() {
         rule.setContent {
-            MaterialTheme { WorkspaceContent("walle", state, actions, WindowOptions(initialSpace = "sp2")) {} }
+            MaterialTheme {
+                WorkspaceContent("walle", state, actions, {
+                }, WorkspaceLinks(window = WindowOptions(initialSpace = "sp2")))
+            }
         }
         rule.onNodeWithText(text(R.string.workspace_terminal, "t3", "/srv")).assertIsDisplayed()
         rule.onNodeWithText(text(R.string.workspace_new_window)).assertDoesNotExist()
