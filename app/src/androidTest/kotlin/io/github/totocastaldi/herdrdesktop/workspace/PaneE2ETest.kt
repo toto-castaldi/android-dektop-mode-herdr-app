@@ -111,6 +111,7 @@ class PaneE2ETest {
         val (second, s2) = splitRightAndMoveFocus(target, first, s1)
         val third = splitDownAndDragDivider(target, second, s1, s2)
         closePane(target, second, listOf(first, third))
+        resizeWindow(target, first, s1)
         agentInPane(first, s1)
     }
 
@@ -203,6 +204,21 @@ class PaneE2ETest {
         awaitTab(target) { PaneLayout.leaves(it.root).map { l -> l.id } == rest.map { it.id } }
         rule.waitUntil(TIMEOUT_MILLIS) { pane.terminal!! !in terminals(target) }
         assertTrue(terminals(target).containsAll(rest.map { it.terminal!! }))
+        step()
+    }
+
+    /** Resizing the window resizes the grid of the pane and the program's terminal on the core. */
+    private fun resizeWindow(target: Machine, pane: PaneNode.Leaf, session: TerminalSession) {
+        val before = session.size
+        var task = 0
+        scenario!!.onActivity { task = it.taskId }
+        instrumentation.uiAutomation
+            .executeShellCommand("am task resize $task $WINDOW_LEFT $WINDOW_TOP $WINDOW_RIGHT $WINDOW_BOTTOM")
+            .close()
+        rule.waitUntil(TIMEOUT_MILLIS) {
+            session.size != before && coreSize(target, pane.terminal!!) == (session.size.columns to session.size.rows)
+        }
+        assertTrue("narrower window, fewer columns", session.size.columns < before.columns)
         step()
     }
 
@@ -391,6 +407,12 @@ class PaneE2ETest {
         const val AGENT_TIMEOUT_MILLIS = 60_000L
         const val SHORT_PAUSE_MILLIS = 500L
         const val DRAG_PX = 300f
+
+        /** Window bounds set by the test, in pixels of the display: smaller than the whole monitor. */
+        const val WINDOW_LEFT = 200
+        const val WINDOW_TOP = 100
+        const val WINDOW_RIGHT = 1800
+        const val WINDOW_BOTTOM = 900
 
         /** Wheel notches towards the scrollback: 3 rows each. */
         const val WHEEL_NOTCHES = 40

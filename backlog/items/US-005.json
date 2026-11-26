@@ -6,7 +6,7 @@
   "module": "MOD-003",
   "type": "User Story",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-005-pane-con-terminali-interattivi",
   "dependencies": [
     "US-004",
@@ -31,5 +31,8 @@
     "Ridimensionando finestra o pane, il programma riceve le nuove dimensioni e ridisegna correttamente.",
     "Latenza tasto-eco e frame rate misurati sul Pixel 11 Pro rispettano le soglie di REQ-NFR-003.",
     "Il layout dei pane (divisione, ridimensionamento, chiusura) è coperto da test unitari."
-  ]
+  ],
+  "outcome": "Pane con terminali interattivi del core. core-client: PaneLayout (divisione orizzontale/verticale nello stile dell'app desktop, chiusura con collasso delle divisioni, pesi e trascinamento dei divisori con minimo 5%), WorkspacePanes (splitPane avvia la shell nella cartella del pane e la termina se la scrittura fallisce; closePane termina il terminale, l'ultimo pane chiude la tab; resizeSplit) con compare-and-set sul documento herdr-android; CoreRpc.attach/TerminalStream su CoreSession (terminal.attach con history 5000 e display, frame per canale accodati anche prima della risposta, DATA, AUTOMATIC_INPUT solo se negoziato, RESIZE, FOCUS, CREDIT a blocchi di 64 KiB, CLOSE). terminal: TerminalSession e TerminalIo, TerminalView Compose (un frame per vsync solo a schermo cambiato, disegno limitato al pane), RawScreen letto in place con buffer JNI riusati (nativeSnapshotInto), cache delle righe in RenderNode, raggruppamento dei glifi a larghezza di cella, AndroidKeys (tasti fisici presi prima dell'IME), scrollback con la rotella (nativeScroll), font JetBrains Mono 2.304 (OFL-1.1) scaricato con checksum negli asset con licenza in NOTICE, grassetto vero e corsivo dritto (scelta dell'utente: il corsivo vero, anche IBM Plex Mono, porta l'output continuo a 32-35 fps). app: albero dei pane con divisori trascinabili, focus al click e al nuovo pane, dividi/chiudi con conferma, PaneTerminal (attach alla prima misura, coda d'uscita senza cambio di thread, stato terminato/errore nel pane). Test JVM: PaneLayoutTest 11, PaneEditsTest 6, TerminalStreamTest 6, AndroidKeysTest, RowRunsBuilderTest, RawScreenTest, TerminalSessionTest; gate verde (163 test JVM). Sul Pixel 11 Pro in Desktop Mode (monitor LG 2560x1080 a 60 Hz), core walle in una sessione HC_SESSION separata con chiave di test ristretta, impronta della host key verificata: PaneE2ETest verde (dividi destra/giù, divisore trascinato con pesi scritti e griglia del programma aggiornata, ridimensionamento della finestra con am task resize e dimensione confermata dal core, chiusura che termina solo il terminale del pane, focus al click, truecolor, CJK larghi, box drawing, scrollback con la rotella, Claude Code nel pane); test strumentali di :terminal 8/8 (scroll, font dagli asset, stesso avanzamento, ripiego CJK). REQ-NFR-003 con TerminalPerformanceE2ETest (senza regola di test Compose; tasti con il comando input di sistema, che marca l'evento come una tastiera fisica; FrameMetrics), Pixel via cavo Ethernet del dock: latenza tasto-eco su 220 tasti p50 34,9/p95 45,8/p99 50,4 ms e p50 37,9/p95 48,1/p99 52,7 ms; output continuo truecolor e Unicode a tutto monitor (396x56) 59,7 e 59,9 fps con frame massimo 71 e 58 ms. Su Wi-Fi la p50 variava tra 40,1 e 46,9 ms. Logcat senza chiavi, password né contenuto dei terminali. Limiti: un terminale kept perso si riattacca riaprendo la tab (senza eventi del core); il corsivo è dritto.",
+  "changelog": "Added: pane con terminali interattivi del core: dividi, ridimensiona, chiudi, focus, tastiera fisica, colori, Unicode e scrollback",
+  "closed_at": "2026-11-26"
 }
