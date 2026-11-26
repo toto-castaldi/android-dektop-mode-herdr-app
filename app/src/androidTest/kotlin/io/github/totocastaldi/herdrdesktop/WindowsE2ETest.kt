@@ -13,6 +13,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -63,6 +64,7 @@ class WindowsE2ETest {
     private var scenario: ActivityScenario<MainActivity>? = null
     private var machine: Machine? = null
     private var display: Int? = null
+    private var originalDensity: Int? = null
 
     private val callbacks = object : Application.ActivityLifecycleCallbacks {
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
@@ -91,12 +93,13 @@ class WindowsE2ETest {
                 .firstOrNull {
                     it.displayId != Display.DEFAULT_DISPLAY && it.flags and Display.FLAG_PRESENTATION != 0
                 }?.displayId
+        originalDensity = display?.let { densityOverride(it) }
         app.registerActivityLifecycleCallbacks(callbacks)
     }
 
     @After
     fun tearDown() {
-        shell("wm density reset -d ${display ?: Display.DEFAULT_DISPLAY}")
+        restoreDensity()
         machine?.let { m ->
             container.connections.sessions.value[m.id]?.let { rpc ->
                 runBlocking {
@@ -135,7 +138,7 @@ class WindowsE2ETest {
         val dpi = densityDpi(window)
         shell("wm density ${dpi * 3 / 2} -d $external")
         rule.waitUntil(TIMEOUT_MILLIS) { densityDpi(window) != dpi }
-        shell("wm density reset -d $external")
+        restoreDensity()
         rule.waitUntil(TIMEOUT_MILLIS) { densityDpi(window) == dpi }
         assertSameWindows(window)
 
@@ -163,7 +166,12 @@ class WindowsE2ETest {
         rule.waitUntil(TIMEOUT_MILLIS) { shown(target)?.spaces?.size == 2 }
         val (first, second) = workspace(target).spaces
         val terminals = terminalIds(target)
-        rule.onNodeWithText(terminalText(target, first.tabs.single().terminals.single())).assertExists()
+        // The space created last is selected: the first window goes back to the first one.
+        rule.onNodeWithTag("space-0").performClick()
+        rule.waitUntil(TIMEOUT_MILLIS) {
+            rule.onAllNodesWithText(terminalText(target, first.tabs.single().terminals.single()))
+                .fetchSemanticsNodes().size == 1
+        }
 
         // A second window opens on the other space; both show the same core state.
         rule.onNodeWithText(text(R.string.workspace_new_window)).performClick()
@@ -182,7 +190,7 @@ class WindowsE2ETest {
         val dpi = densityDpi(two)
         shell("wm density ${dpi * 3 / 2} -d $external")
         rule.waitUntil(TIMEOUT_MILLIS) { densityDpi(two) != dpi }
-        shell("wm density reset -d $external")
+        restoreDensity()
         moveToNextDisplay(two, external)
         assertEquals(listOf(one, two), windows())
         assertTrue(destroyed.isEmpty())
@@ -254,8 +262,18 @@ class WindowsE2ETest {
         return result as T
     }
 
-    private fun shell(command: String) {
-        instrumentation.uiAutomation.executeShellCommand(command).use { FileInputStream(it.fileDescriptor).readBytes() }
+    private fun shell(command: String): String = instrumentation.uiAutomation.executeShellCommand(command).use {
+        String(FileInputStream(it.fileDescriptor).readBytes())
+    }
+
+    /** The density override the user set on the display before the test (e.g. from Desktop Mode), if any. */
+    private fun densityOverride(displayId: Int): Int? =
+        Regex("Override density: (\\d+)").find(shell("wm density -d $displayId"))?.groupValues?.get(1)?.toInt()
+
+    /** Puts back the display density found at the start, never clearing the user's own override. */
+    private fun restoreDensity() {
+        val displayId = display ?: return
+        shell(originalDensity?.let { "wm density $it -d $displayId" } ?: "wm density reset -d $displayId")
     }
 
     private fun writeTestKey() {

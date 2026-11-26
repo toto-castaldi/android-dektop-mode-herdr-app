@@ -6,7 +6,7 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P1",
-  "status": "Blocked",
+  "status": "In Progress",
   "branch": "us/US-008-finestre-ridimensionabili-display-esterno",
   "dependencies": [
     "US-004"
@@ -22,6 +22,5 @@
     "Sul Pixel 11 Pro in Desktop Mode con monitor esterno, l'app si ridimensiona e si massimizza; il layout si adatta e non perde lo stato.",
     "L'utente apre una seconda finestra dell'app con un altro spazio; le due finestre funzionano in parallelo.",
     "Spostare la finestra tra display o cambiare la densità non riavvia i terminali né perde il layout."
-  ],
-  "blocked_by": "Implementazione e test senza core verdi sul Pixel 11 Pro (display esterno 4). Manca la verifica end-to-end con un herdr-core reale (due finestre su due spazi, terminali invariati dopo massimizzazione, densità e spostamento tra display): serve che l'utente autorizzi la chiave di test e2e-workspace su un host con core (wsHost/wsUser, come per US-004); da questa macchina walle non è raggiungibile (host key non confermata)."
+  ]
 }
