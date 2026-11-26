@@ -148,6 +148,29 @@ class WorkspaceContentTest {
     }
 
     @Test
+    fun newWindowOpensOnAnotherSpaceThanTheSelectedOne() {
+        val opened = mutableListOf<String?>()
+        rule.setContent {
+            MaterialTheme {
+                WorkspaceContent("walle", state, actions, WindowOptions(onNewWindow = { opened += it })) {}
+            }
+        }
+        rule.onNodeWithText(text(R.string.workspace_new_window)).performClick()
+        rule.onNodeWithText("Server").performClick()
+        rule.onNodeWithText(text(R.string.workspace_new_window)).performClick()
+        assertEquals(listOf("sp2", "sp1"), opened)
+    }
+
+    @Test
+    fun windowOpensOnTheRequestedSpace() {
+        rule.setContent {
+            MaterialTheme { WorkspaceContent("walle", state, actions, WindowOptions(initialSpace = "sp2")) {} }
+        }
+        rule.onNodeWithText(text(R.string.workspace_terminal, "t3", "/srv")).assertIsDisplayed()
+        rule.onNodeWithText(text(R.string.workspace_new_window)).assertDoesNotExist()
+    }
+
+    @Test
     fun disconnectedMachineShowsNoSpaces() {
         show(WorkspaceState.Unavailable)
         rule.onNodeWithText(text(R.string.workspace_unavailable)).assertIsDisplayed()

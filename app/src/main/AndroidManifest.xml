@@ -20,10 +20,11 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
-        <!-- Resizable window in Android Desktop Mode; Compose handles configuration changes. -->
+        <!-- Resizable window in Android Desktop Mode, one task per window; Compose handles size, display and
+             density changes without recreating the activity (REQ-DM-001). -->
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|keyboard|keyboardHidden|navigation"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|keyboard|keyboardHidden|navigation|uiMode|colorMode|fontScale|fontWeightAdjustment"
             android:exported="true"
             android:resizeableActivity="true">
             <layout

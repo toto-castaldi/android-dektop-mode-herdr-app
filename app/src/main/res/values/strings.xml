@@ -115,6 +115,7 @@
     <string name="host_key_changed_text_local">La host key della VM del Linux Terminal non corrisponde a quella confermata: il collegamento è bloccato. Succede se la VM è stata reimpostata; se l\'hai fatto tu, usa \"Reimposta host key\".</string>
     <string name="machine_open">Apri</string>
     <string name="workspace_back">← Macchine</string>
+    <string name="workspace_new_window">Nuova finestra</string>
     <string name="workspace_unavailable">La macchina non è collegata: spazi e tab tornano quando l\'app si ricollega al core.</string>
     <string name="workspace_loading">Lettura di spazi e tab dal core…</string>
     <string name="workspace_failed">Impossibile leggere spazi e tab dal core: %1$s</string>
