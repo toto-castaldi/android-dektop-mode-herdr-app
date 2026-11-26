@@ -1,0 +1,28 @@
+{
+  "id": "US-011",
+  "title": "Segnalare gli aggiornamenti disponibili di herdr-core",
+  "version": "v0.1.0",
+  "epic": "EPIC-002",
+  "module": "MOD-002",
+  "type": "User Story",
+  "priority": "P2",
+  "status": "Todo",
+  "dependencies": [
+    "US-003"
+  ],
+  "requirements": [
+    "REQ-CONN-004"
+  ],
+  "design_references": [
+    "design/integrations",
+    "design/security"
+  ],
+  "description": "Come utente voglio sapere quando per un herdr-core compatibile esiste una versione più recente e poterlo aggiornare dall'app, per non restare indietro senza accorgermene.",
+  "acceptance_criteria": [
+    "Collegandosi a una macchina con un core compatibile più vecchio dell'ultima versione pubblicata, l'app mostra sulla macchina \"aggiornamento disponibile\" con la versione installata e quella disponibile, e continua a usare il core installato.",
+    "Dopo la conferma dell'utente l'app aggiorna il core, mostra l'output del comando e si ricollega con la nuova versione; senza conferma non esegue alcun comando di aggiornamento.",
+    "La versione disponibile è letta dalla macchina via SSH (latest.json di releases.herdr.dev); l'app non apre connessioni verso host diversi dalle macchine configurate.",
+    "Con un core già all'ultima versione, o se la macchina non riesce a leggere il manifest, non compare alcun avviso e il collegamento procede normalmente.",
+    "Il confronto tra versioni e la lettura del manifest (anche malformato) sono coperti da test unitari; la segnalazione è verificata sul Pixel 11 Pro con un core reale remoto e nel Linux Terminal."
+  ]
+}

@@ -52,6 +52,7 @@ Dalla risposta a `hello` l'app decide:
 - Installazione: `curl -fsSL https://releases.herdr.dev/core/install.sh | sh` sul canale `exec`, nella home dell'utente (`~/.local/bin`), senza root. Non avvia il core: lo avvia il primo `hc connect`.
 - Aggiornamento: `$HOME/.local/bin/herdr-core update` (oppure `herdr-core` trovato nel `PATH`), che risponde in JSON con `was`, `now`, `updated`; i terminali in corso sopravvivono.
 - Entrambi partono solo dopo la conferma dell'utente; l'app mostra l'output del comando e, se riesce, ripete `hello`.
+- Aggiornamento disponibile per un core compatibile: dopo `hello` l'app esegue sulla macchina, via SSH, `curl -fsSL https://releases.herdr.dev/core/latest.json` e confronta la versione del manifest con `version` di `hello`. Se è più recente, la macchina mostra "aggiornamento disponibile" con le due versioni e propone lo stesso comando di aggiornamento, che parte solo dopo conferma; nel frattempo il core installato resta in uso. Il controllo si fa a ogni collegamento (non a ogni riconnessione automatica); un errore del comando o un manifest illeggibile non mostra avvisi. L'app non contatta mai `releases.herdr.dev` direttamente.
 
 ### Collegamento e riconnessione
 

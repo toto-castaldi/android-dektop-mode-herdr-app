@@ -34,6 +34,7 @@ La v0.1.0 ha successo quando, su un Pixel 11 Pro in Desktop Mode con monitor est
 - Macchine remote con herdr-core raggiunte via SSH, con chiavi nell'Android Keystore e verifica della host key.
 - Collegamento al herdr-core locale nel Linux Terminal di Android.
 - Installazione e aggiornamento di herdr-core quando manca o è incompatibile, previa conferma.
+- Segnalazione di una versione più recente di un herdr-core compatibile, con aggiornamento previa conferma.
 - Spazi, tab e pane con terminali interattivi.
 - Sidebar degli agenti con stati Working, Blocked, Done e Idle, e peek.
 - Esperienza Desktop Mode: finestre ridimensionabili e multiple su display esterno, tastiera fisica con scorciatoie, mouse.
