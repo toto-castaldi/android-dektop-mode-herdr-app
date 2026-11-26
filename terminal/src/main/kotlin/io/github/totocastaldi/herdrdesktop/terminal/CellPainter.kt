@@ -15,6 +15,8 @@ internal class CellPainter(textSizePx: Float, private val fonts: TerminalFonts) 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = fonts.regular
         textSize = textSizePx
+        // One glyph per cell: no ligatures or contextual alternates (JetBrains Mono has both).
+        fontFeatureSettings = NO_LIGATURES
     }
 
     /** Measures glyphs in the regular face; the other faces of the font have the same advance. */
@@ -125,9 +127,10 @@ internal class CellPainter(textSizePx: Float, private val fonts: TerminalFonts) 
     private fun drawText(canvas: Canvas, run: TextRun, x: Float, top: Float) {
         val style = run.style
         paint.color = (if (style.faint) FAINT else OPAQUE) or style.foreground
-        // Real faces of the font: Skia's synthetic bold and italic cost the render thread too much
-        // during continuous output (REQ-NFR-003).
-        paint.typeface = fonts.face(style.bold, style.italic)
+        // The real bold face, for text of the font only: synthetic bold on fallback glyphs (wide CJK, emoji)
+        // and any italic face, real or synthetic, cost the render thread too much during continuous output
+        // (REQ-NFR-003, docs/design/terminal.md), so italic text is drawn upright.
+        paint.typeface = if (run.grouped) fonts.face(style.bold, italic = false) else fonts.regular
         val width = run.cells * metrics.widthPx.toFloat()
         if (run.text.isNotBlank()) canvas.drawText(run.text, x, top + ascent, paint)
         fill.color = paint.color
@@ -171,6 +174,7 @@ internal class CellPainter(textSizePx: Float, private val fonts: TerminalFonts) 
     }
 
     private companion object {
+        const val NO_LIGATURES = "'liga' 0, 'clig' 0, 'calt' 0"
         const val OPAQUE = 0xFF000000.toInt()
         const val FAINT = 0x99000000.toInt()
         const val LINE_DIVISOR = 16f

@@ -29,7 +29,6 @@ import io.github.totocastaldi.herdrdesktop.coreclient.workspace.PaneLayout
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.PaneNode
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Tab
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceClient
-import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceCodec
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
 import io.github.totocastaldi.herdrdesktop.terminal.CellWidth
 import io.github.totocastaldi.herdrdesktop.terminal.FrameObserver
@@ -39,7 +38,6 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -79,6 +77,12 @@ class PaneE2ETest {
     private var scenario: ActivityScenario<MainActivity>? = null
     private var machine: Machine? = null
 
+    /** Spaces this test created: the only ones it closes. */
+    private val ownSpaces = mutableSetOf<String>()
+
+    /** True when the core had no document of the app before the test, so that none is left after it. */
+    private var startedWithoutDocument = false
+
     /** Last frame drawn for each terminal session, as seen by the app's frame observer. */
     private val frames = ConcurrentHashMap<TerminalSession, Pair<Long, Long>>()
 
@@ -87,19 +91,7 @@ class PaneE2ETest {
         container.frameObserver = null
         machine?.let { m ->
             container.connections.sessions.value[m.id]?.let { rpc ->
-                runBlocking {
-                    val client = WorkspaceClient(rpc)
-                    client.document.load().workspace.spaces.forEach { client.closeSpace(it.id) }
-                    val version = client.document.load().version
-                    rpc.call(
-                        "doc.set",
-                        buildJsonObject {
-                            put("name", WorkspaceCodec.DOC_NAME)
-                            put("value", JsonNull)
-                            put("version", version)
-                        }
-                    )
-                }
+                runBlocking { E2eCleanup.closeOwn(rpc, ownSpaces, startedWithoutDocument) }
             }
             container.connections.forget(m.id)
             container.machines.remove(m.id)
@@ -315,6 +307,9 @@ class PaneE2ETest {
         args.getString("wsHostKey")?.let { assertEquals(it, presented.fingerprint) }
         container.connections.confirmHostKey(added.id, presented)
         rule.waitUntil(TIMEOUT_MILLIS) { container.workspaces.state(added.id).value is WorkspaceState.Ready }
+        // Opening the screen attaches to the terminals of the first space: a core with spaces of someone
+        // else is not touched.
+        startedWithoutDocument = E2eCleanup.requireNoSpaces(rpc(added))
         rule.onNodeWithTag("open-${added.id}").performClick()
         rule.onNodeWithText(text(R.string.workspace_spaces)).assertExists()
         return added
@@ -329,9 +324,12 @@ class PaneE2ETest {
 
     private fun rpc(m: Machine): CoreRpc = checkNotNull(container.connections.sessions.value[m.id])
 
-    /** The only tab of the only space, as written in the core document. */
-    private fun tab(m: Machine): Tab =
-        runBlocking { WorkspaceClient(rpc(m)).document.load().workspace }.spaces.single().tabs.single()
+    /** The only tab of the only space (created by this test), as written in the core document. */
+    private fun tab(m: Machine): Tab {
+        val space = runBlocking { WorkspaceClient(rpc(m)).document.load().workspace }.spaces.single()
+        ownSpaces += space.id
+        return space.tabs.single()
+    }
 
     private fun awaitTab(m: Machine, done: (Tab) -> Boolean) {
         rule.waitUntil(TIMEOUT_MILLIS) {
