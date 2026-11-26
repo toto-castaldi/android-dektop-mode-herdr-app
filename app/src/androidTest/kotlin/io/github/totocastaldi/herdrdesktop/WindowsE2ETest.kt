@@ -45,8 +45,9 @@ import org.junit.runner.RunWith
  * resize (`am task resize`), maximize (Meta+=), move to the next display (Meta+Ctrl+D) and density
  * (`wm density`). Each window must keep its activity instance, hence its state, its layout and the core's
  * terminals. Needs an external display in Desktop Mode (`-e winDisplay <id>` to choose it); skipped without.
- * With `-e wsHost <host> -e wsUser <user> [-e wsPort <port>]` (same key and setup as WorkspaceE2ETest) it also
- * opens two windows on two spaces of a real core; `-e wsKey write` only creates the key to authorize.
+ * With `-e wsHost <host> -e wsUser <user> -e wsHostKey <SHA256 fingerprint> [-e wsPort <port>]` (same key and
+ * setup as WorkspaceE2ETest) it also opens two windows on two spaces of a real core, after checking that the
+ * host key has the given fingerprint; `-e wsKey write` only creates the key to authorize.
  */
 @RunWith(AndroidJUnit4::class)
 class WindowsE2ETest {
@@ -270,6 +271,10 @@ class WindowsE2ETest {
         container.connections.connect(added.id)
         rule.waitUntil(TIMEOUT_MILLIS) { container.connections.status(added.id) is MachineStatus.HostKeyUnconfirmed }
         val presented = (container.connections.status(added.id) as MachineStatus.HostKeyUnconfirmed).presented
+        // Confirmed only if it matches the fingerprint given by the user (`-e wsHostKey SHA256:…`).
+        val expected = args.getString("wsHostKey")
+        assumeTrue("wsHostKey not given", expected != null)
+        assertEquals("host key of $host", expected, presented.fingerprint)
         container.connections.confirmHostKey(added.id, presented)
         rule.waitUntil(TIMEOUT_MILLIS) { container.workspaces.state(added.id).value is WorkspaceState.Ready }
         rule.onNode(hasText(text(R.string.machine_open)) and hasAnyAncestor(hasAnyDescendant(hasText(NAME))))
