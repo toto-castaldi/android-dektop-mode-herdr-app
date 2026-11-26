@@ -29,6 +29,15 @@
 - `seq` riparte a ogni avvio del core: dopo una riconnessione l'app prende uno snapshot nuovo invece di riprendere da un `seq` vecchio.
 - I terminali di macchine aggiunte a quel core arrivano nello stesso flusso con indirizzo `macchina/t7`.
 
+### Agenti
+
+- `AgentsManager` (`core-client/agents`) a ogni nuova sessione di una macchina chiama `events.subscribe` senza filtri: lo snapshot (`seq`, terminali, anche quelli delle macchine aggiunte a quel core, `macchina/t7`) e poi le notifiche del canale restituito, applicate in ordine (`AgentSnapshot`): `created`/`restarted` sostituiscono il record, `removed` lo toglie, `finished` lo rende non vivo, `status` sostituisce stato, messaggio e `reported`, `turn`, `title` e `labels` aggiornano i campi; gli eventi con `seq` non superiore a quello dello snapshot sono scartati e `missed` porta uno snapshot nuovo. Senza sessione, o se la sottoscrizione fallisce, la macchina non ha agenti finché la sessione successiva non si iscrive di nuovo.
+- `CoreSession` mette in coda i frame `DATA` dei canali diversi da 0 finché qualcuno li legge (`CoreRpc.lines`), li divide in righe JSON e restituisce al core un `CREDIT` (u32 LE) per ogni frame letto; `CLOSE` dal core o la fine della sessione chiudono il canale.
+- Agente: terminale vivo con `reported` vero o con `parent` (worker avviato con `hc run` da un altro terminale).
+- Stato mostrato (`AgentState.of`, regole condivise dai client Herdr, `docs/labels.md` di herdr-app): `blocked` ed `error` → Blocked (con il messaggio dell'agente; nessun quinto stato); `working` → Working; ogni altra parola → Done se `turn` è maggiore di `herdr.seen`, altrimenti Idle; senza l'etichetta `herdr.seen` un `done` riportato è Done e il resto Idle; senza stato riportato → Idle.
+- Visto: l'app comunica ad `AgentsManager.setLooking` i terminali della tab mostrata della macchina aperta, solo mentre l'activity è in primo piano (`RESUMED`); per ognuno che è un agente con `herdr.seen` assente o minore di `turn` scrive sul core `terminal.label {terminal, labels: {"herdr.seen": "<turn>"}}`, una volta per turno finché resta sullo schermo (un "segna come non letto" di un altro client non viene sovrascritto); guardarlo di nuovo più tardi lo riscrive. Lo stato passa a Idle solo quando arriva l'evento `labels` del core. Un errore di scrittura permette un nuovo tentativo all'aggiornamento successivo.
+- Sidebar (`app/agents`): agenti di tutte le macchine collegate, nell'ordine delle macchine e poi del core; i worker sono mostrati rientrati. Selezionare un agente il cui terminale è in un pane del documento `herdr-android` (`Workspace.paneOf`) apre la sua macchina con quello spazio e quella tab in primo piano; un agente senza pane (per esempio avviato dall'app desktop) non ha azione finché non arriva il peek (US-007).
+
 ### Spazi e tab
 
 - Spazi e tab non sono un concetto del core: l'app li salva nel documento opaco `herdr-android` di ogni core (`doc.get`/`doc.set`), con la stessa forma del documento dell'app desktop ma separato da esso. L'app non legge né scrive mai `herdr-app`, quindi i due client non condividono spazi e tab. Formato in `data-model.md`.
