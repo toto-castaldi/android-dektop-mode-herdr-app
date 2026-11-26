@@ -6,7 +6,7 @@
   "module": "MOD-002",
   "type": "User Story",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-003-installare-aggiornare-herdr-core",
   "dependencies": [
     "US-001",
@@ -25,5 +25,8 @@
     "La stessa procedura funziona nella VM del Linux Terminal del Pixel 11 Pro.",
     "Senza conferma dell'utente non viene eseguito alcun comando di installazione; un errore mostra l'output del comando fallito.",
     "Il rilevamento della compatibilità di versione è coperto da test unitari."
-  ]
+  ],
+  "outcome": "core-client: CommandRunner (exec SSH one-shot in SshlibTransport, stessa verifica host key e autenticazione; stdout+stderr in UTF-8, ultimi 64 KiB) e CoreInstaller (controllo prerequisiti uname/curl/tar, installer ufficiale scaricato in file temporaneo poi eseguito, herdr-core update). ConnectionManager: dopo exit 127 CoreMissing(prerequisiti mancanti); installCore/updateCore solo su conferma, CoreInstalling con output progressivo, poi ricollegamento e hello; CoreInstallFailed con exit status e output, Riprova. Compatibility.CoreUpdateNeeded porta versione trovata e richiesta (UI: 'trovata X, richiesta Y o successiva'). app: dialogo di conferma con il comando esatto, avanzamento, box con l'output. Test unitari: CompatibilityTest, CoreInstallerTest, CommandOutputTest, CoreInstallFlowTest (nessun comando di installazione senza conferma). E2E CoreInstallE2ETest sul Pixel 11 Pro via UI, in ambienti isolati (chiave di test con comando forzato, HOME e HC_SESSION dedicati): su walle e nella VM del Linux Terminal (aarch64) installazione -> Connessa 0.1.22, aggiornamento 0.1.10 -> 0.1.22, installazione fallita con l'output 'hc: cannot reach ...'. Desktop Mode: test lanciato con coreDisplay=4 sul monitor esterno LG 2560x1080, screenshot (screencap -d) di dialogo di conferma, stato Connessa e output dell'errore nella finestra freeform. Core veri di walle e VM non toccati; ambienti isolati e authorized_keys ripuliti; logcat solo nomi di stato. Nessuna nuova dipendenza.",
+  "changelog": "Added: l'app propone di installare o aggiornare herdr-core quando manca o è incompatibile e lo fa dopo conferma, mostrando l'output",
+  "closed_at": "2026-11-26"
 }
