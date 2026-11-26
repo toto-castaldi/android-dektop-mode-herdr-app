@@ -36,15 +36,16 @@
 - Creare uno spazio o una tab avvia la shell del core con `terminal.run` (`cwd` della nuova tab, etichetta `app=herdr-android`) e poi aggiunge al documento una tab con un solo pane; se la scrittura fallisce, il terminale appena avviato viene terminato.
 - Chiudere una tab (o uno spazio, con tutte le sue tab) la toglie dal documento e poi termina e rimuove i suoi terminali con `terminal.kill` e `terminal.rm`; un terminale già finito o assente (`finished`, `not_found`) non è un errore. Nient'altro termina terminali: chiudere l'app o perdere la connessione li lascia in esecuzione.
 - `WorkspaceManager` (`core-client`) tiene lo stato per macchina: a ogni nuova sessione (`ConnectionManager.sessions`, anche dopo una riconnessione o un riavvio dell'app) rilegge documento e terminali dal core; senza sessione lo stato è "non disponibile". Le azioni di una macchina girano una alla volta; un errore lascia lo stato mostrato e riporta il motivo.
+- Pane: dividere un pane (orizzontale o verticale) avvia la shell del core nella cartella del terminale del pane e scrive nel documento la nuova foglia accanto a quella divisa; se la scrittura fallisce o il pane non esiste più il terminale appena avviato viene terminato. Trascinare un divisore scrive i pesi dei figli della divisione quando il trascinamento finisce. Chiudere un pane lo toglie dal documento e poi termina e rimuove il suo terminale; chiudere l'ultimo pane chiude la tab. Le regole dell'albero sono in `PaneLayout` (`core-client`), le operazioni in `WorkspacePanes.kt`. Il pane con il focus è solo stato della schermata.
 - La cartella corrente di un terminale è `foreground.cwd` di `terminal.list` (oppure `cwd` se manca). Non esiste un evento per i cambi di cartella: con la schermata aperta l'app rilegge documento e terminali ogni 5 s.
 
 ### I/O dei terminali
 
-- `terminal.attach {terminal, cols, rows, history?, display?}` apre uno stream: primo paint (schermo, history, stato, titolo) e poi i byte grezzi del programma, che l'app passa al modulo `terminal`.
-- Input: frame `DATA` con i byte già codificati dall'emulatore; le risposte automatiche dell'emulatore usano `AUTOMATIC_INPUT` solo se il core lo annuncia in `hello.features` e la risposta di attach lo conferma.
-- Ridimensionamento con frame `RESIZE` (cols, rows); `FOCUS` e `FACTS` (colori, dimensione cella) quando cambiano. Vale la dimensione dell'ultimo viewer attivo.
-- Controllo di flusso: l'app restituisce `CREDIT` per i byte consumati (credito iniziale 256 KiB); oltre 4 MiB di ritardo il core manda un repaint.
-- Fine stream: `CLOSE` dal core con `reason` ed `exit_code`; per un terminale *kept* perso l'app riattacca dopo l'evento `restarted`.
+- Ogni pane visibile apre uno stream con `terminal.attach {terminal, cols, rows, history, display}` (`CoreRpc.attach`, implementato da `CoreSession`) appena il pane ha una dimensione: griglia del pane, 5000 righe di history e `display` con colori predefiniti e dimensione della cella dell'emulatore. Sul canale dello stream arrivano il primo paint (schermo, history, stato, titolo) e poi i byte grezzi del programma, che l'app scrive nell'emulatore del modulo `terminal`. I frame di un canale possono arrivare prima della risposta ad attach: `CoreSession` li accoda per canale.
+- Input: frame `DATA` con i byte già codificati dall'emulatore; le risposte automatiche dell'emulatore usano `AUTOMATIC_INPUT` solo se il core lo annuncia in `hello.features` e la risposta di attach lo conferma, altrimenti `DATA`. Tasti, risposte e dimensioni partono nell'ordine in cui nascono.
+- Ridimensionamento con frame `RESIZE` (u16 cols, u16 rows) a ogni cambio della griglia del pane (finestra, divisione, divisore); `FOCUS` (1 o 0) quando il pane prende o perde il focus. Vale la dimensione dell'ultimo viewer attivo.
+- Controllo di flusso: l'app scrive nell'emulatore tutto quello che è già arrivato e poi restituisce un `CREDIT` per quei byte, al più ogni 64 KiB (credito iniziale 256 KiB); oltre 4 MiB di ritardo il core manda un repaint.
+- Fine stream: `CLOSE` dal core con `reason` ed `exit_code`; il pane mostra il motivo o il codice di uscita e resta finché l'utente non lo chiude. Chiudere un pane, cambiare tab o uscire dalla schermata stacca il viewer con `CLOSE` (il terminale continua sul core); un terminale *kept* perso si riattacca riaprendo la tab.
 
 ### Compatibilità
 

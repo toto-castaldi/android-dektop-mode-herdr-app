@@ -19,7 +19,10 @@
   ],
   "design_references": [
     "design/context",
-    "design/modules"
+    "design/modules",
+    "design/terminal",
+    "design/integrations",
+    "design/data-model"
   ],
   "description": "Come utente voglio dividere una tab in pane con terminali interattivi, per seguire più programmi e agenti insieme.",
   "acceptance_criteria": [

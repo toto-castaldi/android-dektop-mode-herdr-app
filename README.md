@@ -45,6 +45,12 @@ python3 .agents/tools/backlog.py status
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.wsHost=<host> \
   -Pandroid.testInstrumentationRunnerArguments.wsUser=<utente>                    # spazi e tab su un core reale (wsPort, wsDisplay, wsRestart=setup|verify, wsDeleteKey)
+adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.workspace.PaneE2ETest \
+  -e wsHost <host> -e wsUser <utente> [-e wsDisplay <id>] [-e wsHostKey SHA256:…] \
+  io.github.totocastaldi.herdrdesktop.test/androidx.test.runner.AndroidJUnitRunner   # pane e terminali su un core reale
+adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.workspace.TerminalPerformanceE2ETest \
+  -e wsPerf true -e wsHost <host della LAN> -e wsUser <utente> [-e wsDisplay <id>] \
+  io.github.totocastaldi.herdrdesktop.test/androidx.test.runner.AndroidJUnitRunner   # latenza e frame rate (REQ-NFR-003), risultati in logcat con tag PaneE2E
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo
 ./gradlew ktlintFormat                                                            # corregge lo stile Kotlin
 ```
