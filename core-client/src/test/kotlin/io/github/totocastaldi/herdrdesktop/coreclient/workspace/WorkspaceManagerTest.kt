@@ -82,4 +82,30 @@ class WorkspaceManagerTest {
         assertNotNull(state.error)
         assertTrue(core.terminals.isEmpty())
     }
+
+    @Test
+    fun `a new session shows the old document's spaces moved into the shared one`() = runTest {
+        core.addTerminal("t1")
+        val old = Space("spold", tabs = listOf(WorkspaceEdits.singlePaneTab("tb1", "p1", "t1")))
+        core.write(WorkspaceCodec.LEGACY_DOC_NAME, WorkspaceCodec.encode(Workspace(listOf(old))))
+        val manager = WorkspaceManager(sessions, backgroundScope, CountingIds())
+
+        sessions.value = mapOf("m1" to core)
+        runCurrent()
+
+        assertEquals(listOf("spold"), ready(manager).workspace.spaces.map { it.id })
+        assertEquals(listOf("spold"), WorkspaceCodec.decode(core.docValue()).spaces.map { it.id })
+    }
+
+    @Test
+    fun `a failed move still shows the shared document`() = runTest {
+        core.write(WorkspaceCodec.LEGACY_DOC_NAME, WorkspaceCodec.encode(Workspace(listOf(Space("spold")))))
+        core.failDocSet = "unavailable"
+        val manager = WorkspaceManager(sessions, backgroundScope, CountingIds())
+
+        sessions.value = mapOf("m1" to core)
+        runCurrent()
+
+        assertTrue(ready(manager).workspace.spaces.isEmpty())
+    }
 }

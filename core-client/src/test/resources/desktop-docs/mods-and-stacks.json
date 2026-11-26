@@ -1,0 +1,12 @@
+{"spaces":[{"id":"sp9f1c","name":"Sito","folder":"/home/toto/sito","color":"teal","tabs":[
+  {"id":"tb77a0","name":"editor","zoom":{"pane":"p3"},"root":{"id":"tb77a0","type":"row","children":[
+    {"id":"p1","type":"block","size":{"px":240},"content":{"mod":"files","props":{"root":"/home/toto/sito"}}},
+    {"id":"p2","type":"column","size":{"weight":2.5},"background":"#101010","children":[
+      {"id":"p3","type":"block","size":{"weight":1.0},"content":{"terminal":"t4"},"floating":[
+        {"id":"f1","edge":"right","align":"end","content":{"mod":"clock"}}]},
+      {"id":"p4","type":"block","content":{"terminal":"t5"},"font_size":13}]},
+    {"id":"p5","type":"stack","active":"p6","children":[
+      {"id":"p6","type":"block","content":{"mod":"changes"}},
+      {"id":"p7","type":"block","content":{"terminal":"t6"}}]}]}},
+  {"id":"tb2","name":"","root":{"id":"tb2","type":"row","children":[
+    {"id":"p8","type":"block","size":{"weight":1.0},"content":{"agent":"focused"}}]}}]}]}

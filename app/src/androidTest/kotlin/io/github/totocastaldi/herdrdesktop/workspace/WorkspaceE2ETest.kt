@@ -68,6 +68,7 @@ class WorkspaceE2ETest {
     private val container get() = app.container
     private var scenario: ActivityScenario<MainActivity>? = null
     private var machine: Machine? = null
+    private val spaces = E2eSpaces()
 
     /** True when the state must stay on the core and in the app for the next phase. */
     private var keep = false
@@ -77,19 +78,7 @@ class WorkspaceE2ETest {
     fun cleanUp() {
         machine?.takeUnless { keep }?.let { m ->
             container.connections.sessions.value[m.id]?.let { rpc ->
-                runBlocking {
-                    val client = WorkspaceClient(rpc)
-                    client.document.load().workspace.spaces.forEach { client.closeSpace(it.id) }
-                    val version = client.document.load().version
-                    rpc.call(
-                        "doc.set",
-                        buildJsonObject {
-                            put("name", WorkspaceCodec.DOC_NAME)
-                            put("value", JsonNull)
-                            put("version", version)
-                        }
-                    )
-                }
+                runBlocking { spaces.cleanUp(rpc) }
             }
             container.connections.forget(m.id)
             container.machines.remove(m.id)
@@ -199,6 +188,7 @@ class WorkspaceE2ETest {
                 rule.waitUntil(TIMEOUT_MILLIS) { state(target) is WorkspaceState.Ready }
                 open()
                 val space = (state(target) as WorkspaceState.Ready).workspace.spaces.single()
+                spaces.own(space.id)
                 assertEquals(RESTART_SPACE, space.name)
                 assertEquals(expected, space.tabs.flatMap { it.terminals })
                 assertTrue(terminals(target).keys.containsAll(expected))
@@ -236,6 +226,7 @@ class WorkspaceE2ETest {
         val presented = (container.connections.status(added.id) as MachineStatus.HostKeyUnconfirmed).presented
         container.connections.confirmHostKey(added.id, presented)
         rule.waitUntil(TIMEOUT_MILLIS) { state(added) is WorkspaceState.Ready }
+        spaces.record(rpc(added))
         open()
         return added
     }

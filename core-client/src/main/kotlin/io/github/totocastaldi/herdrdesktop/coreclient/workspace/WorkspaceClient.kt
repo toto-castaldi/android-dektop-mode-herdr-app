@@ -18,27 +18,34 @@ fun interface IdGenerator {
  * Spaces and tabs of one core (REQ-WS-001): changes [document] and starts and ends the terminals of the
  * tabs. Closing a tab or a space ends its terminals, as closing a pane does (`WorkspacePanes.kt`); nothing else does.
  */
-class WorkspaceClient(rpc: CoreRpc, internal val ids: IdGenerator = IdGenerator.Random) {
+class WorkspaceClient(internal val rpc: CoreRpc, internal val ids: IdGenerator = IdGenerator.Random) {
     val document = CoreDocument(rpc)
     val terminals = CoreTerminals(rpc)
 
-    /** New space with one tab running the core's shell; its terminal is ended if the document write fails. */
+    /**
+     * New space with one tab running the core's shell; its terminal is ended if the document write fails.
+     * The desktop app may place the labelled terminal itself before the write (`Workspace.shows`): then the
+     * document is left as it is.
+     */
     suspend fun createSpace(folder: String? = null): WorkspaceSnapshot {
-        val terminal = terminals.runShell(folder)
+        val spaceId = ids.next(SPACE_PREFIX)
+        val tabId = ids.next(TAB_PREFIX)
+        val terminal = terminals.runShell(folder, spaceId, tabId)
         return endOnFailure(terminal) {
-            val space = Space(ids.next(SPACE_PREFIX), tabs = listOf(newTab(terminal.address)))
-            document.update { WorkspaceEdits.addSpace(it, space) }
+            val space = Space(spaceId, tabs = listOf(newTab(tabId, terminal.address)))
+            document.update { if (it.shows(terminal.address)) it else WorkspaceEdits.addSpace(it, space) }
         }
     }
 
     /** New tab at the end of [spaceId], running the core's shell in [folder] (see [WorkspaceNames.newTabFolder]). */
     suspend fun createTab(spaceId: String, folder: String?): WorkspaceSnapshot {
-        val terminal = terminals.runShell(folder)
+        val tabId = ids.next(TAB_PREFIX)
+        val terminal = terminals.runShell(folder, spaceId, tabId)
         return endOnFailure(terminal) {
-            val tab = newTab(terminal.address)
+            val tab = newTab(tabId, terminal.address)
             document.update { ws ->
                 check(ws.space(spaceId) != null) { "Space $spaceId no longer exists" }
-                WorkspaceEdits.addTab(ws, spaceId, tab)
+                if (ws.shows(terminal.address)) ws else WorkspaceEdits.addTab(ws, spaceId, tab)
             }
         }
     }
@@ -77,8 +84,8 @@ class WorkspaceClient(rpc: CoreRpc, internal val ids: IdGenerator = IdGenerator.
         return snapshot
     }
 
-    private fun newTab(terminal: String): Tab =
-        WorkspaceEdits.singlePaneTab(ids.next(TAB_PREFIX), ids.next(PANE_PREFIX), terminal)
+    private fun newTab(tabId: String, terminal: String): Tab =
+        WorkspaceEdits.singlePaneTab(tabId, ids.next(PANE_PREFIX), terminal)
 
     /** Runs [block]; if it fails, the just started [terminal] is ended so that no terminal is left without a tab. */
     internal suspend fun <T> endOnFailure(terminal: TerminalInfo, block: suspend () -> T): T = try {

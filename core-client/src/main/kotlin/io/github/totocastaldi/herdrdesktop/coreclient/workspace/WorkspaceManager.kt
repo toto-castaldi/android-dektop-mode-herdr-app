@@ -30,7 +30,8 @@ sealed interface WorkspaceState {
 /**
  * Keeps, for every connected machine, the spaces and tabs read from its core. Every session (also after
  * a reconnection) loads them again from the core; actions run one at a time per machine and the state
- * shown is the core's answer, never a local guess.
+ * shown is the core's answer, never a local guess. The first read of a session first moves the spaces of
+ * the app's old document into the shared one ([migrateLegacy]).
  */
 class WorkspaceManager(
     private val sessions: StateFlow<Map<String, CoreRpc>>,
@@ -66,7 +67,10 @@ class WorkspaceManager(
             val fresh = synchronized(loaded) { (loaded[id] !== rpc).also { if (it) loaded[id] = rpc } }
             if (fresh) {
                 flow(id).value = WorkspaceState.Loading
-                refresh(id)
+                perform(id) {
+                    moveLegacySpaces()
+                    document.load()
+                }
             }
         }
     }
@@ -95,6 +99,19 @@ class WorkspaceManager(
                 // RPC errors, a dropped session (ProtocolException, IOException) or a vanished space.
                 if (current()) fail(state, e.message ?: e.javaClass.simpleName)
             }
+        }
+    }
+
+    /** Moves the spaces of the app's old document into the shared one; a failure is retried at the next session. */
+    private suspend fun WorkspaceClient.moveLegacySpaces() {
+        try {
+            migrateLegacy()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (
+            @Suppress("TooGenericExceptionCaught", "SwallowedException") e: Exception
+        ) {
+            // The shared document is shown anyway; the legacy one stays until a later session moves it.
         }
     }
 

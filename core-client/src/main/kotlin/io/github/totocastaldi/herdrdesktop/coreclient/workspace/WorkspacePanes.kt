@@ -7,7 +7,8 @@ package io.github.totocastaldi.herdrdesktop.coreclient.workspace
 
 /**
  * Splits pane [paneId] along [axis] with a new pane running the core's shell in [folder]; the new
- * terminal is ended if the document write fails or the pane no longer exists.
+ * terminal is ended if the document write fails or the pane no longer exists. The terminal carries the
+ * labels of the space and the tab, so that the desktop app knows where it belongs.
  */
 suspend fun WorkspaceClient.splitPane(
     spaceId: String,
@@ -16,13 +17,15 @@ suspend fun WorkspaceClient.splitPane(
     axis: Axis,
     folder: String?
 ): WorkspaceSnapshot {
-    val terminal = terminals.runShell(folder)
+    val terminal = terminals.runShell(folder, spaceId, tabId)
     return endOnFailure(terminal) {
         val leaf = PaneNode.Leaf(ids.next(WorkspaceClient.PANE_PREFIX), terminal.address)
         val splitId = ids.next(WorkspaceClient.PANE_PREFIX)
         document.update { ws ->
             val tab = ws.space(spaceId)?.tab(tabId)
             checkNotNull(tab?.let { PaneLayout.leaf(it.root, paneId) }) { "Pane $paneId no longer exists" }
+            // Already placed by the desktop app, which adopts labelled terminals without a pane.
+            if (ws.shows(terminal.address)) return@update ws
             ws.changePanes(spaceId, tabId) { PaneLayout.split(it, paneId, axis, leaf, splitId) }
         }
     }

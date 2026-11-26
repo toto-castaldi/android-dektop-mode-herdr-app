@@ -16,7 +16,7 @@ import kotlinx.serialization.json.putJsonObject
 
 /** In-memory core: versioned documents and terminals, with the error kinds of herdr-core. */
 class FakeCore : CoreRpc {
-    class Term(val address: String, var cwd: String, var live: Boolean = true, val labels: Map<String, String>)
+    class Term(val address: String, var cwd: String, var live: Boolean = true, val labels: MutableMap<String, String>)
 
     val docs = mutableMapOf<String, Pair<JsonElement, Long>>()
     val terminals = linkedMapOf<String, Term>()
@@ -24,6 +24,9 @@ class FakeCore : CoreRpc {
 
     /** Writes another client makes right before the next `doc.set`s, to provoke conflicts. */
     var interleavedWrites = 0
+
+    /** Runs right before the next `doc.set` (once), as another client writing in between. */
+    var beforeNextDocSet: (() -> Unit)? = null
 
     /** Makes every `doc.set` fail with this kind. */
     var failDocSet: String? = null
@@ -46,11 +49,28 @@ class FakeCore : CoreRpc {
 
             "terminal.rm" -> rm(params!!)
 
+            "terminal.label" -> term(params!!).also { t ->
+                params.getValue("labels").let { it as JsonObject }.forEach { (k, v) ->
+                    t.labels[k] =
+                        v.jsonPrimitive.content
+                }
+            }.json()
+
             else -> throw RpcException(RpcError(-32601, "no method $method", "not_found"))
         }
     }
 
     fun docValue(name: String = WorkspaceCodec.DOC_NAME): JsonElement? = docs[name]?.first
+
+    /** Writes [value] as another client would, bumping the version. */
+    fun write(name: String, value: JsonElement) {
+        docs[name] = value to (docs[name]?.second ?: 0L) + 1
+    }
+
+    /** A live terminal started elsewhere (by the desktop app or before this app shared its document). */
+    fun addTerminal(address: String, labels: Map<String, String> = emptyMap()) {
+        terminals[address] = Term(address, HOME, labels = labels.toMutableMap())
+    }
 
     private fun docGet(name: String) = buildJsonObject {
         val (value, version) = docs[name] ?: (JsonNull to 0L)
@@ -60,6 +80,10 @@ class FakeCore : CoreRpc {
 
     private fun docSet(params: JsonObject): JsonElement {
         failDocSet?.let { throw RpcException(RpcError(-32000, "refused", it)) }
+        beforeNextDocSet?.let {
+            beforeNextDocSet = null
+            it()
+        }
         val name = params.str("name")
         if (interleavedWrites > 0) {
             interleavedWrites--
@@ -75,7 +99,9 @@ class FakeCore : CoreRpc {
 
     private fun run(params: JsonObject): JsonElement {
         val address = "t${next++}"
-        val labels = (params["labels"] as? JsonObject).orEmpty().mapValues { it.value.jsonPrimitive.content }
+        val labels = (params["labels"] as? JsonObject).orEmpty().mapValues {
+            it.value.jsonPrimitive.content
+        }.toMutableMap()
         val t = Term(address, (params["cwd"] as? JsonPrimitive)?.content ?: HOME, labels = labels)
         terminals[address] = t
         return t.json()

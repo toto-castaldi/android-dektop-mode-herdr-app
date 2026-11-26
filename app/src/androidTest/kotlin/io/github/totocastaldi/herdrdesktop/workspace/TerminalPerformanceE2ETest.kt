@@ -62,6 +62,7 @@ class TerminalPerformanceE2ETest {
     private val container get() = app.container
     private var scenario: ActivityScenario<MainActivity>? = null
     private var machine: Machine? = null
+    private val spaces = E2eSpaces()
 
     /** Every frame drawn by a terminal pane: session, draw time (`System.nanoTime()`), version shown. */
     private val drawn = CopyOnWriteArrayList<Triple<TerminalSession, Long, Long>>()
@@ -75,19 +76,7 @@ class TerminalPerformanceE2ETest {
         container.frameObserver = null
         machine?.let { m ->
             container.connections.sessions.value[m.id]?.let { rpc ->
-                runBlocking {
-                    val client = WorkspaceClient(rpc)
-                    client.document.load().workspace.spaces.forEach { client.closeSpace(it.id) }
-                    val version = client.document.load().version
-                    rpc.call(
-                        "doc.set",
-                        buildJsonObject {
-                            put("name", WorkspaceCodec.DOC_NAME)
-                            put("value", JsonNull)
-                            put("version", version)
-                        }
-                    )
-                }
+                runBlocking { spaces.cleanUp(rpc) }
             }
             container.connections.forget(m.id)
             container.machines.remove(m.id)
@@ -262,6 +251,7 @@ class TerminalPerformanceE2ETest {
         args.getString("wsHostKey")?.let { check(it == presented.fingerprint) { "unexpected host key" } }
         container.connections.confirmHostKey(added.id, presented)
         awaitUntil { container.workspaces.state(added.id).value as? WorkspaceState.Ready }
+        spaces.record(checkNotNull(container.connections.sessions.value[added.id]))
         return added
     }
 
