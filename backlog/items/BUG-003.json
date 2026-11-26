@@ -1,0 +1,29 @@
+{
+  "id": "BUG-003",
+  "title": "Nel pane del terminale l'ultima parte dell'output non viene disegnata finché non arriva altro output",
+  "version": "v0.1.0",
+  "epic": "EPIC-003",
+  "module": "MOD-003",
+  "type": "Bug",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [],
+  "requirements": [
+    "REQ-WS-002",
+    "REQ-NFR-003"
+  ],
+  "design_references": [
+    "design/terminal"
+  ],
+  "description": "Il rendering del terminale resta indietro di un aggiornamento: il prompt della shell e l'eco dei caratteri digitati non compaiono, mentre il cursore è già nella posizione giusta.",
+  "found_in": "v0.1.0 (US-005)",
+  "steps_to_reproduce": "1. Collegarsi a una macchina e aprire uno spazio con un terminale. 2. Osservare il pane appena aperto. 3. Digitare un comando (per esempio ls) e premere Invio.",
+  "expected": "Il prompt compare subito all'apertura, i caratteri digitati compaiono mentre si scrive e, dopo l'output di un comando, compare subito il nuovo prompt.",
+  "actual": "All'apertura il pane è vuoto con il cursore dopo il punto in cui finirebbe il prompt; i caratteri digitati non si vedono; dopo l'output di ls il nuovo prompt non compare. Il testo mancante appare solo quando arriva altro output.",
+  "acceptance_criteria": [
+    "Il prompt della shell compare all'apertura del pane senza dover digitare nulla.",
+    "I caratteri digitati e il nuovo prompt dopo l'output di un comando compaiono subito, senza aspettare altro output.",
+    "Un test di regressione riproduce un ultimo blocco di output senza aggiornamenti successivi e verifica che venga disegnato.",
+    "Il comportamento è verificato sul Pixel 11 Pro in Desktop Mode con un herdr-core reale."
+  ]
+}
