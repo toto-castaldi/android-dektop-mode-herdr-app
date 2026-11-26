@@ -1,0 +1,25 @@
+{
+  "id": "US-009",
+  "title": "Tastiera fisica e scorciatoie",
+  "version": "v0.1.0",
+  "epic": "EPIC-005",
+  "module": "MOD-001",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-005"
+  ],
+  "requirements": [
+    "REQ-DM-002"
+  ],
+  "design_references": [
+    "design/context"
+  ],
+  "description": "Come utente voglio usare l'app interamente da tastiera fisica, con le combinazioni che mi servono nel terminale e scorciatoie per l'app.",
+  "acceptance_criteria": [
+    "Ctrl, Alt, Esc, Tab, tasti funzione e frecce con modificatori arrivano al terminale con le sequenze attese (test unitari sulla codifica dei tasti).",
+    "Le scorciatoie creano e chiudono spazi, tab e pane, spostano il focus e aprono la sidebar; un pannello di aiuto le elenca.",
+    "Nessuna scorciatoia dell'app intercetta Ctrl+C, Ctrl+D, Ctrl+Z, Ctrl+R o Esc diretti al terminale."
+  ]
+}
