@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">Herdr Desktop</string>
     <string name="welcome_title">Herdr Desktop for Android</string>
-    <string name="welcome_subtitle">Nessuna macchina configurata</string>
 
     <string name="machines_title">Macchine</string>
     <string name="machine_add">Aggiungi macchina</string>
@@ -53,4 +52,37 @@
     <string name="host_key_changed_text">La host key non corrisponde a quella confermata: il collegamento è bloccato. Può essere una reinstallazione dell\'host o un attacco. Se il cambio è legittimo, rimuovi la macchina e aggiungila di nuovo.</string>
     <string name="host_key_confirmed_label">Confermata</string>
     <string name="host_key_presented_label">Presentata</string>
+
+    <string name="local_machine_name">Questo dispositivo</string>
+    <string name="local_machine_endpoint">Linux Terminal · %1$s</string>
+    <string name="local_open_terminal">Apri Linux Terminal</string>
+    <string name="local_terminal_settings">Impostazioni del Terminal</string>
+    <string name="local_developer_options">Opzioni sviluppatore</string>
+    <string name="local_setup">Configura</string>
+    <string name="local_reset_host_key">Reimposta host key</string>
+    <string name="local_open_failed">Impossibile aprire l\'app</string>
+
+    <string name="status_local_missing">Linux Terminal non disponibile</string>
+    <string name="status_local_not_running">Linux Terminal non attivo · nuovo tentativo tra %1$d s</string>
+    <string name="status_local_starting">Avvio del Linux Terminal… · nuovo tentativo tra %1$d s</string>
+    <string name="status_local_not_configured">Linux Terminal non configurato</string>
+    <string name="status_local_not_configured_retry">Linux Terminal non configurato · nuovo tentativo tra %1$d s</string>
+
+    <string name="local_help_missing">Attiva l\'ambiente di sviluppo Linux in Impostazioni → Sistema → Opzioni sviluppatore, poi apri l\'app Terminale e completa il primo avvio.</string>
+    <string name="local_help_not_running">Apri il Linux Terminal: l\'app si collega da sola appena la sua VM è avviata. Se è la prima volta, configuralo con il comando di \"Configura\".</string>
+    <string name="local_help_starting">La VM del Linux Terminal si sta avviando (circa 30 s). Se il Terminal chiede di accettare la porta 2222, accettala.</string>
+    <string name="local_help_not_configured">Il Linux Terminal è aperto ma la porta 2222 non risponde. Esegui nel Terminal il comando di \"Configura\" e accetta la porta 2222 nella notifica \"Nuova porta aperta\". Se la porta era già accettata, apri le impostazioni del Terminal, fai \"Arresto forzato\" e riaprilo.</string>
+    <string name="local_help_key_refused">La VM del Linux Terminal rifiuta la chiave dell\'app: esegui nel Terminal il comando di \"Configura\", poi collega di nuovo.</string>
+    <string name="local_help_keep_open">Lascia aperto il Linux Terminal, anche minimizzato: chiuderlo spegne la VM e termina i terminali del core.</string>
+
+    <string name="local_setup_title">Configurare il Linux Terminal</string>
+    <string name="local_setup_steps">1. Apri il Linux Terminal e incolla questo comando: installa sshd sulla porta 2222 e autorizza la chiave dell\'app.\n2. Accetta la porta 2222 nella notifica \"Nuova porta aperta\" (o in Impostazioni → Controllo porte del Terminal).\n3. Collega \"Questo dispositivo\" e conferma l\'impronta della host key (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub nel Terminal).</string>
+    <string name="local_setup_copy">Copia comando</string>
+    <string name="local_setup_copied">Comando copiato</string>
+    <string name="local_setup_no_key">Genera prima la chiave SSH dell\'app: il comando la autorizza nella VM.</string>
+
+    <string name="local_reset_title">Reimpostare la host key di %1$s?</string>
+    <string name="local_reset_text">Fallo solo se hai reimpostato di proposito la VM del Linux Terminal: al prossimo collegamento l\'app mostra la nuova impronta e chiede di confermarla.</string>
+    <string name="host_key_confirm_text_local">La VM del Linux Terminal presenta questa host key. Confermala solo se coincide con quella mostrata nel Terminal da ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub.</string>
+    <string name="host_key_changed_text_local">La host key della VM del Linux Terminal non corrisponde a quella confermata: il collegamento è bloccato. Succede se la VM è stata reimpostata; se l\'hai fatto tu, usa \"Reimposta host key\".</string>
 </resources>

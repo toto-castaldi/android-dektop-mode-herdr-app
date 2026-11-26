@@ -4,6 +4,11 @@
     <!-- Only for SSH connections to the machines configured by the user. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Linux Terminal: the app checks it is enabled and opens it for the local machine. -->
+    <queries>
+        <package android:name="com.android.virtualization.terminal" />
+    </queries>
+
     <application
         android:name=".HerdrApp"
         android:allowBackup="false"

@@ -63,19 +63,26 @@ Dalla risposta a `hello` l'app decide:
 
 ## Core locale nel Linux Terminal
 
-- La macchina "Questo dispositivo" è `droid@127.0.0.1:2222`: il core gira nella VM Debian dell'app Terminal di Android (build `linux-aarch64`) e l'app lo raggiunge con lo stesso trasporto, la stessa verifica della host key e le stesse chiavi del Keystore delle macchine remote.
+- La macchina "Questo dispositivo" (`LocalMachine`, id `local`) è `droid@127.0.0.1:2222` con la chiave dell'app `herdr-ssh-default`: il core gira nella VM Debian dell'app Terminal di Android (build `linux-aarch64`) e l'app lo raggiunge con lo stesso trasporto, la stessa verifica della host key e le stesse chiavi del Keystore delle macchine remote.
 - Raggiungibilità: nella VM un sshd ascolta su `2222` (porta alta: Android non inoltra porte sotto 1024) e l'app Terminal la inoltra sul loopback di Android dopo che l'utente l'ha accettata (notifica "Nuova porta aperta", *Impostazioni → Controllo porte*). L'IP della VM sulla rete `avf_tap_fixed` non è raggiungibile dalle app e non si usa.
 - La VM vive solo finché l'app Terminal è aperta, anche in background o minimizzata; chiuderla spegne la VM e termina i terminali del core. L'app non può avviare la VM da sola: può solo aprire il Terminal con il suo intent di avvio.
-- Configurazione iniziale: l'app mostra un comando da incollare nel Terminal che installa `openssh-server`, imposta `Port 2222` in `/etc/ssh/sshd_config.d/port.conf`, riavvia sshd e aggiunge la chiave pubblica dell'app ad `~/.ssh/authorized_keys`; poi chiede di accettare la porta.
+- La macchina è sempre nell'elenco, in cima: l'app la aggiunge all'avvio se manca (`MachineRepository.ensureLocal`), non si modifica né si rimuove. Si collega da sola all'avvio come le altre, se la host key è già confermata.
+- Configurazione iniziale ("Configura"): l'app mostra, con "Copia comando", un comando da incollare nel Terminal che esegue `apt-get update`, installa `openssh-server`, imposta `Port 2222` in `/etc/ssh/sshd_config.d/port.conf`, riavvia sshd e aggiunge la chiave pubblica dell'app ad `~/.ssh/authorized_keys` solo se non c'è già (`LocalMachine.setupCommand`); poi chiede di accettare la porta. Il comando contiene solo la chiave pubblica.
 - Stati e messaggi della macchina locale:
 
   | Condizione | Rilevamento | Messaggio e azione |
   | --- | --- | --- |
-  | Linux Terminal assente o disattivato | pacchetto `com.android.virtualization.terminal` non installato o non abilitato | come attivarlo nelle Opzioni sviluppatore |
-  | Linux Terminal non attivo | `127.0.0.1:2222` rifiuta la connessione | "Apri Linux Terminal" (intent di avvio), poi nuovo tentativo; avviso che chiuderlo spegne la VM |
-  | Non configurato | connessione rifiutata con il Terminal aperto, o chiave rifiutata | comando di configurazione e accettazione della porta; se la porta era già accettata, arresto forzato del Terminal e nuova apertura (il port forwarding può non tornare dopo un riavvio della VM nello stesso processo) |
-  | VM reimpostata | host key cambiata | rifiuto come per ogni host key cambiata (`security.md`) |
+  | Linux Terminal assente o disattivato (`LocalTerminalMissing`) | nessuna activity di avvio per `com.android.virtualization.terminal` (`<queries>` nel manifest); controllato prima di ogni tentativo, nessun nuovo tentativo | come attivarlo nelle Opzioni sviluppatore, con il pulsante per aprirle |
+  | Linux Terminal non attivo (`LocalTerminalNotRunning`) | `127.0.0.1:2222` rifiuta la connessione | "Apri Linux Terminal" (intent di avvio), poi nuovi tentativi con il backoff consueto |
+  | VM in avvio (`LocalTerminalStarting`) | connessione rifiutata entro 60 s da quando l'utente ha aperto il Terminal dall'app; il primo tentativo parte subito | attendere e accettare la porta 2222 se il Terminal lo chiede |
+  | Non configurato (`LocalTerminalNotConfigured`) | connessione ancora rifiutata dopo quei 60 s, con nuovi tentativi; oppure chiave rifiutata, senza nuovi tentativi | comando di configurazione e accettazione della porta; se la porta era già accettata, "Impostazioni del Terminal" per l'arresto forzato e nuova apertura (il port forwarding può non tornare dopo un riavvio della VM nello stesso processo) |
+  | VM reimpostata | host key cambiata | rifiuto come per ogni host key cambiata (`security.md`); "Reimposta host key", dopo conferma, dimentica l'impronta e ricollega, così l'utente conferma la nuova |
+  | Connessa | — | avviso che chiudere il Terminal spegne la VM e termina i terminali del core |
   | Core assente o incompatibile | exit 127 o `hello` | installazione o aggiornamento come sopra |
+
+- L'app non sa se il Terminal è aperto: lo deduce solo da quando l'utente lo apre con il suo pulsante. Una connessione rifiutata dopo una caduta (Terminal chiuso) torna a "non attivo".
+- Connessione rifiutata: `OpenResult.Unreachable(refused = true)`. sshlib 0.6.x non conserva la causa (`ConnectException`) e la riporta come `TransportException` con il messaggio "… Errors: Connection refused", quindi `SshlibTransport` la riconosce dalla causa o dal messaggio (verificato sul Pixel 11 Pro con il Terminal chiuso).
+- Raggiungibilità dall'app vera verificata su Android 17: con l'UID dell'app e il permesso `INTERNET`, `127.0.0.1:2222` risponde a Terminal aperto e rifiuta a Terminal chiuso (`LocalMachineE2ETest`).
 
 ## Gestione dei guasti
 

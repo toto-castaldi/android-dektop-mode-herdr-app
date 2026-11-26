@@ -43,8 +43,10 @@ import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.MachineStatus
 import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshKeyStore
 import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshPublicKey
+import io.github.totocastaldi.herdrdesktop.coreclient.machine.LocalMachine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.Machine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineAuth
+import io.github.totocastaldi.herdrdesktop.coreclient.machine.isLocal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,24 +60,23 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
     var editing by remember { mutableStateOf<EditTarget?>(null) }
     var removing by remember { mutableStateOf<Machine?>(null) }
     var dismissedChanged by remember { mutableStateOf(emptySet<String>()) }
+    val localUi = remember { LocalUiState() }
     val scope = rememberCoroutineScope()
 
     Surface(modifier = modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp)) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp), Arrangement.spacedBy(16.dp)) {
             Header { editing = EditTarget(null) }
-            Spacer(Modifier.padding(8.dp))
             KeyCard(publicKey) {
                 scope.launch {
                     publicKey = withContext(Dispatchers.Default) { container.keys.generate(SshKeyStore.DEFAULT_ALIAS) }
                 }
             }
-            Spacer(Modifier.padding(8.dp))
-            if (machines.isEmpty()) Text(stringResource(R.string.welcome_subtitle))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(machines, key = { it.id }) { machine ->
                     MachineRow(
                         machine = machine,
                         status = statuses[machine.id] ?: MachineStatus.Disconnected,
+                        local = if (machine.isLocal) rememberLocalActions(container, localUi) else null,
                         actions = MachineActions(
                             connect = {
                                 dismissedChanged = dismissedChanged - machine.id
@@ -110,6 +111,8 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
             removing = null
         }
     }
+
+    LocalDialogs(container, localUi, publicKey) { dismissedChanged = dismissedChanged - LocalMachine.ID }
 
     HostKeyPrompts(machines, statuses, dismissedChanged, container) { dismissedChanged = dismissedChanged + it }
 }
@@ -162,6 +165,7 @@ private fun HostKeyPrompts(
         HostKeyConfirmDialog(
             machineName = machine.name,
             key = status.presented,
+            local = machine.isLocal,
             onConfirm = { container.connections.confirmHostKey(machine.id, status.presented) },
             onDismiss = { container.connections.disconnect(machine.id) }
         )
@@ -172,7 +176,9 @@ private fun HostKeyPrompts(
     }
     if (changed != null) {
         val (machine, status) = changed
-        HostKeyChangedDialog(machine.name, status.confirmed, status.presented) { onDismissChanged(machine.id) }
+        HostKeyChangedDialog(machine.name, status.confirmed, status.presented, machine.isLocal) {
+            onDismissChanged(machine.id)
+        }
     }
 }
 
@@ -235,25 +241,40 @@ private fun copyPublicKey(context: Context, key: SshPublicKey) {
 }
 
 @Composable
-private fun MachineRow(machine: Machine, status: MachineStatus, actions: MachineActions) {
+private fun MachineRow(machine: Machine, status: MachineStatus, local: LocalActions?, actions: MachineActions) {
+    val endpoint = "${machine.user}@${machine.host}:${machine.port}"
     Card(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(machine.name, style = MaterialTheme.typography.titleMedium)
-                Text("${machine.user}@${machine.host}:${machine.port}", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    if (local != null) stringResource(R.string.local_machine_endpoint, endpoint) else endpoint,
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 Text(statusText(status), color = statusColor(status), style = MaterialTheme.typography.bodyMedium)
+                if (local != null) LocalMachineHelp(status, local)
             }
-            val active = status !is MachineStatus.Disconnected && status !is MachineStatus.HostKeyChanged &&
-                status !is MachineStatus.AuthFailed && status !is MachineStatus.CoreMissing &&
-                status !is MachineStatus.CoreIncompatible
-            if (active) {
+            if (status.isRetrying()) {
                 OutlinedButton(onClick = actions.disconnect) { Text(stringResource(R.string.machine_disconnect)) }
             } else {
                 Button(onClick = actions.connect) { Text(stringResource(R.string.machine_connect)) }
             }
-            Spacer(Modifier.width(8.dp))
-            TextButton(onClick = actions.edit) { Text(stringResource(R.string.machine_edit)) }
-            TextButton(onClick = actions.remove) { Text(stringResource(R.string.machine_remove)) }
+            // The local machine has a fixed endpoint and is always listed.
+            if (local == null) {
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = actions.edit) { Text(stringResource(R.string.machine_edit)) }
+                TextButton(onClick = actions.remove) { Text(stringResource(R.string.machine_remove)) }
+            }
         }
     }
+}
+
+/** True while the connection is up, being set up or waiting to retry; false when it waits for the user. */
+private fun MachineStatus.isRetrying(): Boolean = when (this) {
+    MachineStatus.Disconnected, is MachineStatus.HostKeyChanged, MachineStatus.AuthFailed,
+    MachineStatus.CoreMissing, is MachineStatus.CoreIncompatible, MachineStatus.LocalTerminalMissing -> false
+
+    is MachineStatus.LocalTerminalNotConfigured -> retryInMillis != null
+
+    else -> true
 }

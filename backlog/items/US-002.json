@@ -6,7 +6,7 @@
   "module": "MOD-002",
   "type": "User Story",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-002-core-locale-linux-terminal",
   "dependencies": [
     "US-001",
@@ -25,5 +25,8 @@
     "Con herdr-core attivo nel Linux Terminal del Pixel 11 Pro, la macchina \"Questo dispositivo\" compare nell'elenco e il collegamento riesce senza inserire host o porta.",
     "Con il Linux Terminal non attivo o non configurato, la macchina mostra lo stato corrispondente e un messaggio con le azioni da fare.",
     "Il collegamento locale applica la stessa verifica della host key e la stessa gestione delle chiavi delle macchine remote."
-  ]
+  ],
+  "outcome": "Macchina predefinita 'Questo dispositivo' (droid@127.0.0.1:2222, chiave del Keystore herdr-ssh-default) sempre in cima all'elenco, non modificabile né rimovibile; stati locali Linux Terminal assente/non attivo/in avvio/non configurato con messaggi e azioni (Apri Linux Terminal, Opzioni sviluppatore, Impostazioni del Terminal), comando di configurazione da copiare (sshd sulla 2222, chiave autorizzata una sola volta), Reimposta host key per la VM reimpostata; stessa verifica della host key e stesso trasporto delle macchine remote. Rifiuto della connessione riconosciuto anche dal messaggio di sshlib 0.6.9 (TransportException senza causa). Verificato sul Pixel 11 Pro in Desktop Mode (monitor esterno, finestra freeform): con il Terminal chiuso 'Linux Terminal non attivo' e pulsante; 'Apri Linux Terminal' avvia la VM, l'app passa da 'in avvio' alla richiesta della host key (impronta ED25519 SHA256:DTKkK/… confrontata con quella già nota della VM via ssh-keyscan); chiave dell'app rifiutata -> 'non configurato' con messaggio; comando di Configura eseguito nella VM (via ssh su adb forward, equivalente a incollarlo; idempotente) -> 'Connessa · herdr-core 0.1.22' senza inserire host o porta. LocalMachineE2ETest (e2eLocal=stopped e =running) verde dall'UID di un'app; connectedDebugAndroidTest di app 4/4 verdi; test unitari LocalMachineConnectionTest, LocalMachineTest, ConnectionRefusedTest. Logcat: solo id macchina e nomi di stato. Non verificati sul dispositivo: il caso 'non configurato' con porta non accettata o port forwarding perso (solo test unitari), la VM a batteria (telefono alimentato dal dock). Nessuna nuova dipendenza.",
+  "changelog": "Added: macchina 'Questo dispositivo' per il herdr-core nel Linux Terminal, con guida alla configurazione e agli stati del Terminal",
+  "closed_at": "2026-11-26"
 }
