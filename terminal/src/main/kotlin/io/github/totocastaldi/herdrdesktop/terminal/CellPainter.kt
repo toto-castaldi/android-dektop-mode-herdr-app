@@ -3,25 +3,24 @@ package io.github.totocastaldi.herdrdesktop.terminal
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RenderNode
-import android.graphics.Typeface
 import kotlin.math.abs
 import kotlin.math.ceil
 
 /**
- * Draws screens on an Android canvas with the system monospace font. On a hardware canvas every row is
+ * Draws screens on an Android canvas with the terminal font ([TerminalFonts]). On a hardware canvas every row is
  * recorded once in a [RenderNode] kept by its content ([RawScreen.rowHash]): a frame records only the rows
  * that changed, and rows that only moved (scrolling output) are reused.
  */
-internal class CellPainter(textSizePx: Float) {
+internal class CellPainter(textSizePx: Float, private val fonts: TerminalFonts) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.MONOSPACE
+        typeface = fonts.regular
         textSize = textSizePx
     }
+
+    /** Measures glyphs in the regular face; the other faces of the font have the same advance. */
+    private val measure = Paint(paint)
     private val fill = Paint()
     private val ascent: Float
-
-    /** Shift of the second drawing of bold text, about a sixteenth of the font size. */
-    private val boldOffset = (textSizePx / BOLD_DIVISOR).coerceAtLeast(1f)
     private val cellAdvance: Float
     val metrics: CellMetrics
 
@@ -56,7 +55,8 @@ internal class CellPainter(textSizePx: Float) {
         ascent = -font.ascent
         // Grouped runs advance exactly one cell per character.
         paint.letterSpacing = (metrics.widthPx - advance) / textSizePx
-        cellAdvance = paint.measureText("M")
+        measure.letterSpacing = paint.letterSpacing
+        cellAdvance = measure.measureText("M")
     }
 
     fun draw(canvas: Canvas, screen: ScreenRows, focused: Boolean, width: Float, height: Float) {
@@ -119,19 +119,17 @@ internal class CellPainter(textSizePx: Float) {
 
     private fun fitsCell(text: String): Boolean {
         if (fits.size > MAX_GLYPHS) fits.clear()
-        return fits.getOrPut(text) { abs(paint.measureText(text) - cellAdvance) < FIT_TOLERANCE_PX }
+        return fits.getOrPut(text) { abs(measure.measureText(text) - cellAdvance) < FIT_TOLERANCE_PX }
     }
 
     private fun drawText(canvas: Canvas, run: TextRun, x: Float, top: Float) {
         val style = run.style
         paint.color = (if (style.faint) FAINT else OPAQUE) or style.foreground
+        // Real faces of the font: Skia's synthetic bold and italic cost the render thread too much
+        // during continuous output (REQ-NFR-003).
+        paint.typeface = fonts.face(style.bold, style.italic)
         val width = run.cells * metrics.widthPx.toFloat()
-        if (run.text.isNotBlank()) {
-            canvas.drawText(run.text, x, top + ascent, paint)
-            // Bold as overstrike: the same cached glyphs drawn again, shifted. Skia's synthetic bold
-            // (`isFakeBoldText`) costs the render thread too much for continuous output (REQ-NFR-003).
-            if (style.bold) canvas.drawText(run.text, x + boldOffset, top + ascent, paint)
-        }
+        if (run.text.isNotBlank()) canvas.drawText(run.text, x, top + ascent, paint)
         fill.color = paint.color
         val ch = metrics.heightPx.toFloat()
         val line = (ch / LINE_DIVISOR).coerceAtLeast(1f)
@@ -158,6 +156,7 @@ internal class CellPainter(textSizePx: Float) {
                 val text = s.textAt(cursor.column, cursor.row)
                 if (text.isNotBlank()) {
                     paint.color = OPAQUE or s.background
+                    paint.typeface = fonts.regular
                     canvas.drawText(text, x, y + ascent, paint)
                 }
             }
@@ -175,7 +174,6 @@ internal class CellPainter(textSizePx: Float) {
         const val OPAQUE = 0xFF000000.toInt()
         const val FAINT = 0x99000000.toInt()
         const val LINE_DIVISOR = 16f
-        const val BOLD_DIVISOR = 16f
         const val INITIAL_ROWS = 64
         const val ROWS_KEPT = 3
         const val LOAD_FACTOR = 0.75f

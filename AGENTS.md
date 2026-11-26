@@ -61,7 +61,7 @@ Closing gate (`docs/PROCESS.md` §6):
 ./gradlew assembleDebug
 ```
 
-Preparation: JDK 21, Android SDK con `ANDROID_HOME` impostato (o `sdk.dir` in `local.properties`) e `tar` con xz, come indicato nel README; il wrapper scarica Gradle e Gradle scarica dipendenze, platform, build-tools, NDK, CMake, Zig e i sorgenti di libghostty-vt al primo avvio (checksum verificati). Gli item di sola documentazione non hanno bisogno del gate.
+Preparation: JDK 21, Android SDK con `ANDROID_HOME` impostato (o `sdk.dir` in `local.properties`) e `tar` con xz, come indicato nel README; il wrapper scarica Gradle e Gradle scarica dipendenze, platform, build-tools, NDK, CMake, Zig, i sorgenti di libghostty-vt e il font del terminale al primo avvio (checksum verificati). Gli item di sola documentazione non hanno bisogno del gate.
 
 Integration and end-to-end suites: `./gradlew connectedDebugAndroidTest` (test strumentali in `src/androidTest/kotlin`) con il Pixel 11 Pro collegato via `adb` e visibile in `adb devices`, negli item che toccano UI, Keystore o Desktop Mode; verifiche end-to-end con un herdr-core reale (remoto e nel Linux Terminal) per i criteri che coinvolgono il core. Non simulare il core per dichiarare verificata un'integrazione.
 

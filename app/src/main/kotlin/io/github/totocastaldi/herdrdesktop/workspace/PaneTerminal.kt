@@ -85,34 +85,41 @@ internal class PaneTerminal(private val rpc: CoreRpc, val address: String, scope
             }
         }
         try {
-            for (event in stream.events) {
-                // Everything already received is written before one credit and one redraw.
-                var next: StreamEvent? = event
-                var consumed = 0
-                while (next != null) {
-                    when (next) {
-                        is StreamEvent.Output -> {
-                            session.output(next.bytes)
-                            consumed += next.bytes.size
-                        }
-
-                        is StreamEvent.Closed ->
-                            mutableState.value =
-                                PaneTerminalState.Ended(next.reason, next.exitCode)
-                    }
-                    // Credit goes back well before the core's window of 256 KiB runs out.
-                    if (consumed >= CREDIT_BATCH_BYTES) {
-                        stream.consumed(consumed)
-                        consumed = 0
-                    }
-                    next = stream.events.tryReceive().getOrNull()
-                }
-                stream.consumed(consumed)
-            }
+            // Unconfined: output is written into the emulator on the thread that read it from the
+            // connection, without waking another one (part of the key-to-echo latency, REQ-NFR-003).
+            withContext(Dispatchers.Unconfined) { readOutput(stream) }
             if (mutableState.value == PaneTerminalState.Live) mutableState.value = PaneTerminalState.Ended(null, null)
         } finally {
             writer.cancel()
             withContext(NonCancellable) { runCatching { stream.close() } }
+        }
+    }
+
+    /** Writes the stream's output into the emulator until the stream ends, acknowledging it in batches. */
+    private suspend fun readOutput(stream: TerminalStream) {
+        for (event in stream.events) {
+            // Everything already received is written before one credit and one redraw.
+            var next: StreamEvent? = event
+            var consumed = 0
+            while (next != null) {
+                when (next) {
+                    is StreamEvent.Output -> {
+                        session.output(next.bytes)
+                        consumed += next.bytes.size
+                    }
+
+                    is StreamEvent.Closed ->
+                        mutableState.value =
+                            PaneTerminalState.Ended(next.reason, next.exitCode)
+                }
+                // Credit goes back well before the core's window of 256 KiB runs out.
+                if (consumed >= CREDIT_BATCH_BYTES) {
+                    stream.consumed(consumed)
+                    consumed = 0
+                }
+                next = stream.events.tryReceive().getOrNull()
+            }
+            stream.consumed(consumed)
         }
     }
 

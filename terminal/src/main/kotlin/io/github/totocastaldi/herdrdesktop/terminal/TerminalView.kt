@@ -27,6 +27,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
@@ -67,7 +68,10 @@ fun TerminalView(
     frameObserver: FrameObserver? = null
 ) {
     val density = LocalDensity.current
-    val painter = remember(session, density) { CellPainter(with(density) { FONT_SIZE.toPx() }) }
+    val assets = LocalContext.current.assets
+    val painter = remember(session, density) {
+        CellPainter(with(density) { FONT_SIZE.toPx() }, TerminalFonts.get(assets))
+    }
     var frame by remember(session) { mutableLongStateOf(0L) }
     var focused by remember(session) { mutableStateOf(false) }
 

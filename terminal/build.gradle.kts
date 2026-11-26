@@ -2,6 +2,7 @@ import io.github.totocastaldi.herdrdesktop.gradle.ExtractTarball
 import io.github.totocastaldi.herdrdesktop.gradle.VerifiedDownload
 import io.github.totocastaldi.herdrdesktop.gradle.ZigBuildLibGhosttyVt
 import io.github.totocastaldi.herdrdesktop.gradle.ZigHost
+import io.github.totocastaldi.herdrdesktop.gradle.ZipAssets
 
 plugins {
     alias(libs.plugins.android.library)
@@ -69,6 +70,31 @@ val buildLibGhosttyVt = tasks.register<ZigBuildLibGhosttyVt>("buildLibGhosttyVt"
     optimize.set("ReleaseFast")
     cacheDirectory.set(nativeDir.map { it.dir("zig-cache") })
     prefix.set(ghosttyPrefix)
+}
+
+// Terminal font with real bold and italic (docs/design/terminal.md), packaged as assets with its license.
+val fontVersion = catalogVersion("jetbrains-mono")
+
+val downloadTerminalFont = tasks.register<VerifiedDownload>("downloadTerminalFont") {
+    val file = "JetBrainsMono-$fontVersion.zip"
+    url.set("https://github.com/JetBrains/JetBrainsMono/releases/download/v$fontVersion/$file")
+    sha256.set(catalogVersion("jetbrains-mono-sha256"))
+    output.set(downloadCache.resolve(file))
+}
+
+val terminalFontAssets = tasks.register<ZipAssets>("terminalFontAssets") {
+    archive.set(downloadTerminalFont.flatMap { it.output })
+    entries.set(
+        listOf("Regular", "Bold", "Italic", "BoldItalic").associate {
+            "fonts/ttf/JetBrainsMono-$it.ttf" to "terminal-font/JetBrainsMono-$it.ttf"
+        } + ("OFL.txt" to "terminal-font/OFL.txt")
+    )
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(terminalFontAssets, ZipAssets::assets)
+    }
 }
 
 android {
