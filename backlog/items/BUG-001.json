@@ -6,7 +6,7 @@
   "module": "MOD-001",
   "type": "Bug",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "fix/BUG-001-accesso-rete-locale",
   "dependencies": [],
   "requirements": [
@@ -28,5 +28,8 @@
     "Con il permesso negato la macchina mostra lo stato 'accesso alla rete locale non consentito' con le istruzioni per concederlo, senza connessione appesa.",
     "Le macchine raggiunte via Tailscale, internet o 127.0.0.1 continuano a collegarsi senza chiedere il permesso se Android non lo richiede.",
     "Test di regressione: test unitari sulla classificazione degli host (rete locale o no) e sullo stato con permesso negato, più test strumentale sul Pixel della richiesta del permesso."
-  ]
+  ],
+  "outcome": "Manifest con android.permission.ACCESS_LOCAL_NETWORK. core-client: LocalNetwork.isLocalHost (IPv4 privati, link-local, IPv6 ULA, .local e nomi risolti a indirizzi locali; esclusi loopback, 100.64/10 Tailscale e pubblici) e LocalNetworkAccess in DeviceAccess; ConnectionManager non apre connessioni verso host locali senza permesso (stato LocalNetworkPermissionNeeded), localNetworkPermissionResult collega le macchine in attesa o le porta a LocalNetworkDenied senza nuovi tentativi. app: AndroidLocalNetworkAccess, richiesta runtime da MainActivity, stato 'Accesso alla rete locale non consentito' con istruzioni (Impostazioni → App → Herdr Desktop → Autorizzazioni → Dispositivi nelle vicinanze, etichetta letta sul Pixel) e 'Apri impostazioni dell'app'. Test JVM: LocalNetworkTest (4), ConnectionManagerTest (4 nuovi: permesso mancante senza connessioni, negato senza tentativi, concesso collega, host non locale senza permesso). Sul Pixel 11 Pro (Android 17) in Desktop Mode, monitor esterno: LocalNetworkPermissionTest mostra la finestra di sistema (REQUEST_PERMISSIONS in logcat), Non consentire → stato negato con istruzioni (screenshot della finestra), concesso → SSH reale verso 172.27.72.225 (host key presentata); LanConnectionE2ETest con permesso: Connessa al herdr-core di walle via LAN 172.27.72.225 (chiave dell'app autorizzata temporaneamente con restrict e poi rimossa); con permesso negato e host Tailscale 100.113.109.93: Connessa senza richiesta. Suite :app:connectedDebugAndroidTest verde (6 test, E2E LAN saltato senza lanUser). Logcat: solo id macchina e nomi di stato. Nuova dipendenza solo di test: androidx.test.uiautomator 2.4.1 (Apache-2.0). Limiti: 127.0.0.1 coperto da test JVM e dal comportamento invariato della macchina locale, non riprovato con il core locale attivo; nomi che si risolvono solo via mDNS di sistema non provati.",
+  "changelog": "Fixed: le macchine della rete locale chiedono il permesso di accesso alla rete locale invece di restare appese",
+  "closed_at": "2026-11-26"
 }

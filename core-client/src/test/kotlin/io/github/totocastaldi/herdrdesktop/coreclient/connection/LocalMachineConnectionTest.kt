@@ -55,7 +55,7 @@ class LocalMachineConnectionTest {
         transport = transport,
         scope = backgroundScope,
         policy = ConnectionPolicy(1_000, 8_000, 30_000, 10_000, localStartMillis = 20_000),
-        localTerminal = { terminalInstalled }
+        device = DeviceAccess(localTerminal = { terminalInstalled })
     )
 
     @Test

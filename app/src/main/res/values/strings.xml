@@ -42,6 +42,10 @@
     <string name="status_host_key_unconfirmed">Host key da confermare</string>
     <string name="status_host_key_changed">Host key cambiata: collegamento bloccato</string>
     <string name="status_core_missing">herdr-core assente</string>
+    <string name="status_local_network_needed">In attesa del permesso di accesso alla rete locale</string>
+    <string name="status_local_network_denied">Accesso alla rete locale non consentito</string>
+    <string name="local_network_help_denied">La macchina è nella rete locale e Android richiede il permesso di accesso alla rete locale. Concedilo in Impostazioni → App → Herdr Desktop → Autorizzazioni → Dispositivi nelle vicinanze, oppure premi Collega per richiederlo di nuovo.</string>
+    <string name="local_network_open_settings">Apri impostazioni dell\'app</string>
     <string name="status_core_app_update">Core incompatibile: aggiorna l\'app</string>
     <string name="status_core_update">Core incompatibile: aggiorna herdr-core (%1$s)</string>
 

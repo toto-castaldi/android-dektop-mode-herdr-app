@@ -24,6 +24,12 @@ sealed interface MachineStatus {
 
     data object CoreMissing : MachineStatus
 
+    /** The host is on the local network and the app must ask the user for the local network permission. */
+    data object LocalNetworkPermissionNeeded : MachineStatus
+
+    /** The user denied the local network permission: no connection is attempted until it is granted. */
+    data object LocalNetworkDenied : MachineStatus
+
     data class CoreIncompatible(val compatibility: Compatibility) : MachineStatus
 
     /** Local machine: the Linux Terminal app is not installed or not enabled. */

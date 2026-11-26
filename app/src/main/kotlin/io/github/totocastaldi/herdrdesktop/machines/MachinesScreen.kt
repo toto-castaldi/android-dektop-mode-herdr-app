@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import io.github.totocastaldi.herdrdesktop.AppContainer
 import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.MachineStatus
+import io.github.totocastaldi.herdrdesktop.coreclient.connection.status
 import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshKeyStore
 import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshPublicKey
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.LocalMachine
@@ -77,6 +78,7 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
                         machine = machine,
                         status = statuses[machine.id] ?: MachineStatus.Disconnected,
                         local = if (machine.isLocal) rememberLocalActions(container, localUi) else null,
+                        openAppSettings = { container.localNetwork.openAppSettings() },
                         actions = MachineActions(
                             connect = {
                                 dismissedChanged = dismissedChanged - machine.id
@@ -241,7 +243,13 @@ private fun copyPublicKey(context: Context, key: SshPublicKey) {
 }
 
 @Composable
-private fun MachineRow(machine: Machine, status: MachineStatus, local: LocalActions?, actions: MachineActions) {
+private fun MachineRow(
+    machine: Machine,
+    status: MachineStatus,
+    local: LocalActions?,
+    openAppSettings: () -> Boolean,
+    actions: MachineActions
+) {
     val endpoint = "${machine.user}@${machine.host}:${machine.port}"
     Card(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -253,6 +261,7 @@ private fun MachineRow(machine: Machine, status: MachineStatus, local: LocalActi
                 )
                 Text(statusText(status), color = statusColor(status), style = MaterialTheme.typography.bodyMedium)
                 if (local != null) LocalMachineHelp(status, local)
+                if (status == MachineStatus.LocalNetworkDenied) LocalNetworkDeniedHelp(openAppSettings)
             }
             if (status.isRetrying()) {
                 OutlinedButton(onClick = actions.disconnect) { Text(stringResource(R.string.machine_disconnect)) }
@@ -272,9 +281,21 @@ private fun MachineRow(machine: Machine, status: MachineStatus, local: LocalActi
 /** True while the connection is up, being set up or waiting to retry; false when it waits for the user. */
 private fun MachineStatus.isRetrying(): Boolean = when (this) {
     MachineStatus.Disconnected, is MachineStatus.HostKeyChanged, MachineStatus.AuthFailed,
-    MachineStatus.CoreMissing, is MachineStatus.CoreIncompatible, MachineStatus.LocalTerminalMissing -> false
+    MachineStatus.CoreMissing, is MachineStatus.CoreIncompatible, MachineStatus.LocalTerminalMissing,
+    MachineStatus.LocalNetworkPermissionNeeded, MachineStatus.LocalNetworkDenied -> false
 
     is MachineStatus.LocalTerminalNotConfigured -> retryInMillis != null
 
     else -> true
+}
+
+/** Why the machine is not connected and how to grant the local network permission. */
+@Composable
+private fun LocalNetworkDeniedHelp(openAppSettings: () -> Boolean) {
+    val context = LocalContext.current
+    val openFailed = stringResource(R.string.local_open_failed)
+    Text(stringResource(R.string.local_network_help_denied), style = MaterialTheme.typography.bodySmall)
+    OutlinedButton(onClick = {
+        if (!openAppSettings()) Toast.makeText(context, openFailed, Toast.LENGTH_SHORT).show()
+    }) { Text(stringResource(R.string.local_network_open_settings)) }
 }

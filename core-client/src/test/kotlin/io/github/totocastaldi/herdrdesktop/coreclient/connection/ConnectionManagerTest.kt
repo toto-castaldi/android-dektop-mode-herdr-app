@@ -177,4 +177,86 @@ class ConnectionManagerTest {
         assertEquals(MachineStatus.Disconnected, manager.status(machine.id))
         assertEquals(1, transport.targets.size)
     }
+
+    /** Permission state of a fake Android: hosts in [localHosts] need it. */
+    private class FakeLocalNetwork(var isGranted: Boolean, private val localHosts: Set<String>) : LocalNetworkAccess {
+        override suspend fun needsPermission(host: String) = host in localHosts
+
+        override fun granted() = isGranted
+    }
+
+    /** The test machine moved to a LAN address, with its host key confirmed. */
+    private fun lanMachine(): Machine {
+        repo.update(machine.copy(host = "172.27.0.5"))
+        repo.confirmHostKey(machine.id, serverKey)
+        return checkNotNull(repo.get(machine.id))
+    }
+
+    private fun TestScope.lanManager(transport: CoreTransport, access: LocalNetworkAccess) = ConnectionManager(
+        repo,
+        transport,
+        backgroundScope,
+        ConnectionPolicy(1_000, 8_000, 30_000, 10_000),
+        device = DeviceAccess(localNetwork = access)
+    )
+
+    @Test
+    fun `local network host without permission asks for it and never opens a connection`() = runTest {
+        val lan = lanMachine()
+        val transport = ScriptedTransport(serverKey, mutableListOf())
+        val access = FakeLocalNetwork(isGranted = false, localHosts = setOf("172.27.0.5"))
+        val manager = lanManager(transport, access)
+
+        manager.connect(lan.id)
+        advanceTimeBy(60_000)
+        runCurrent()
+
+        assertEquals(MachineStatus.LocalNetworkPermissionNeeded, manager.status(lan.id))
+        assertTrue(transport.targets.isEmpty())
+    }
+
+    @Test
+    fun `denied permission shows local network access not allowed without retrying`() = runTest {
+        val lan = lanMachine()
+        val transport = ScriptedTransport(serverKey, mutableListOf())
+        val manager = lanManager(transport, FakeLocalNetwork(isGranted = false, localHosts = setOf("172.27.0.5")))
+
+        manager.connect(lan.id)
+        runCurrent()
+        manager.localNetworkPermissionResult(granted = false)
+        advanceTimeBy(60_000)
+        runCurrent()
+
+        assertEquals(MachineStatus.LocalNetworkDenied, manager.status(lan.id))
+        assertTrue(transport.targets.isEmpty())
+    }
+
+    @Test
+    fun `granted permission connects the machines that were waiting for it`() = runTest {
+        val lan = lanMachine()
+        val transport = ScriptedTransport(serverKey, mutableListOf({ OpenResult.Opened(FakeCoreStream()) }))
+        val access = FakeLocalNetwork(isGranted = false, localHosts = setOf("172.27.0.5"))
+        val manager = lanManager(transport, access)
+
+        manager.connect(lan.id)
+        runCurrent()
+        access.isGranted = true
+        manager.localNetworkPermissionResult(granted = true)
+        runCurrent()
+
+        assertTrue(manager.status(lan.id) is MachineStatus.Connected)
+        assertEquals(listOf("172.27.0.5:22"), transport.targets)
+    }
+
+    @Test
+    fun `hosts outside the local network connect without the permission`() = runTest {
+        repo.confirmHostKey(machine.id, serverKey)
+        val transport = ScriptedTransport(serverKey, mutableListOf({ OpenResult.Opened(FakeCoreStream()) }))
+        val manager = lanManager(transport, FakeLocalNetwork(isGranted = false, localHosts = setOf("172.27.0.5")))
+
+        manager.connect(machine.id)
+        runCurrent()
+
+        assertTrue(manager.status(machine.id) is MachineStatus.Connected)
+    }
 }
