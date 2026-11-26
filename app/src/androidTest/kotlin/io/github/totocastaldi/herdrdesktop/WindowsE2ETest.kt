@@ -46,7 +46,7 @@ import org.junit.runner.RunWith
  * (`wm density`). Each window must keep its activity instance, hence its state, its layout and the core's
  * terminals. Needs an external display in Desktop Mode (`-e winDisplay <id>` to choose it); skipped without.
  * With `-e wsHost <host> -e wsUser <user> [-e wsPort <port>]` (same key and setup as WorkspaceE2ETest) it also
- * opens two windows on two spaces of a real core.
+ * opens two windows on two spaces of a real core; `-e wsKey write` only creates the key to authorize.
  */
 @RunWith(AndroidJUnit4::class)
 class WindowsE2ETest {
@@ -140,6 +140,13 @@ class WindowsE2ETest {
 
         moveToNextDisplay(window, external)
         assertSameWindows(window)
+    }
+
+    /** `-e wsKey write`: only creates the test key and writes its public part, to authorize it on the host. */
+    @Test
+    fun writesTheTestKey() {
+        assumeTrue("wsKey not given", args.getString("wsKey") == "write")
+        writeTestKey()
     }
 
     @Test
@@ -250,9 +257,13 @@ class WindowsE2ETest {
         instrumentation.uiAutomation.executeShellCommand(command).use { FileInputStream(it.fileDescriptor).readBytes() }
     }
 
-    private fun connect(host: String, user: String): Machine {
+    private fun writeTestKey() {
         val key = container.keys.publicKey(KEY_ALIAS) ?: container.keys.generate(KEY_ALIAS)
         File(app.getExternalFilesDir(null), "workspace-e2e.pub").writeText(key.authorizedKeysLine() + "\n")
+    }
+
+    private fun connect(host: String, user: String): Machine {
+        writeTestKey()
         val port = args.getString("wsPort")?.toInt() ?: Machine.DEFAULT_PORT
         val added = container.machines.add(NAME, host, port, user, MachineAuth.Key(KEY_ALIAS))
         machine = added
