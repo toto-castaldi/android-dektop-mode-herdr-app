@@ -25,4 +25,4 @@ Add a topic by copying `_TEMPLATE.md` to `<topic>.md` (lowercase kebab-case); sp
 
 Decisions still to be closed and the backlog items that will close them:
 
-- Nessuna.
+- Lettura e scrittura del documento degli spazi dell'app desktop (`herdr-app`), etichette `herdr.space`/`herdr.tab` e passaggio dal documento `herdr-android`: US-012.

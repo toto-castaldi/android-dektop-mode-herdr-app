@@ -1,0 +1,29 @@
+{
+  "id": "US-012",
+  "title": "Spazi e tab condivisi con l'app desktop",
+  "version": "v0.1.0",
+  "epic": "EPIC-003",
+  "module": "MOD-001",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-005",
+    "US-008"
+  ],
+  "requirements": [
+    "REQ-WS-001"
+  ],
+  "design_references": [
+    "design/integrations",
+    "design/data-model"
+  ],
+  "description": "Come utente voglio vedere sul telefono gli stessi spazi, tab e pane dell'app desktop Herdr collegata allo stesso core, per passare da una postazione all'altra senza perdere l'organizzazione del lavoro.",
+  "acceptance_criteria": [
+    "L'app legge e scrive il documento degli spazi dell'app desktop (herdr-app) di ogni core, nella sua forma, con compare-and-set e nuova lettura sul conflitto; uno spazio, una tab o un pane creato, rinominato, riordinato o chiuso in un'app compare nell'altra senza riavviarla.",
+    "I terminali che l'app avvia portano le etichette herdr.space e herdr.tab con gli id del documento condiviso, come quelli dell'app desktop.",
+    "Gli spazi e le tab salvati finora nel documento herdr-android vengono portati nel documento condiviso al primo collegamento, senza terminare terminali; il documento herdr-android non viene più scritto.",
+    "Le parti del documento che l'app non usa (per esempio pane di mod, layout, stato del solo desktop) restano invariate dopo le scritture dell'app; test unitari con documenti reali dell'app desktop.",
+    "Verificato end-to-end sul Pixel 11 Pro in Desktop Mode con l'app desktop Herdr e un herdr-core reale: modifiche in entrambi i sensi."
+  ]
+}
