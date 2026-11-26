@@ -1,0 +1,30 @@
+{
+  "id": "US-005",
+  "title": "Pane con terminali interattivi",
+  "version": "v0.1.0",
+  "epic": "EPIC-003",
+  "module": "MOD-003",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-004",
+    "SPIKE-003"
+  ],
+  "requirements": [
+    "REQ-WS-002",
+    "REQ-NFR-003"
+  ],
+  "design_references": [
+    "design/context",
+    "design/modules"
+  ],
+  "description": "Come utente voglio dividere una tab in pane con terminali interattivi, per seguire più programmi e agenti insieme.",
+  "acceptance_criteria": [
+    "L'utente divide una tab in pane orizzontali e verticali, ridimensiona i divisori, chiude un pane e sposta il focus.",
+    "In un pane gira una shell e un agente TUI (ad esempio Claude Code) con colori, Unicode e scrollback corretti.",
+    "Ridimensionando finestra o pane, il programma riceve le nuove dimensioni e ridisegna correttamente.",
+    "Latenza tasto-eco e frame rate misurati sul Pixel 11 Pro rispettano le soglie di REQ-NFR-003.",
+    "Il layout dei pane (divisione, ridimensionamento, chiusura) è coperto da test unitari."
+  ]
+}
