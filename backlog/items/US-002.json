@@ -1,0 +1,28 @@
+{
+  "id": "US-002",
+  "title": "Collegarsi al core locale nel Linux Terminal",
+  "version": "v0.1.0",
+  "epic": "EPIC-002",
+  "module": "MOD-002",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-001",
+    "SPIKE-002"
+  ],
+  "requirements": [
+    "REQ-CONN-002",
+    "REQ-NFR-001"
+  ],
+  "design_references": [
+    "design/integrations",
+    "design/context"
+  ],
+  "description": "Come utente voglio usare il herdr-core che gira nel Linux Terminal del mio telefono, per lavorare con gli agenti senza una macchina remota.",
+  "acceptance_criteria": [
+    "Con herdr-core attivo nel Linux Terminal del Pixel 11 Pro, la macchina \"Questo dispositivo\" compare nell'elenco e il collegamento riesce senza inserire host o porta.",
+    "Con il Linux Terminal non attivo o non configurato, la macchina mostra lo stato corrispondente e un messaggio con le azioni da fare.",
+    "Il collegamento locale applica la stessa verifica della host key e la stessa gestione delle chiavi delle macchine remote."
+  ]
+}
