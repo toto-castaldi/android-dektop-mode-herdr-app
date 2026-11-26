@@ -1,0 +1,27 @@
+{
+  "id": "US-006",
+  "title": "Sidebar degli agenti con stati",
+  "version": "v0.1.0",
+  "epic": "EPIC-004",
+  "module": "MOD-001",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-004"
+  ],
+  "requirements": [
+    "REQ-AGT-001"
+  ],
+  "design_references": [
+    "design/context",
+    "design/integrations"
+  ],
+  "description": "Come utente voglio vedere in un unico elenco tutti i miei agenti e il loro stato, per sapere subito chi ha bisogno di me.",
+  "acceptance_criteria": [
+    "La sidebar elenca gli agenti di tutti gli spazi delle macchine collegate, inclusi i worker avviati da un altro agente con hc run.",
+    "Gli stati Working, Blocked, Done e Idle riportati dagli agenti si aggiornano senza ricaricare l'elenco.",
+    "Un agente Done diventa Idle quando l'utente lo guarda; selezionare un agente con un pane porta in primo piano spazio, tab e pane.",
+    "Le transizioni di stato mostrate (incluso Done → Idle) sono coperte da test unitari."
+  ]
+}
