@@ -1,0 +1,25 @@
+{
+  "id": "US-008",
+  "title": "Finestre ridimensionabili e display esterno",
+  "version": "v0.1.0",
+  "epic": "EPIC-005",
+  "module": "MOD-001",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-004"
+  ],
+  "requirements": [
+    "REQ-DM-001"
+  ],
+  "design_references": [
+    "design/context"
+  ],
+  "description": "Come utente voglio usare l'app in finestre ridimensionabili su un monitor esterno, come un'app desktop.",
+  "acceptance_criteria": [
+    "Sul Pixel 11 Pro in Desktop Mode con monitor esterno, l'app si ridimensiona e si massimizza; il layout si adatta e non perde lo stato.",
+    "L'utente apre una seconda finestra dell'app con un altro spazio; le due finestre funzionano in parallelo.",
+    "Spostare la finestra tra display o cambiare la densità non riavvia i terminali né perde il layout."
+  ]
+}
