@@ -1,0 +1,31 @@
+{
+  "id": "BUG-001",
+  "title": "Le connessioni verso macchine della rete locale restano appese senza ACCESS_LOCAL_NETWORK",
+  "version": "v0.1.0",
+  "epic": "EPIC-002",
+  "module": "MOD-001",
+  "type": "Bug",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [],
+  "requirements": [
+    "REQ-CONN-001",
+    "REQ-NFR-002"
+  ],
+  "design_references": [
+    "design/security",
+    "design/integrations"
+  ],
+  "description": "Su Android 17 con targetSdk 37 le connessioni verso indirizzi della rete locale richiedono il permesso runtime ACCESS_LOCAL_NETWORK; l'app non lo dichiara né lo richiede.",
+  "found_in": "v0.1.0 (main 7dc0bef, dopo US-001 e US-002)",
+  "steps_to_reproduce": "Sul Pixel 11 Pro (Android 17, app con targetSdk 37) aggiungere una macchina con host nella LAN (es. 172.27.x.x, porta 22) e collegarsi.",
+  "expected": "L'app chiede il permesso di accesso alla rete locale; concesso, il collegamento procede; negato, la macchina mostra 'accesso alla rete locale non consentito' con le istruzioni per concederlo.",
+  "actual": "Il manifest dichiara solo INTERNET: senza android.permission.ACCESS_LOCAL_NETWORK la connessione TCP resta appesa in silenzio (nessun SYN) e la macchina non arriva a nessuno stato utile. Host via Tailscale (100.x) e 127.0.0.1 non sono colpiti (osservato dal prototipo di SPIKE-003).",
+  "acceptance_criteria": [
+    "Il manifest dichiara android.permission.ACCESS_LOCAL_NETWORK; prima di collegarsi a una macchina con host nella rete locale l'app chiede il permesso se non è già concesso.",
+    "Con il permesso concesso, il collegamento a una macchina della LAN riesce sul Pixel 11 Pro (verifica reale con un host SSH sulla LAN).",
+    "Con il permesso negato la macchina mostra lo stato 'accesso alla rete locale non consentito' con le istruzioni per concederlo, senza connessione appesa.",
+    "Le macchine raggiunte via Tailscale, internet o 127.0.0.1 continuano a collegarsi senza chiedere il permesso se Android non lo richiede.",
+    "Test di regressione: test unitari sulla classificazione degli host (rete locale o no) e sullo stato con permesso negato, più test strumentale sul Pixel della richiesta del permesso."
+  ]
+}
