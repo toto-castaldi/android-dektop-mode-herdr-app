@@ -5,7 +5,8 @@
   "epic": "EPIC-001",
   "type": "Task",
   "priority": "P0",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "task/TEC-001-kickoff",
   "dependencies": [],
   "design_references": [
     "PROCESS §3",
@@ -30,5 +31,8 @@
     "The backlog contains the goal of v0.1.0, its epics and its items with dependencies, requirements and acceptance criteria; ideas outside v0.1.0 are recorded as unassigned ideas.",
     "`README.md` presents the project instead of the template; `CHANGELOG.md` and `.gitignore` are adapted to the project.",
     "`backlog check` passes."
-  ]
+  ],
+  "outcome": "Kickoff completato tramite intervista. Compilati AGENTS.md (italiano per i contenuti, inglese per il codice; Kotlin/Compose/Gradle; quality gate con ktlint, detekt, JUnit e assembleDebug; shared claims e parallel work on), i requisiti (README in stato baseline, glossario, accettazione v0.1.0, 10 requisiti funzionali CONN/WS/AGT/DM e 4 NFR) e il design (decisioni iniziali, 4 decisioni aperte, moduli MOD-001..003, contesto, modello dati, integrazioni, invarianti, sicurezza, test, configurazione). Backlog: goal della v0.1.0, epic EPIC-001..005, 14 item pianificati su main (SPIKE-001..003, TEC-002, US-001..010), 2 idee. Aggiornati README e .gitignore. Il quality gate non è eseguibile finché TEC-002 non crea i comandi Gradle: l'item è di sola documentazione; backlog check passa.",
+  "changelog": "Added: documentazione di base del progetto (requisiti, design, backlog della v0.1.0)",
+  "closed_at": "2026-11-26"
 }

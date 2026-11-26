@@ -21,4 +21,20 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Stack-specific ignores are added during the kickoff
+# Android / Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+# Signing keys
+*.jks
+*.keystore
+keystore.properties
