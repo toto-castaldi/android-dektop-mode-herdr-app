@@ -1,0 +1,29 @@
+{
+  "id": "TEC-002",
+  "title": "Scaffold del progetto Android e quality gate",
+  "version": "v0.1.0",
+  "epic": "EPIC-001",
+  "type": "Task",
+  "priority": "P0",
+  "status": "Todo",
+  "dependencies": [],
+  "requirements": [
+    "REQ-NFR-004"
+  ],
+  "design_references": [
+    "design/configuration",
+    "design/test-strategy",
+    "design/modules",
+    "AGENTS §4",
+    "AGENTS §6"
+  ],
+  "description": "Creare il progetto Android in Kotlin con Jetpack Compose e Gradle (Kotlin DSL, wrapper, version catalog), i moduli Gradle dei moduli logici, ktlint, detekt e JUnit, e un'app minima che si avvia in Desktop Mode. La minSdk è la versione Android del Pixel 11 Pro di riferimento, letta dal dispositivo con adb.",
+  "acceptance_criteria": [
+    "Da un clone pulito passano ./gradlew ktlintCheck detekt compileDebugKotlin testDebugUnitTest assembleDebug, con almeno un test unitario JVM reale.",
+    "Versioni di JDK, Gradle, Android Gradle Plugin, Kotlin e dipendenze sono bloccate nel wrapper e nel version catalog; il README indica i prerequisiti.",
+    "minSdk e targetSdk corrispondono all'API level letto dal Pixel 11 Pro (adb shell getprop ro.build.version.sdk), riportato nell'outcome.",
+    "L'APK di debug si installa sul Pixel 11 Pro e si apre come finestra ridimensionabile in Desktop Mode.",
+    "Il comando dei test strumentali (connectedDebugAndroidTest) esiste ed è documentato in AGENTS.md §6 e in design/test-strategy.",
+    "design/configuration e design/modules descrivono struttura dei moduli Gradle e posizione di ogni modulo; la voce corrispondente è tolta dalle Open decisions."
+  ]
+}
