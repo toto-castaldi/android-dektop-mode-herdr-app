@@ -1,0 +1,28 @@
+{
+  "id": "US-003",
+  "title": "Installare o aggiornare herdr-core",
+  "version": "v0.1.0",
+  "epic": "EPIC-002",
+  "module": "MOD-002",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-001",
+    "SPIKE-002"
+  ],
+  "requirements": [
+    "REQ-CONN-003"
+  ],
+  "design_references": [
+    "design/integrations"
+  ],
+  "description": "Come utente voglio che l'app installi o aggiorni herdr-core quando manca o è incompatibile, per non dover entrare in SSH a mano.",
+  "acceptance_criteria": [
+    "Su un host Linux senza herdr-core l'app segnala \"core assente\" e, dopo conferma, lo installa e si collega.",
+    "Con una versione di core incompatibile l'app segnala la versione trovata e quella richiesta e, dopo conferma, lo aggiorna e si collega.",
+    "La stessa procedura funziona nella VM del Linux Terminal del Pixel 11 Pro.",
+    "Senza conferma dell'utente non viene eseguito alcun comando di installazione; un errore mostra l'output del comando fallito.",
+    "Il rilevamento della compatibilità di versione è coperto da test unitari."
+  ]
+}
