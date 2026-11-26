@@ -6,7 +6,7 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-006-sidebar-agenti-stati",
   "dependencies": [
     "US-004"
@@ -24,5 +24,8 @@
     "Gli stati Working, Blocked, Done e Idle riportati dagli agenti si aggiornano senza ricaricare l'elenco.",
     "Un agente Done diventa Idle quando l'utente lo guarda; selezionare un agente con un pane porta in primo piano spazio, tab e pane.",
     "Le transizioni di stato mostrate (incluso Done → Idle) sono coperte da test unitari."
-  ]
+  ],
+  "outcome": "Sidebar degli agenti di tutte le macchine collegate, con stati dal core. core-client: CoreSession mette in coda i canali di notifica (CoreRpc.lines, CREDIT u32 LE per ogni frame letto); pacchetto agents con AgentRecord, AgentSnapshot (snapshot di events.subscribe + eventi created/restarted/removed/finished/status/turn/title/labels, seq scartati, missed), AgentState.of (regole condivise dei client Herdr, docs/labels.md di herdr-app: blocked ed error -> Blocked con il messaggio dell'agente, scelta dell'utente senza quinto stato; working -> Working; altrimenti Done se turn > herdr.seen, senza etichetta done -> Done) e AgentsManager (nuova sottoscrizione a ogni sessione, setLooking che scrive herdr.seen=<turn> con terminal.label una volta per turno, etichetta condivisa con l'app desktop, scelta dell'utente); i terminali avviati dall'app partono con herdr.seen=0; Workspace.paneOf. Agente = terminale vivo con reported o parent (worker di hc run), anche macchina/t7. app: AgentSidebar a destra in MainActivity (machine, indirizzo, messaggio, worker rientrati, 'senza pane'); click su un agente con pane apre macchina, spazio e tab; WorkspaceScreen riporta i terminali della tab mostrata solo con l'activity RESUMED. Test JVM: AgentStateTest (5, transizioni incluso Done -> Idle e nuovo turno), AgentSnapshotTest (7), AgentsManagerTest (5: aggiornamenti senza ricaricare, scrittura di herdr.seen e passaggio a Idle, una volta per turno, segna-come-non-letto di un altro client non sovrascritto, nuova sottoscrizione dopo riconnessione), CoreSessionChannelTest, WorkspaceRulesTest (paneOf), WorkspaceClientTest (herdr.seen=0). Gate verde (134 test JVM). Sul Pixel 11 Pro in Desktop Mode (monitor LG, display 4): AgentsE2ETest verde con herdr-core reale su walle (sessione HC_SESSION=us006-e2e, chiave di test autorizzata dall'utente e poi rimossa, impronta host key verificata): agente Working, worker avviato dall'agente Blocked per error con il messaggio, Done mentre la sua tab non è a schermo (herdr.seen invariato a 0), click nella sidebar che porta in primo piano la tab, herdr.seen=1 sul core e Idle; schermate controllate (corretto il colore dei testi della sidebar fuori da una Surface). MainActivityTest e WorkspaceContentTest 10/10. Logcat senza chiavi, password o contenuto dei terminali. Nessuna nuova dipendenza. Limiti: il pane è portato in primo piano selezionando la sua tab (tab a pane singolo finché US-005 non porta gli split); agenti senza pane nel documento herdr-android (per esempio avviati dall'app desktop) non hanno azione fino al peek (US-007); la chiave e2e-agents è ancora nel Keystore dell'app sul Pixel, da cancellare in un turno libero del dispositivo.",
+  "changelog": "Added: sidebar degli agenti di tutte le macchine collegate con stati Working, Blocked, Done e Idle aggiornati in tempo reale",
+  "closed_at": "2026-11-26"
 }

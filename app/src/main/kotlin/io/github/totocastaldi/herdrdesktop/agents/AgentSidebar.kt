@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -51,13 +53,15 @@ fun AgentSidebar(container: AppContainer, onOpen: (PaneFocus) -> Unit) {
 
 @Composable
 fun AgentSidebarContent(rows: List<AgentRow>, onSelect: (AgentRow) -> Unit) {
-    Column(Modifier.width(260.dp).fillMaxHeight().safeDrawingPadding().padding(8.dp), Arrangement.spacedBy(4.dp)) {
-        Text(stringResource(R.string.agents_title), style = MaterialTheme.typography.titleMedium)
-        if (rows.isEmpty()) {
-            Text(stringResource(R.string.agents_none), style = MaterialTheme.typography.bodySmall)
-        }
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(rows, key = { "${it.agent.machineId}/${it.agent.address}" }) { row -> AgentEntry(row, onSelect) }
+    Surface(Modifier.width(260.dp).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(8.dp), Arrangement.spacedBy(4.dp)) {
+            Text(stringResource(R.string.agents_title), style = MaterialTheme.typography.titleMedium)
+            if (rows.isEmpty()) {
+                Text(stringResource(R.string.agents_none), style = MaterialTheme.typography.bodySmall)
+            }
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(rows, key = { "${it.agent.machineId}/${it.agent.address}" }) { row -> AgentEntry(row, onSelect) }
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package io.github.totocastaldi.herdrdesktop.agents
 
 import android.app.ActivityOptions
 import android.content.Intent
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
@@ -99,10 +100,14 @@ class AgentsE2ETest {
         awaitWorkspace(target) { it.spaces.size == 1 }
         rule.onNodeWithText(text(R.string.workspace_new_tab)).performClick()
         awaitWorkspace(target) { it.spaces.single().tabs.size == 2 }
+        // Let the screen show the new tab, so that the first one is no longer on screen.
+        rule.waitForIdle()
         val agent = workspaceOf(target).spaces.single().tabs[0].terminals.single()
 
-        // The shell of the first tab becomes an agent by reporting its status.
-        report(target, agent, "state=working:app=e2e-agent")
+        // A program in the first tab becomes an agent by reporting its status; it reports done after a line of
+        // input. A separate `sh`, because an interactive shell may clear the status of its own terminal.
+        val working = osc("state=working:app=e2e-agent")
+        send(target, agent, "sh -c \"$working; read _; ${osc("state=done:app=e2e-agent")}; read _\"")
         awaitRow(target, agent, AgentState.WORKING)
         step()
 
@@ -114,7 +119,7 @@ class AgentsE2ETest {
         step()
 
         // The agent finishes while its tab is not on screen: Done, and nothing is marked seen on the core.
-        report(target, agent, "state=done:app=e2e-agent")
+        send(target, agent, "x")
         awaitRow(target, agent, AgentState.DONE)
         assertEquals("0", labelsOf(target, agent)["herdr.seen"])
         step()
@@ -127,6 +132,11 @@ class AgentsE2ETest {
     }
 
     private fun connect(): Machine {
+        // A machine left by an interrupted run of this test.
+        container.machines.machines.value.filter { it.name == NAME }.forEach {
+            container.connections.forget(it.id)
+            container.machines.remove(it.id)
+        }
         launch()
         val key = container.keys.publicKey(KEY_ALIAS) ?: container.keys.generate(KEY_ALIAS)
         File(app.getExternalFilesDir(null), "agents-e2e.pub").writeText(key.authorizedKeysLine() + "\n")
@@ -152,20 +162,25 @@ class AgentsE2ETest {
         scenario = ActivityScenario.launch(intent, options)
     }
 
-    /** Makes the shell of [terminal] print an OSC 7501 report with these fields. */
-    private fun report(m: Machine, terminal: String, fields: String) {
+    /** Types [text] into [terminal] and presses enter. */
+    private fun send(m: Machine, terminal: String, text: String) {
         val params = buildJsonObject {
             put("terminal", terminal)
-            put("text", "printf '\\033]7501;$fields\\033\\\\'")
+            put("text", text)
         }
         runBlocking { rpc(m).call("terminal.send", params) }
     }
 
+    /** Shell command printing an OSC 7501 report with these fields. */
+    private fun osc(fields: String) = "printf '\\033]7501;$fields\\007'"
+
     /** Starts, as a child of [parent], a program that reports an error and stays. */
     private fun startWorker(m: Machine, parent: String): String {
         val params = buildJsonObject {
-            put("line", "printf '\\033]7501;state=error:app=e2e-worker:msg=$BROKEN_BASE64\\033\\\\'; sleep 600")
+            put("line", "${osc("state=error:app=e2e-worker:msg=$BROKEN_BASE64")}; sleep 600")
             put("parent", parent)
+            // Notes about the child would be typed into the parent and answer its `read`.
+            put("no_notify", true)
         }
         val result = runBlocking { rpc(m).call("terminal.run", params) } as JsonObject
         return result.getValue("address").jsonPrimitive.content
@@ -178,8 +193,14 @@ class AgentsE2ETest {
 
     /** Waits for the agent in the app's state and checks the row shown in the sidebar. */
     private fun awaitRow(m: Machine, address: String, state: AgentState) {
-        rule.waitUntil(TIMEOUT_MILLIS) {
-            container.agents.agents.value[m.id].orEmpty().any { it.address == address && it.state == state }
+        try {
+            rule.waitUntil(TIMEOUT_MILLIS) {
+                container.agents.agents.value[m.id].orEmpty().any { it.address == address && it.state == state }
+            }
+        } catch (e: ComposeTimeoutException) {
+            val core = runBlocking { rpc(m).call("terminal.get", buildJsonObject { put("terminal", address) }) }
+                .jsonObject.filterKeys { it in setOf("status", "turn", "labels", "reported", "parent") }
+            throw AssertionError("$address not $state: app ${container.agents.agents.value[m.id]}, core $core", e)
         }
         rule.waitForIdle()
         rule.onNodeWithTag(tag(m, address)).assertTextContains(text(label(state)), substring = true)
