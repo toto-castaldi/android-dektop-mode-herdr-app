@@ -7,4 +7,11 @@ import kotlinx.serialization.json.JsonObject
 fun interface CoreRpc {
     /** Calls [method] and returns its `result`; throws `RpcException` on a JSON-RPC error. */
     suspend fun call(method: String, params: JsonObject?): JsonElement
+
+    /**
+     * Opens a raw stream to a terminal with `terminal.attach`; throws `RpcException` if the terminal is gone.
+     * Only a framed session ([CoreSession]) has streams.
+     */
+    suspend fun attach(request: AttachRequest): TerminalStream =
+        throw UnsupportedOperationException("terminal streams need a framed session")
 }

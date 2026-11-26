@@ -151,20 +151,3 @@ private fun Entry(
         }
     }
 }
-
-/** Terminals of the tab; their content is shown by the panes (US-005). */
-@Composable
-internal fun TabBody(tab: Tab, state: WorkspaceState.Ready) {
-    Column(Modifier.fillMaxSize().padding(16.dp), Arrangement.spacedBy(8.dp)) {
-        tab.terminals.forEach { address ->
-            val info = state.terminals[address]
-            val line = if (info == null) {
-                stringResource(R.string.workspace_terminal_gone, address)
-            } else {
-                stringResource(R.string.workspace_terminal, address, info.cwd)
-            }
-            Text(line, fontFamily = FontFamily.Monospace)
-        }
-        Text(stringResource(R.string.workspace_terminal_preview), style = MaterialTheme.typography.bodySmall)
-    }
-}

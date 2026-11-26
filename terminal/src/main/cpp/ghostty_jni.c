@@ -27,6 +27,8 @@ typedef struct {
   size_t replies_len;
   size_t replies_cap;
   bool out_of_memory;
+  jint *snapshot;      // last snapshot, kept to avoid an allocation per frame
+  size_t snapshot_cap;
 } Handle;
 
 static void on_write_pty(GhosttyTerminal terminal, void *userdata, const uint8_t *data,
@@ -58,6 +60,7 @@ static void destroy(Handle *h) {
   ghostty_render_state_free(h->render);
   ghostty_terminal_free(h->terminal);
   free(h->replies);
+  free(h->snapshot);
   free(h);
 }
 
@@ -130,6 +133,23 @@ JNIEXPORT jint JNICALL JNI_FN(nativeResize)(JNIEnv *env, jclass cls, jlong handl
                                        (uint32_t)cell_width, (uint32_t)cell_height);
 }
 
+// Scrolls the viewport by delta rows (negative: back into the scrollback); delta 0 returns to the
+// active area. Returns the libghostty-vt result.
+JNIEXPORT jint JNICALL JNI_FN(nativeScroll)(JNIEnv *env, jclass cls, jlong handle, jint delta) {
+  (void)env;
+  (void)cls;
+  Handle *h = (Handle *)(intptr_t)handle;
+  GhosttyTerminalScrollViewport behavior;
+  memset(&behavior, 0, sizeof(behavior));
+  if (delta == 0) {
+    behavior.tag = GHOSTTY_TERMINAL_SCROLL_VIEWPORT_BOTTOM;
+  } else {
+    behavior.tag = GHOSTTY_TERMINAL_SCROLL_VIEWPORT_DELTA;
+    behavior.value.delta = (intptr_t)delta;
+  }
+  return (jint)ghostty_terminal_scroll_viewport(h->terminal, behavior);
+}
+
 // Grows *buf to hold at least need ints. Returns false when out of memory.
 static bool reserve(jint **buf, size_t *cap, size_t need) {
   if (need <= *cap) return true;
@@ -142,10 +162,10 @@ static bool reserve(jint **buf, size_t *cap, size_t need) {
   return true;
 }
 
-JNIEXPORT jintArray JNICALL JNI_FN(nativeSnapshot)(JNIEnv *env, jclass cls, jlong handle) {
-  (void)cls;
-  Handle *h = (Handle *)(intptr_t)handle;
-  if (ghostty_render_state_update(h->render, h->terminal) != GHOSTTY_SUCCESS) return NULL;
+// Writes the snapshot into h->snapshot. Returns its length in ints, -1 if the render state failed and
+// -2 when out of memory.
+static long build_snapshot(Handle *h) {
+  if (ghostty_render_state_update(h->render, h->terminal) != GHOSTTY_SUCCESS) return -1;
 
   uint16_t cols = 0, rows = 0;
   ghostty_render_state_get(h->render, GHOSTTY_RENDER_STATE_DATA_COLS, &cols);
@@ -155,9 +175,9 @@ JNIEXPORT jintArray JNICALL JNI_FN(nativeSnapshot)(JNIEnv *env, jclass cls, jlon
   GhosttyRenderStateCursor cursor = GHOSTTY_INIT_SIZED(GhosttyRenderStateCursor);
   ghostty_render_state_get(h->render, GHOSTTY_RENDER_STATE_DATA_CURSOR, &cursor);
 
-  size_t cap = 0;
+  size_t cap = h->snapshot_cap;
   size_t len = SNAPSHOT_HEADER_INTS;
-  jint *buf = NULL;
+  jint *buf = h->snapshot;
   if (!reserve(&buf, &cap, len + (size_t)cols * rows * (SNAPSHOT_CELL_FIXED_INTS + 1))) goto oom;
   buf[0] = cols;
   buf[1] = rows;
@@ -209,15 +229,46 @@ JNIEXPORT jintArray JNICALL JNI_FN(nativeSnapshot)(JNIEnv *env, jclass cls, jlon
     }
   }
 
-  jintArray result = (*env)->NewIntArray(env, (jsize)len);
-  if (result) (*env)->SetIntArrayRegion(env, result, 0, (jsize)len, buf);
-  free(buf);
-  return result;
+  h->snapshot = buf;
+  h->snapshot_cap = cap;
+  return (long)len;
 
 oom:
-  free(buf);
+  h->snapshot = buf;
+  h->snapshot_cap = cap;
+  return -2;
+}
+
+static void throw_oom(JNIEnv *env) {
   (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/OutOfMemoryError"), "snapshot");
-  return NULL;
+}
+
+JNIEXPORT jintArray JNICALL JNI_FN(nativeSnapshot)(JNIEnv *env, jclass cls, jlong handle) {
+  (void)cls;
+  Handle *h = (Handle *)(intptr_t)handle;
+  long len = build_snapshot(h);
+  if (len == -2) throw_oom(env);
+  if (len < 0) return NULL;
+  jintArray result = (*env)->NewIntArray(env, (jsize)len);
+  if (result) (*env)->SetIntArrayRegion(env, result, 0, (jsize)len, h->snapshot);
+  return result;
+}
+
+// Copies the snapshot into out when it fits and returns its length; returns minus the length needed when
+// out is too small, -1 if the render state failed. Lets the caller reuse one array across frames.
+JNIEXPORT jint JNICALL JNI_FN(nativeSnapshotInto)(JNIEnv *env, jclass cls, jlong handle,
+                                                   jintArray out) {
+  (void)cls;
+  Handle *h = (Handle *)(intptr_t)handle;
+  long len = build_snapshot(h);
+  if (len == -2) {
+    throw_oom(env);
+    return -1;
+  }
+  if (len < 0) return -1;
+  if ((*env)->GetArrayLength(env, out) < len) return (jint)-len;
+  (*env)->SetIntArrayRegion(env, out, 0, (jsize)len, h->snapshot);
+  return (jint)len;
 }
 
 JNIEXPORT jbyteArray JNICALL JNI_FN(nativeEncodeKey)(JNIEnv *env, jclass cls, jlong handle,

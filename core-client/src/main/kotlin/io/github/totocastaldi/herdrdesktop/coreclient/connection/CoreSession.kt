@@ -17,6 +17,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -26,7 +27,9 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 
@@ -46,12 +49,22 @@ sealed interface HandshakeResult {
  * JSON-RPC session with a core in framed mode. Created by [handshake]; [closed] completes
  * when the stream ends.
  */
-class CoreSession private constructor(private val stream: CoreStream, scope: CoroutineScope, leftover: ByteArray) :
-    CoreRpc {
+class CoreSession private constructor(
+    private val stream: CoreStream,
+    scope: CoroutineScope,
+    leftover: ByteArray,
+    private val features: List<String> = emptyList()
+) : CoreRpc {
     private val ids = AtomicLong(FIRST_ID)
     private val pending = ConcurrentHashMap<Long, CompletableDeferred<JsonElement>>()
     private val writeLock = Mutex()
     private val decoder = FrameDecoder()
+
+    /** Events of the open attach streams, by channel; frames may arrive before `attach` returns. */
+    private val streams = ConcurrentHashMap<Int, Channel<StreamEvent>>()
+
+    /** Channels the viewer detached from, whose frames are dropped until the core's closing `CLOSE`. */
+    private val detached = ConcurrentHashMap.newKeySet<Int>()
 
     /** Completes with the cause when the stream to the core ends. */
     val closed = CompletableDeferred<Throwable>()
@@ -60,9 +73,13 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
         val cause = runCatching {
             var chunk: ByteArray? = leftover
             while (chunk != null) {
-                decoder.feed(chunk).filter {
-                    it.channel == Frame.RPC_CHANNEL && it.kind == FrameKind.DATA
-                }.forEach(::dispatch)
+                decoder.feed(chunk).forEach { frame ->
+                    if (frame.channel == Frame.RPC_CHANNEL) {
+                        if (frame.kind == FrameKind.DATA) dispatch(frame)
+                    } else {
+                        route(frame)
+                    }
+                }
                 chunk = stream.read()
             }
         }.exceptionOrNull()
@@ -82,7 +99,88 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
         }
     }
 
+    /** Passes a stream frame to its stream; control frames the viewer does not use are ignored. */
+    private fun route(frame: Frame) {
+        val channel = frame.channel
+        if (channel in detached) {
+            if (frame.kind == FrameKind.CLOSE) detached.remove(channel)
+            return
+        }
+        val event = when (frame.kind) {
+            FrameKind.DATA -> StreamEvent.Output(frame.payload)
+            FrameKind.CLOSE -> StreamFrames.closed(frame.payload)
+            else -> return
+        }
+        val events = streams.getOrPut(channel) { Channel(Channel.UNLIMITED) }
+        events.trySend(event)
+        // The entry stays until the viewer closes the stream, which may not have been returned yet.
+        if (event is StreamEvent.Closed) events.close()
+    }
+
+    private suspend fun send(frame: Frame) {
+        writeLock.withLock { stream.write(frame.encode()) }
+    }
+
+    override suspend fun attach(request: AttachRequest): TerminalStream {
+        val params = buildJsonObject {
+            put("terminal", request.terminal)
+            put("cols", request.columns)
+            put("rows", request.rows)
+            if (request.history > 0) put("history", request.history)
+            request.display?.let { put("display", it.toJson()) }
+        }
+        val result = call("terminal.attach", params) as JsonObject
+        val channel = checkNotNull((result["channel"] as? JsonPrimitive)?.intOrNull) { "attach returned no channel" }
+        val automatic =
+            AUTOMATIC_INPUT in features && (result["automatic_input"] as? JsonPrimitive)?.booleanOrNull == true
+        val events = streams.getOrPut(channel) { Channel(Channel.UNLIMITED) }
+        if (closed.isCompleted) events.close()
+        return SessionStream(channel, events, automatic)
+    }
+
+    private inner class SessionStream(
+        private val channel: Int,
+        override val events: Channel<StreamEvent>,
+        override val automaticInput: Boolean
+    ) : TerminalStream {
+        override suspend fun input(bytes: ByteArray) {
+            if (bytes.isNotEmpty()) send(Frame(channel, FrameKind.DATA, bytes))
+        }
+
+        override suspend fun reply(bytes: ByteArray) {
+            if (bytes.isEmpty()) return
+            send(Frame(channel, if (automaticInput) FrameKind.AUTOMATIC_INPUT else FrameKind.DATA, bytes))
+        }
+
+        override suspend fun resize(columns: Int, rows: Int) = send(StreamFrames.resize(channel, columns, rows))
+
+        override suspend fun focus(focused: Boolean) = send(StreamFrames.focus(channel, focused))
+
+        override suspend fun facts(display: DisplayFacts) =
+            send(Frame(channel, FrameKind.FACTS, display.toJson().toString().encodeToByteArray()))
+
+        override suspend fun consumed(bytes: Int) {
+            if (bytes > 0) send(StreamFrames.credit(channel, bytes))
+        }
+
+        override suspend fun close() {
+            if (streams[channel] !== events) return
+            // Closed for send: the core already closed the stream, nothing to detach from.
+            if (events.isClosedForSend || this@CoreSession.closed.isCompleted) {
+                streams.remove(channel)
+                return
+            }
+            // Marked first, so that a frame arriving meanwhile is dropped instead of opening a new entry.
+            detached += channel
+            streams.remove(channel)
+            events.close()
+            runCatching { send(StreamFrames.close(channel)) }
+        }
+    }
+
     private fun finish(cause: Throwable) {
+        streams.values.forEach { it.close() }
+        streams.clear()
         pending.values.forEach { it.completeExceptionally(cause) }
         pending.clear()
         closed.complete(cause)
@@ -119,6 +217,7 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
 
     companion object {
         private const val HELLO_ID = 1L
+        private const val AUTOMATIC_INPUT = "automatic_input"
         private const val FIRST_ID = 2L
 
         /**
@@ -176,7 +275,11 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
                 hello == null -> HandshakeResult.Failed("Malformed hello response")
 
                 else -> when (val compatibility = CoreProtocol.check(hello)) {
-                    Compatibility.Compatible -> HandshakeResult.Ready(CoreSession(stream, scope, line.rest), hello)
+                    Compatibility.Compatible -> HandshakeResult.Ready(
+                        CoreSession(stream, scope, line.rest, hello.features),
+                        hello
+                    )
+
                     else -> HandshakeResult.Incompatible(compatibility)
                 }
             }

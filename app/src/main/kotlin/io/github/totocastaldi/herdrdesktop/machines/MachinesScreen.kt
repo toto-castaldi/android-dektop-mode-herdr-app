@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -272,7 +273,9 @@ private fun MachineRow(
                 if (status == MachineStatus.LocalNetworkDenied) LocalNetworkDeniedHelp(openAppSettings)
             }
             if (status is MachineStatus.Connected) {
-                Button(onClick = actions.open) { Text(stringResource(R.string.machine_open)) }
+                Button(onClick = actions.open, modifier = Modifier.testTag("open-${machine.id}")) {
+                    Text(stringResource(R.string.machine_open))
+                }
                 Spacer(Modifier.width(8.dp))
             }
             if (status is MachineStatus.CoreInstalling) {

@@ -27,10 +27,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.totocastaldi.herdrdesktop.AppContainer
 import io.github.totocastaldi.herdrdesktop.R
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Axis
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Space
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceNames
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.closePane
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.resizeSplit
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.splitPane
 import kotlinx.coroutines.delay
 
 /** How often the shown folders and the document are read again from the core while the screen is open. */
@@ -49,11 +53,24 @@ fun WorkspaceScreen(container: AppContainer, machineId: String, onBack: () -> Un
         }
     }
     val actions = remember(manager, machineId) { ManagerActions(manager, machineId) }
-    WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack)
+    val rpc = container.connections.sessions.collectAsState().value[machineId]
+    val host = remember(rpc) { rpc?.let { PaneHost(it, container.scope, container.frameObserver) } }
+    WorkspaceContent(machine?.name.orEmpty(), state, actions, host, onBack)
+}
+
+/** What the user can do on the panes of a tab; each action is sent to the core. */
+interface PaneActions {
+    /** Splits pane [paneId] along [axis] with a new shell started in [folder] (the core's default when null). */
+    fun splitPane(spaceId: String, tabId: String, paneId: String, axis: Axis, folder: String?)
+
+    /** Closes pane [paneId] and ends its terminal; the last pane closes the tab. */
+    fun closePane(spaceId: String, tabId: String, paneId: String)
+
+    fun resizeSplit(spaceId: String, tabId: String, splitId: String, weights: List<Double>)
 }
 
 /** What the user can do on spaces and tabs; each action is sent to the core. */
-interface WorkspaceActions {
+interface WorkspaceActions : PaneActions {
     fun createSpace()
 
     fun renameSpace(spaceId: String, name: String)
@@ -71,7 +88,9 @@ interface WorkspaceActions {
     fun closeTab(spaceId: String, tabId: String)
 }
 
-private class ManagerActions(private val m: WorkspaceManager, private val id: String) : WorkspaceActions {
+private class ManagerActions(private val m: WorkspaceManager, private val id: String) :
+    WorkspaceActions,
+    PaneActions by ManagerPaneActions(m, id) {
     override fun createSpace() {
         m.perform(id) { createSpace() }
     }
@@ -105,8 +124,28 @@ private class ManagerActions(private val m: WorkspaceManager, private val id: St
     }
 }
 
+private class ManagerPaneActions(private val m: WorkspaceManager, private val id: String) : PaneActions {
+    override fun splitPane(spaceId: String, tabId: String, paneId: String, axis: Axis, folder: String?) {
+        m.perform(id) { splitPane(spaceId, tabId, paneId, axis, folder) }
+    }
+
+    override fun closePane(spaceId: String, tabId: String, paneId: String) {
+        m.perform(id) { closePane(spaceId, tabId, paneId) }
+    }
+
+    override fun resizeSplit(spaceId: String, tabId: String, splitId: String, weights: List<Double>) {
+        m.perform(id) { resizeSplit(spaceId, tabId, splitId, weights) }
+    }
+}
+
 @Composable
-fun WorkspaceContent(machineName: String, state: WorkspaceState, actions: WorkspaceActions, onBack: () -> Unit) {
+fun WorkspaceContent(
+    machineName: String,
+    state: WorkspaceState,
+    actions: WorkspaceActions,
+    host: PaneHost? = null,
+    onBack: () -> Unit
+) {
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -118,7 +157,7 @@ fun WorkspaceContent(machineName: String, state: WorkspaceState, actions: Worksp
                 WorkspaceState.Unavailable -> Message(stringResource(R.string.workspace_unavailable))
                 WorkspaceState.Loading -> Message(stringResource(R.string.workspace_loading))
                 is WorkspaceState.Failed -> Message(stringResource(R.string.workspace_failed, state.reason))
-                is WorkspaceState.Ready -> ReadyContent(state, actions)
+                is WorkspaceState.Ready -> ReadyContent(state, actions, host)
             }
         }
     }
@@ -130,7 +169,7 @@ internal fun Message(text: String) {
 }
 
 @Composable
-private fun ReadyContent(state: WorkspaceState.Ready, actions: WorkspaceActions) {
+private fun ReadyContent(state: WorkspaceState.Ready, actions: WorkspaceActions, host: PaneHost?) {
     val spaces = state.workspace.spaces
     var selectedSpace by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedTabs = remember { mutableStateMapOf<String, String>() }
@@ -170,7 +209,11 @@ private fun ReadyContent(state: WorkspaceState.Ready, actions: WorkspaceActions)
                         actions.createTab(space.id, WorkspaceNames.newTabFolder(space, tab, state::cwdOf))
                     }
                     HorizontalDivider()
-                    if (tab == null) Message(stringResource(R.string.workspace_no_tabs)) else TabBody(tab, state)
+                    if (tab == null) {
+                        Message(stringResource(R.string.workspace_no_tabs))
+                    } else {
+                        TabPanes(space.id, tab, state, controls, host)
+                    }
                 }
             }
         }

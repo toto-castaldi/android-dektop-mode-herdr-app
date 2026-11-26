@@ -5,6 +5,7 @@ import io.github.totocastaldi.herdrdesktop.gradle.ZigHost
 
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.compose)
 }
 
 val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -79,6 +80,10 @@ android {
     }
     ndkVersion = libs.versions.android.ndk.get()
 
+    buildFeatures {
+        compose = true
+    }
+
     defaultConfig {
         minSdk = libs.versions.android.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -111,6 +116,10 @@ kotlin {
 }
 
 dependencies {
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+
     testImplementation(libs.junit)
 
     androidTestImplementation(libs.androidx.test.junit)

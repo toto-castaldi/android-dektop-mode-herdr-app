@@ -137,5 +137,13 @@
     <string name="workspace_close_tab_text">I suoi terminali vengono terminati sul core.</string>
     <string name="workspace_terminal">%1$s · %2$s</string>
     <string name="workspace_terminal_gone">%1$s · terminale non più attivo</string>
-    <string name="workspace_terminal_preview">Il contenuto del terminale non è ancora mostrato in questa versione.</string>
+    <string name="pane_empty">Pane senza terminale</string>
+    <string name="pane_split_right">Dividi ⇆</string>
+    <string name="pane_split_down">Dividi ⇅</string>
+    <string name="pane_close">✕</string>
+    <string name="pane_close_title">Chiudere il pane %1$s?</string>
+    <string name="pane_close_text">Il suo terminale viene terminato sul core. Se è l\'ultimo pane, si chiude anche la tab.</string>
+    <string name="pane_ended">Il programma è terminato (%1$s).</string>
+    <string name="pane_ended_code">Il programma è terminato con codice %1$d.</string>
+    <string name="pane_failed">Impossibile collegarsi al terminale: %1$s</string>
 </resources>

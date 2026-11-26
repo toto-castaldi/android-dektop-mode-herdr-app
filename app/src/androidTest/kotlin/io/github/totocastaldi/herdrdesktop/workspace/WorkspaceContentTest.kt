@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.totocastaldi.herdrdesktop.R
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Axis
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Space
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.TerminalInfo
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Workspace
@@ -60,6 +61,18 @@ class WorkspaceContentTest {
 
         override fun closeTab(spaceId: String, tabId: String) {
             calls += "closeTab $spaceId $tabId"
+        }
+
+        override fun splitPane(spaceId: String, tabId: String, paneId: String, axis: Axis, folder: String?) {
+            calls += "splitPane $spaceId $tabId $paneId $axis $folder"
+        }
+
+        override fun closePane(spaceId: String, tabId: String, paneId: String) {
+            calls += "closePane $spaceId $tabId $paneId"
+        }
+
+        override fun resizeSplit(spaceId: String, tabId: String, splitId: String, weights: List<Double>) {
+            calls += "resizeSplit $spaceId $tabId $splitId $weights"
         }
     }
 
