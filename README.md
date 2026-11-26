@@ -22,6 +22,7 @@ python3 .agents/tools/backlog.py status
 - JDK 21 (per esempio OpenJDK 21 della distribuzione).
 - Android SDK con le licenze accettate (`sdkmanager --licenses`) e `ANDROID_HOME` impostato, oppure `sdk.dir=<percorso dell'SDK>` in `local.properties` (file locale, fuori dal repository). Basta `cmdline-tools`: platform e build-tools necessari li installa il build.
 - Gradle non va installato: si usa il wrapper `./gradlew`, che scarica la versione fissata. Le versioni di plugin e dipendenze sono in `gradle/libs.versions.toml`.
+- Per il terminale (libreria nativa libghostty-vt): `tar` con supporto xz e accesso di rete al primo build. NDK e CMake li installa il build (oppure `sdkmanager "ndk;29.0.14206865" "cmake;3.22.1"`); Zig non va installato: il build scarica la versione fissata e verifica i checksum di Zig e dei sorgenti di libghostty-vt (`gradle/libs.versions.toml`). Host di build: Linux o macOS. La prima compilazione nativa richiede alcuni minuti; l'APK contiene solo `arm64-v8a`.
 - Python 3.10+ per gli strumenti del backlog.
 - Per i test sul dispositivo: `adb` (Android SDK platform-tools) e un dispositivo Android con Desktop Mode e Linux Terminal, visibile in `adb devices`. Riferimento: Pixel 11 Pro.
 
@@ -51,7 +52,12 @@ L'APK di debug è in `app/build/outputs/apk/debug/app-debug.apk`.
 
 - `app/` — applicazione Android: UI Compose e Desktop Mode.
 - `core-client/` — libreria: SSH e API di herdr-core.
-- `terminal/` — libreria: emulazione e rendering del terminale.
+- `terminal/` — libreria: emulazione e rendering del terminale (libghostty-vt via JNI in `src/main/cpp/`).
+- `buildSrc/` — logica di build condivisa (download verificati, build nativa).
+
+## Licenze
+
+Le licenze del codice di terze parti incluso nell'app sono in [`NOTICE`](NOTICE), copiato anche nell'APK.
 
 ## Documentazione
 

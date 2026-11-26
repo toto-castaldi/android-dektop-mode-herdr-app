@@ -6,7 +6,8 @@
   "module": "MOD-003",
   "type": "Task",
   "priority": "P0",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "task/TEC-004-build-libghostty-vt-jni",
   "dependencies": [
     "SPIKE-003"
   ],
@@ -25,5 +26,7 @@
   ],
   "remarks": [
     "Follow-up di SPIKE-003; il prototipo esplorativo con la build Zig/NDK funzionante era in tmp/spike-003-prototype/ del clone del worker di SPIKE-003."
-  ]
+  ],
+  "outcome": "libghostty-vt 1.0.2 compilato con Zig 0.17.1 e NDK 29.0.14206865 per arm64-v8a (aarch64-linux-android.35, ReleaseFast, offline con --system) e collegato staticamente in libherdrterminal.so via CMake 3.22.1; tarball ufficiali di release.files.ghostty.org e Zig scaricati da buildSrc con SHA-256 del version catalog, in cache in ~/.gradle/caches/herdr-desktop. Verificato: build da clone pulito (git clone del branch, assembleDebug in 4m19s, APK con lib/arm64-v8a/libherdrterminal.so e assets/NOTICE); un checksum alterato nel catalog fa fallire downloadGhosttySources con 'Checksum mismatch'. Binding: interfaccia TerminalEmulator (write con risposte automatiche, resize, snapshot, encodeKey) con GhosttyTerminalEmulator; GhosttyTerminalEmulatorTest (4 test) passa sul Pixel 11 Pro via :terminal:connectedDebugAndroidTest: colori 16/256/truecolor, bold, è/漢字/emoji con celle larghe, cursore, risposta DSR, Enter/Ctrl+C/frecce anche in modalità DECCKM, resize con a capo. Test JVM (SnapshotDecoderTest, KeyInputTest) senza libreria nativa. Gate di AGENTS.md §6 verde. NOTICE con MIT, BSD-3, Unicode-3.0 di libghostty-vt, simdutf, Highway, uucode, Wuffs, translate-c, Zig; logcat del test senza contenuto dei terminali. Non verificato: installazione automatica di NDK e CMake da parte di AGP (già presenti sulla macchina; il README dà il comando sdkmanager); nessun comportamento in Desktop Mode cambiato (solo libreria). Il repository non ha un file LICENSE.",
+  "closed_at": "2026-11-26"
 }

@@ -1,0 +1,252 @@
+// JNI binding of libghostty-vt for io.github.totocastaldi.herdrdesktop.terminal.GhosttyNative.
+// Coarse-grained calls only: write bytes (returning the automatic replies), take a screen
+// snapshot, encode a key. The layout of the snapshot array is documented in SnapshotDecoder.kt.
+// Never logs: terminal content must not reach logcat.
+
+#include <jni.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <ghostty/vt.h>
+
+#define JNI_FN(name) Java_io_github_totocastaldi_herdrdesktop_terminal_GhosttyNative_##name
+
+enum { SNAPSHOT_HEADER_INTS = 8, SNAPSHOT_CELL_FIXED_INTS = 4, MAX_GRAPHEME = 32 };
+enum { NO_COLOR = -1 };
+
+typedef struct {
+  GhosttyTerminal terminal;
+  GhosttyRenderState render;
+  GhosttyRenderStateRowIterator rows;
+  GhosttyRenderStateRowCells cells;
+  GhosttyKeyEncoder encoder;
+  GhosttyKeyEvent event;
+  uint8_t *replies;
+  size_t replies_len;
+  size_t replies_cap;
+  bool out_of_memory;
+} Handle;
+
+static void on_write_pty(GhosttyTerminal terminal, void *userdata, const uint8_t *data,
+                         size_t len) {
+  (void)terminal;
+  Handle *h = (Handle *)userdata;
+  if (h->out_of_memory || len == 0) return;
+  if (h->replies_len + len > h->replies_cap) {
+    size_t cap = h->replies_cap ? h->replies_cap : 256;
+    while (cap < h->replies_len + len) cap *= 2;
+    uint8_t *grown = realloc(h->replies, cap);
+    if (!grown) {
+      h->out_of_memory = true;
+      return;
+    }
+    h->replies = grown;
+    h->replies_cap = cap;
+  }
+  memcpy(h->replies + h->replies_len, data, len);
+  h->replies_len += len;
+}
+
+static void destroy(Handle *h) {
+  if (!h) return;
+  ghostty_key_event_free(h->event);
+  ghostty_key_encoder_free(h->encoder);
+  ghostty_render_state_row_cells_free(h->cells);
+  ghostty_render_state_row_iterator_free(h->rows);
+  ghostty_render_state_free(h->render);
+  ghostty_terminal_free(h->terminal);
+  free(h->replies);
+  free(h);
+}
+
+static jbyteArray to_byte_array(JNIEnv *env, const uint8_t *data, size_t len) {
+  jbyteArray array = (*env)->NewByteArray(env, (jsize)len);
+  if (array && len > 0) (*env)->SetByteArrayRegion(env, array, 0, (jsize)len, (const jbyte *)data);
+  return array;
+}
+
+static jint rgb(GhosttyColorRgb c) { return (jint)((c.r << 16) | (c.g << 8) | c.b); }
+
+JNIEXPORT jlong JNICALL JNI_FN(nativeCreate)(JNIEnv *env, jclass cls, jint cols, jint rows,
+                                              jlong scrollback_bytes) {
+  (void)env;
+  (void)cls;
+  Handle *h = calloc(1, sizeof(Handle));
+  if (!h) return 0;
+  bool ok = ghostty_terminal_new(NULL, &h->terminal, (uint16_t)cols, (uint16_t)rows) ==
+                GHOSTTY_SUCCESS &&
+            ghostty_render_state_new(NULL, &h->render) == GHOSTTY_SUCCESS &&
+            ghostty_render_state_row_iterator_new(NULL, &h->rows) == GHOSTTY_SUCCESS &&
+            ghostty_render_state_row_cells_new(NULL, &h->cells) == GHOSTTY_SUCCESS &&
+            ghostty_key_encoder_new(NULL, &h->encoder) == GHOSTTY_SUCCESS &&
+            ghostty_key_event_new(NULL, &h->event) == GHOSTTY_SUCCESS;
+  if (ok) {
+    size_t max_bytes = (size_t)scrollback_bytes;
+    ok = ghostty_terminal_set(h->terminal, GHOSTTY_TERMINAL_OPT_USERDATA, h) == GHOSTTY_SUCCESS &&
+         ghostty_terminal_set(h->terminal, GHOSTTY_TERMINAL_OPT_WRITE_PTY,
+                              (const void *)on_write_pty) == GHOSTTY_SUCCESS &&
+         ghostty_terminal_set(h->terminal, GHOSTTY_TERMINAL_OPT_SCROLLBACK_MAX_BYTES,
+                              &max_bytes) == GHOSTTY_SUCCESS;
+  }
+  if (!ok) {
+    destroy(h);
+    return 0;
+  }
+  return (jlong)(intptr_t)h;
+}
+
+JNIEXPORT void JNICALL JNI_FN(nativeDestroy)(JNIEnv *env, jclass cls, jlong handle) {
+  (void)env;
+  (void)cls;
+  destroy((Handle *)(intptr_t)handle);
+}
+
+JNIEXPORT jbyteArray JNICALL JNI_FN(nativeWrite)(JNIEnv *env, jclass cls, jlong handle,
+                                                  jbyteArray data, jint offset, jint length) {
+  (void)cls;
+  Handle *h = (Handle *)(intptr_t)handle;
+  h->replies_len = 0;
+  h->out_of_memory = false;
+  jbyte *bytes = (*env)->GetPrimitiveArrayCritical(env, data, NULL);
+  if (!bytes) return NULL;
+  ghostty_terminal_vt_write(h->terminal, (const uint8_t *)bytes + offset, (size_t)length);
+  (*env)->ReleasePrimitiveArrayCritical(env, data, bytes, JNI_ABORT);
+  if (h->out_of_memory) {
+    (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/OutOfMemoryError"),
+                     "terminal replies");
+    return NULL;
+  }
+  return to_byte_array(env, h->replies, h->replies_len);
+}
+
+JNIEXPORT jint JNICALL JNI_FN(nativeResize)(JNIEnv *env, jclass cls, jlong handle, jint cols,
+                                             jint rows, jint cell_width, jint cell_height) {
+  (void)env;
+  (void)cls;
+  Handle *h = (Handle *)(intptr_t)handle;
+  return (jint)ghostty_terminal_resize(h->terminal, (uint16_t)cols, (uint16_t)rows,
+                                       (uint32_t)cell_width, (uint32_t)cell_height);
+}
+
+// Grows *buf to hold at least need ints. Returns false when out of memory.
+static bool reserve(jint **buf, size_t *cap, size_t need) {
+  if (need <= *cap) return true;
+  size_t cap2 = *cap ? *cap : 1024;
+  while (cap2 < need) cap2 *= 2;
+  jint *grown = realloc(*buf, cap2 * sizeof(jint));
+  if (!grown) return false;
+  *buf = grown;
+  *cap = cap2;
+  return true;
+}
+
+JNIEXPORT jintArray JNICALL JNI_FN(nativeSnapshot)(JNIEnv *env, jclass cls, jlong handle) {
+  (void)cls;
+  Handle *h = (Handle *)(intptr_t)handle;
+  if (ghostty_render_state_update(h->render, h->terminal) != GHOSTTY_SUCCESS) return NULL;
+
+  uint16_t cols = 0, rows = 0;
+  ghostty_render_state_get(h->render, GHOSTTY_RENDER_STATE_DATA_COLS, &cols);
+  ghostty_render_state_get(h->render, GHOSTTY_RENDER_STATE_DATA_ROWS, &rows);
+  GhosttyRenderStateColors colors = GHOSTTY_INIT_SIZED(GhosttyRenderStateColors);
+  ghostty_render_state_get(h->render, GHOSTTY_RENDER_STATE_DATA_COLORS, &colors);
+  GhosttyRenderStateCursor cursor = GHOSTTY_INIT_SIZED(GhosttyRenderStateCursor);
+  ghostty_render_state_get(h->render, GHOSTTY_RENDER_STATE_DATA_CURSOR, &cursor);
+
+  size_t cap = 0;
+  size_t len = SNAPSHOT_HEADER_INTS;
+  jint *buf = NULL;
+  if (!reserve(&buf, &cap, len + (size_t)cols * rows * (SNAPSHOT_CELL_FIXED_INTS + 1))) goto oom;
+  buf[0] = cols;
+  buf[1] = rows;
+  buf[2] = rgb(colors.foreground);
+  buf[3] = rgb(colors.background);
+  buf[4] = cursor.visible && cursor.viewport_has_value ? 1 : 0;
+  buf[5] = cursor.viewport_has_value ? cursor.viewport_x : -1;
+  buf[6] = cursor.viewport_has_value ? cursor.viewport_y : -1;
+  buf[7] = (jint)cursor.visual_style;
+
+  ghostty_render_state_get(h->render, GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &h->rows);
+  while (ghostty_render_state_row_iterator_next(h->rows)) {
+    ghostty_render_state_row_get(h->rows, GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &h->cells);
+    while (ghostty_render_state_row_cells_next(h->cells)) {
+      uint32_t codepoints[MAX_GRAPHEME];
+      GhosttyCodepointBuffer graphemes = {.ptr = codepoints, .cap = MAX_GRAPHEME};
+      ghostty_render_state_row_cells_get(h->cells,
+                                         GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_BUF,
+                                         &graphemes);
+      size_t count = graphemes.len < graphemes.cap ? graphemes.len : graphemes.cap;
+      if (!reserve(&buf, &cap, len + SNAPSHOT_CELL_FIXED_INTS + count)) goto oom;
+
+      GhosttyColorRgb color;
+      jint fg = ghostty_render_state_row_cells_get(
+                    h->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_FG_COLOR, &color) ==
+                        GHOSTTY_SUCCESS
+                    ? rgb(color)
+                    : NO_COLOR;
+      jint bg = ghostty_render_state_row_cells_get(
+                    h->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_BG_COLOR, &color) ==
+                        GHOSTTY_SUCCESS
+                    ? rgb(color)
+                    : NO_COLOR;
+      GhosttyStyle style = {0};
+      ghostty_render_state_row_cells_get(h->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE,
+                                         &style);
+      GhosttyCell raw = 0;
+      GhosttyCellWide wide = GHOSTTY_CELL_WIDE_NARROW;
+      if (ghostty_render_state_row_cells_get(h->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_RAW,
+                                             &raw) == GHOSTTY_SUCCESS) {
+        ghostty_cell_get(raw, GHOSTTY_CELL_DATA_WIDE, &wide);
+      }
+
+      buf[len++] = fg;
+      buf[len++] = bg;
+      buf[len++] = (jint)style.flags | ((jint)wide << 16);
+      buf[len++] = (jint)count;
+      for (size_t i = 0; i < count; i++) buf[len++] = (jint)codepoints[i];
+    }
+  }
+
+  jintArray result = (*env)->NewIntArray(env, (jsize)len);
+  if (result) (*env)->SetIntArrayRegion(env, result, 0, (jsize)len, buf);
+  free(buf);
+  return result;
+
+oom:
+  free(buf);
+  (*env)->ThrowNew(env, (*env)->FindClass(env, "java/lang/OutOfMemoryError"), "snapshot");
+  return NULL;
+}
+
+JNIEXPORT jbyteArray JNICALL JNI_FN(nativeEncodeKey)(JNIEnv *env, jclass cls, jlong handle,
+                                                      jint action, jint key, jint mods,
+                                                      jint consumed_mods, jint unshifted,
+                                                      jbyteArray utf8) {
+  (void)cls;
+  Handle *h = (Handle *)(intptr_t)handle;
+  ghostty_key_encoder_set_from_terminal(h->encoder, h->terminal);
+
+  uint8_t text[64];
+  size_t text_len = 0;
+  if (utf8) {
+    jsize n = (*env)->GetArrayLength(env, utf8);
+    text_len = (size_t)n < sizeof(text) ? (size_t)n : sizeof(text);
+    (*env)->GetByteArrayRegion(env, utf8, 0, (jsize)text_len, (jbyte *)text);
+  }
+  ghostty_key_event_set_action(h->event, (GhosttyKeyAction)action);
+  ghostty_key_event_set_key(h->event, (GhosttyKey)key);
+  ghostty_key_event_set_mods(h->event, (GhosttyMods)mods);
+  ghostty_key_event_set_consumed_mods(h->event, (GhosttyMods)consumed_mods);
+  ghostty_key_event_set_unshifted_codepoint(h->event, (uint32_t)unshifted);
+  ghostty_key_event_set_utf8(h->event, (GhosttyString){.ptr = text, .len = text_len});
+
+  uint8_t out[128];
+  size_t written = 0;
+  GhosttyResult result =
+      ghostty_key_encoder_encode(h->encoder, h->event, out, sizeof(out), &written);
+  ghostty_key_event_set_utf8(h->event, (GhosttyString){0});
+  if (result != GHOSTTY_SUCCESS) written = 0;
+  return to_byte_array(env, out, written);
+}
