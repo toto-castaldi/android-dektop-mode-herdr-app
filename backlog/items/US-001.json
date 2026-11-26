@@ -1,0 +1,32 @@
+{
+  "id": "US-001",
+  "title": "Aggiungere un core remoto e collegarsi via SSH",
+  "version": "v0.1.0",
+  "epic": "EPIC-002",
+  "module": "MOD-002",
+  "type": "User Story",
+  "priority": "P0",
+  "status": "Todo",
+  "dependencies": [
+    "TEC-002",
+    "SPIKE-001"
+  ],
+  "requirements": [
+    "REQ-CONN-001",
+    "REQ-NFR-001",
+    "REQ-NFR-002"
+  ],
+  "design_references": [
+    "design/integrations",
+    "design/security",
+    "design/data-model"
+  ],
+  "description": "Come utente voglio aggiungere le mie macchine con herdr-core e collegarmi via SSH, per lavorare con i loro terminali e agenti dall'app.",
+  "acceptance_criteria": [
+    "L'utente aggiunge, modifica e rimuove una macchina (nome, host, porta, utente); l'elenco persiste al riavvio dell'app.",
+    "L'utente genera una chiave ed25519 nell'Android Keystore e ne copia la chiave pubblica, oppure usa una password; con una chiave autorizzata sull'host il collegamento al core riesce.",
+    "Al primo collegamento l'app mostra l'impronta della host key e chiede conferma; con una host key cambiata il collegamento è bloccato con un avviso (test unitari).",
+    "Ogni macchina mostra lo stato: connessa, non raggiungibile, autenticazione fallita, core assente o incompatibile; caduta la connessione, l'app si ricollega da sola.",
+    "Durante un collegamento i log (logcat) non contengono chiavi, password o passphrase, e l'app apre connessioni solo verso la macchina configurata."
+  ]
+}
