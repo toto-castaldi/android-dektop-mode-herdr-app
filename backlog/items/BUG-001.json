@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "Bug",
   "priority": "P1",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "fix/BUG-001-accesso-rete-locale",
   "dependencies": [],
   "requirements": [
     "REQ-CONN-001",
