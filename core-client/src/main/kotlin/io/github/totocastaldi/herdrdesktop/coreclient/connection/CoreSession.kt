@@ -11,12 +11,17 @@ import io.github.totocastaldi.herdrdesktop.coreclient.protocol.ProtocolException
 import io.github.totocastaldi.herdrdesktop.coreclient.protocol.RpcError
 import io.github.totocastaldi.herdrdesktop.coreclient.protocol.RpcException
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -52,6 +57,7 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
     private val pending = ConcurrentHashMap<Long, CompletableDeferred<JsonElement>>()
     private val writeLock = Mutex()
     private val decoder = FrameDecoder()
+    private val inbound = ConcurrentHashMap<Int, Channel<ByteArray>>()
 
     /** Completes with the cause when the stream to the core ends. */
     val closed = CompletableDeferred<Throwable>()
@@ -60,13 +66,45 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
         val cause = runCatching {
             var chunk: ByteArray? = leftover
             while (chunk != null) {
-                decoder.feed(chunk).filter {
-                    it.channel == Frame.RPC_CHANNEL && it.kind == FrameKind.DATA
-                }.forEach(::dispatch)
+                decoder.feed(chunk).forEach(::route)
                 chunk = stream.read()
             }
         }.exceptionOrNull()
         finish(cause ?: ProtocolException("Stream closed"))
+    }
+
+    /** RPC answers go to their caller; data of the other channels is queued for [lines] until read. */
+    private fun route(frame: Frame) {
+        when {
+            frame.channel == Frame.RPC_CHANNEL -> if (frame.kind == FrameKind.DATA) dispatch(frame)
+            frame.kind == FrameKind.DATA -> inbound(frame.channel).trySend(frame.payload)
+            frame.kind == FrameKind.CLOSE -> inbound(frame.channel).close()
+            else -> Unit
+        }
+    }
+
+    private fun inbound(channel: Int): Channel<ByteArray> = inbound.getOrPut(channel) {
+        Channel<ByteArray>(Channel.UNLIMITED).also { if (closed.isCompleted) it.close() }
+    }
+
+    /** Splits the channel's data into lines and gives the core back the credit of every chunk read. */
+    override fun lines(channel: Int): Flow<String> = flow {
+        var buffer = ByteArray(0)
+        for (chunk in inbound(channel)) {
+            buffer += chunk
+            var newline = buffer.indexOf(NEWLINE)
+            while (newline >= 0) {
+                emit(String(buffer, 0, newline, Charsets.UTF_8))
+                buffer = buffer.copyOfRange(newline + 1, buffer.size)
+                newline = buffer.indexOf(NEWLINE)
+            }
+            credit(channel, chunk.size)
+        }
+    }
+
+    private suspend fun credit(channel: Int, bytes: Int) {
+        val payload = ByteBuffer.allocate(Int.SIZE_BYTES).order(ByteOrder.LITTLE_ENDIAN).putInt(bytes).array()
+        writeLock.withLock { stream.write(Frame(channel, FrameKind.CREDIT, payload).encode()) }
     }
 
     /** Completes the call answered by an RPC frame; notifications and unknown ids are ignored. */
@@ -86,6 +124,7 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
         pending.values.forEach { it.completeExceptionally(cause) }
         pending.clear()
         closed.complete(cause)
+        inbound.values.forEach { it.close() }
     }
 
     /** Calls [method] on channel 0 and returns its `result`; throws [RpcException] on a JSON-RPC error. */
@@ -120,6 +159,7 @@ class CoreSession private constructor(private val stream: CoreStream, scope: Cor
     companion object {
         private const val HELLO_ID = 1L
         private const val FIRST_ID = 2L
+        private const val NEWLINE = '\n'.code.toByte()
 
         /**
          * Sends `hello {generation, framed: true}` as a plain JSON line, checks compatibility and

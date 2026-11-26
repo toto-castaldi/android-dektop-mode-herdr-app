@@ -86,7 +86,7 @@ class WorkspaceContentTest {
     private fun text(id: Int, vararg args: Any) = rule.activity.getString(id, *args)
 
     private fun show(s: WorkspaceState = state) = rule.setContent {
-        MaterialTheme { WorkspaceContent("walle", s, actions) {} }
+        MaterialTheme { WorkspaceContent("walle", s, actions, onBack = {}) }
     }
 
     @Test

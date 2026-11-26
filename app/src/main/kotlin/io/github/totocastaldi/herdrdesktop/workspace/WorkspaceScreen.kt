@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,8 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.totocastaldi.herdrdesktop.AppContainer
 import io.github.totocastaldi.herdrdesktop.R
+import io.github.totocastaldi.herdrdesktop.agents.PaneFocus
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentsManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Space
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceNames
@@ -38,7 +43,7 @@ private const val REFRESH_MILLIS = 5_000L
 
 /** Spaces and tabs of a connected machine (REQ-WS-001); every change goes to the core first. */
 @Composable
-fun WorkspaceScreen(container: AppContainer, machineId: String, onBack: () -> Unit) {
+fun WorkspaceScreen(container: AppContainer, machineId: String, focus: PaneFocus?, onBack: () -> Unit) {
     val manager = container.workspaces
     val state by manager.state(machineId).collectAsState()
     val machine = container.machines.machines.collectAsState().value.firstOrNull { it.id == machineId }
@@ -49,8 +54,27 @@ fun WorkspaceScreen(container: AppContainer, machineId: String, onBack: () -> Un
         }
     }
     val actions = remember(manager, machineId) { ManagerActions(manager, machineId) }
-    WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack)
+    val shown = rememberShownAgents(container.agents, machineId)
+    val agents = AgentLink(focus?.takeIf { it.machineId == machineId }, shown)
+    WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack, agents)
 }
+
+/**
+ * Tells [agents] which terminals of [machineId] are on screen while the app is in the foreground (resumed), so
+ * that Done agents the user looks at become Idle; nothing is on screen once the screen leaves.
+ */
+@Composable
+private fun rememberShownAgents(agents: AgentsManager, machineId: String): (Set<String>) -> Unit {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val resumed = lifecycle.currentStateFlow.collectAsState().value.isAtLeast(Lifecycle.State.RESUMED)
+    var shown by remember(machineId) { mutableStateOf(emptySet<String>()) }
+    LaunchedEffect(machineId, shown, resumed) { agents.setLooking(machineId, if (resumed) shown else emptySet()) }
+    DisposableEffect(machineId) { onDispose { agents.setLooking(machineId, emptySet()) } }
+    return { shown = it }
+}
+
+/** Link with the agents sidebar: the pane to bring to the front and where to report the terminals on screen. */
+class AgentLink(val focus: PaneFocus? = null, val onShown: (Set<String>) -> Unit = {})
 
 /** What the user can do on spaces and tabs; each action is sent to the core. */
 interface WorkspaceActions {
@@ -106,7 +130,13 @@ private class ManagerActions(private val m: WorkspaceManager, private val id: St
 }
 
 @Composable
-fun WorkspaceContent(machineName: String, state: WorkspaceState, actions: WorkspaceActions, onBack: () -> Unit) {
+fun WorkspaceContent(
+    machineName: String,
+    state: WorkspaceState,
+    actions: WorkspaceActions,
+    onBack: () -> Unit,
+    agents: AgentLink = AgentLink()
+) {
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -118,7 +148,7 @@ fun WorkspaceContent(machineName: String, state: WorkspaceState, actions: Worksp
                 WorkspaceState.Unavailable -> Message(stringResource(R.string.workspace_unavailable))
                 WorkspaceState.Loading -> Message(stringResource(R.string.workspace_loading))
                 is WorkspaceState.Failed -> Message(stringResource(R.string.workspace_failed, state.reason))
-                is WorkspaceState.Ready -> ReadyContent(state, actions)
+                is WorkspaceState.Ready -> ReadyContent(state, actions, agents)
             }
         }
     }
@@ -130,7 +160,7 @@ internal fun Message(text: String) {
 }
 
 @Composable
-private fun ReadyContent(state: WorkspaceState.Ready, actions: WorkspaceActions) {
+private fun ReadyContent(state: WorkspaceState.Ready, actions: WorkspaceActions, agents: AgentLink) {
     val spaces = state.workspace.spaces
     var selectedSpace by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedTabs = remember { mutableStateMapOf<String, String>() }
@@ -146,8 +176,18 @@ private fun ReadyContent(state: WorkspaceState.Ready, actions: WorkspaceActions)
         known = spaces.flatMap { s -> s.tabs.map { it.id } + s.id }.toSet()
     }
 
+    // An agent selected in the sidebar brings its space and tab to the front.
+    LaunchedEffect(agents.focus) {
+        agents.focus?.location?.let {
+            selectedSpace = it.spaceId
+            selectedTabs[it.spaceId] = it.tabId
+        }
+    }
+
     val space = spaces.firstOrNull { it.id == selectedSpace } ?: spaces.firstOrNull()
     val tab = space?.let { s -> s.tabs.firstOrNull { it.id == selectedTabs[s.id] } ?: s.tabs.firstOrNull() }
+    val onScreen = tab?.terminals.orEmpty().toSet()
+    LaunchedEffect(onScreen) { agents.onShown(onScreen) }
     val controls = Controls(actions) { prompt = it }
     val spaceLabel = { index: Int, s: Space -> WorkspaceNames.displayName(s, state::cwdOf) ?: "${index + 1}" }
 

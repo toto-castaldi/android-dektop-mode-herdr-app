@@ -45,6 +45,9 @@ python3 .agents/tools/backlog.py status
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.wsHost=<host> \
   -Pandroid.testInstrumentationRunnerArguments.wsUser=<utente>                    # spazi e tab su un core reale (wsPort, wsDisplay, wsRestart=setup|verify, wsDeleteKey)
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.agHost=<host> \
+  -Pandroid.testInstrumentationRunnerArguments.agUser=<utente>                    # sidebar degli agenti su un core reale (agPort, agHostKey, agDisplay, agDeleteKey)
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo
 ./gradlew ktlintFormat                                                            # corregge lo stile Kotlin
 ```
