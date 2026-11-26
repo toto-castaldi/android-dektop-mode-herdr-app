@@ -3,6 +3,10 @@ package io.github.totocastaldi.herdrdesktop
 import android.app.ActivityOptions
 import android.content.Intent
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
@@ -21,6 +25,8 @@ import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineAuth
 import io.github.totocastaldi.herdrdesktop.coreclient.protocol.Compatibility
 import io.github.totocastaldi.herdrdesktop.machines.AndroidLocalNetworkAccess
 import io.github.totocastaldi.herdrdesktop.machines.CORE_OUTPUT_TAG
+import io.github.totocastaldi.herdrdesktop.machines.machineRowTag
+import io.github.totocastaldi.herdrdesktop.machines.machineStatusTag
 import java.io.File
 import java.util.Collections
 import kotlinx.coroutines.CoroutineScope
@@ -36,12 +42,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Real installation and update of herdr-core through the app's UI (REQ-CONN-003), on a host prepared by
- * hand: `-e coreHost <host> -e coreUser <user> [-e corePort <port>] -e coreCase install|update|fail`;
+ * Real installation and update of herdr-core through the app's UI (REQ-CONN-003, REQ-CONN-004), on a host
+ * prepared by hand: `-e coreHost <host> -e coreUser <user> [-e corePort <port>]
+ * -e coreCase install|update|fail|available|nomanifest`;
  * skipped without them. The test key `e2e-core-install` (public part written to `core-e2e.pub` in the
  * app's external files directory) must be authorized on the host, ideally with a forced command that
  * gives it an isolated `HOME` and `HC_SESSION`; the host must then have no core (`install`, `fail` with
- * an unreachable release server) or a core older than the app's minimum (`update`). `-e coreDeleteKey true`
+ * an unreachable release server), a core older than the app's minimum (`update`), a compatible core older
+ * than the published one (`available`), or a compatible core on a host where `curl` cannot read the
+ * manifest (`nomanifest`). `-e coreDeleteKey true`
  * deletes the test key at the end; `-e coreDisplay <id>` opens the app on that display (Desktop Mode) and
  * `-e corePauseMillis <ms>` holds the confirmation dialog and the final state on screen, for screenshots.
  */
@@ -88,6 +97,8 @@ class CoreInstallE2ETest {
             "install" -> install(target)
             "update" -> update(target)
             "fail" -> failedInstall(target)
+            "available" -> availableUpdate(target)
+            "nomanifest" -> noManifest(target)
             else -> error("unknown coreCase $case")
         }
     }
@@ -122,6 +133,38 @@ class CoreInstallE2ETest {
         assertTrue(seen.any { it is MachineStatus.CoreInstalling && it.operation == CoreOperation.UPDATE })
     }
 
+    /** REQ-CONN-004: the older compatible core stays in use until the user confirms the update. */
+    private fun availableUpdate(target: Machine) {
+        awaitStatus(target) { it is MachineStatus.Connected && it.availableUpdate != null }
+        val connected = status(target) as MachineStatus.Connected
+        val latest = checkNotNull(connected.availableUpdate)
+        statusLine(target).assertTextEquals(
+            "Connessa · herdr-core ${connected.coreVersion} · aggiornamento disponibile: $latest"
+        )
+        assertTrue(target.id in container.connections.sessions.value)
+        assertNothingRunsWithoutConfirmation(target)
+
+        confirm("Aggiorna herdr-core", "Aggiornare herdr-core su ${target.name}?")
+        awaitStatus(target) { it is MachineStatus.Connected && it.coreVersion == latest }
+        assertTrue(seen.any { it is MachineStatus.CoreInstalling && it.operation == CoreOperation.UPDATE })
+        assertNoUpdateShown(target)
+    }
+
+    /** REQ-CONN-004: a machine that cannot read the manifest connects normally, without warnings. */
+    private fun noManifest(target: Machine) {
+        awaitStatus(target) { it is MachineStatus.Connected }
+        assertNoUpdateShown(target)
+    }
+
+    /** After the check had time to run, the core is connected and no update is shown. */
+    private fun assertNoUpdateShown(target: Machine) {
+        Thread.sleep(IDLE_MILLIS)
+        val connected = status(target)
+        assertTrue("got $connected", connected is MachineStatus.Connected && connected.availableUpdate == null)
+        connected as MachineStatus.Connected
+        statusLine(target).assertTextEquals("Connessa · herdr-core ${connected.coreVersion}")
+    }
+
     private fun failedInstall(target: Machine) {
         awaitStatus(target) { it is MachineStatus.CoreMissing }
         confirm("Installa herdr-core", "Installare herdr-core su ${target.name}?")
@@ -140,10 +183,15 @@ class CoreInstallE2ETest {
             app.packageName,
             AndroidLocalNetworkAccess.PERMISSION
         )
+        // A run killed halfway leaves its machine behind: remove it so that only this run's machine is shown.
+        container.machines.machines.value.filter { it.name == MACHINE_NAME }.forEach {
+            container.connections.forget(it.id)
+            container.machines.remove(it.id)
+        }
         val key = container.keys.publicKey(KEY_ALIAS) ?: container.keys.generate(KEY_ALIAS)
         File(app.getExternalFilesDir(null), "core-e2e.pub").writeText(key.authorizedKeysLine() + "\n")
         val added = container.machines.add(
-            "core-e2e",
+            MACHINE_NAME,
             checkNotNull(host),
             port,
             checkNotNull(user),
@@ -165,14 +213,18 @@ class CoreInstallE2ETest {
         assertTrue(seen.none { it is MachineStatus.CoreInstalling })
     }
 
+    /** Presses [button] in the card of [machine], other machines may show the same one, then confirms. */
     private fun confirm(button: String, title: String) {
-        composeRule.onNodeWithText(button).performScrollTo().performClick()
+        val row = hasAnyAncestor(hasTestTag(machineRowTag(checkNotNull(machine).id)))
+        composeRule.onNode(hasText(button) and row).performScrollTo().performClick()
         composeRule.onNodeWithText(title).assertExists()
         Thread.sleep(pause)
         composeRule.onAllNodesWithText(button).onLast().performClick()
     }
 
     private fun status(target: Machine) = container.connections.status(target.id)
+
+    private fun statusLine(target: Machine) = composeRule.onNodeWithTag(machineStatusTag(target.id))
 
     private fun awaitStatus(target: Machine, done: (MachineStatus) -> Boolean) {
         composeRule.waitUntil(TIMEOUT_MILLIS) { done(status(target)) || status(target).isFinalFailure() }
@@ -184,6 +236,7 @@ class CoreInstallE2ETest {
 
     private companion object {
         const val KEY_ALIAS = "e2e-core-install"
+        const val MACHINE_NAME = "core-e2e"
         const val TIMEOUT_MILLIS = 180_000L
         const val IDLE_MILLIS = 5_000L
     }

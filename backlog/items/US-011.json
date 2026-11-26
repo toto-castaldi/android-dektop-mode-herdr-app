@@ -6,7 +6,8 @@
   "module": "MOD-002",
   "type": "User Story",
   "priority": "P2",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "us/US-011-segnalare-aggiornamenti-herdr-core",
   "dependencies": [
     "US-003"
   ],
@@ -24,5 +25,8 @@
     "La versione disponibile è letta dalla macchina via SSH (latest.json di releases.herdr.dev); l'app non apre connessioni verso host diversi dalle macchine configurate.",
     "Con un core già all'ultima versione, o se la macchina non riesce a leggere il manifest, non compare alcun avviso e il collegamento procede normalmente.",
     "Il confronto tra versioni e la lettura del manifest (anche malformato) sono coperti da test unitari; la segnalazione è verificata sul Pixel 11 Pro con un core reale remoto e nel Linux Terminal."
-  ]
+  ],
+  "outcome": "core-client: CoreUpdateCheck (install) esegue sulla macchina via SSH curl -fsSL --max-time 20 https://releases.herdr.dev/core/latest.json e confronta version con hello (compareVersions); manifest valido solo se oggetto JSON con version numerica puntata e generation assente o uguale a quella dell'app. ConnectionManager: controllo in parallelo alla sessione, solo al primo collegamento di ogni connect (non alle riconnessioni automatiche); MachineStatus.Connected(availableUpdate); updateCore ammesso anche da lì, poi ricollegamento. app: 'Connessa · herdr-core X · aggiornamento disponibile: Y', testo d'aiuto e 'Aggiorna herdr-core' col dialogo di conferma esistente; test tag per riga e stato della macchina. Test unitari: CoreUpdateCheckTest (manifest reale, 13 manifest malformati, generation diversa, confronto versioni, errori del comando) e CoreInstallFlowTest (avviso e core in uso finché non si conferma, aggiornamento confermato senza più avviso, nessun avviso con core aggiornato/manifest illeggibile/curl fallito/comando non eseguito, collegamento non ritardato, nessun nuovo controllo alle riconnessioni). E2E CoreInstallE2ETest sul Pixel 11 Pro (casi available e nomanifest) su walle e nella VM del Linux Terminal, in ambienti isolati con core 0.1.20 (chiave di test con comando forzato, HOME e HC_SESSION dedicati; nomanifest con proxy irraggiungibile): avviso 0.1.20 -> 0.1.22, nessun comando senza conferma per 5 s, aggiornamento confermato -> Connessa 0.1.22 senza avviso; senza manifest Connessa senza avviso. Desktop Mode: lanciato con coreDisplay=4 sul monitor esterno LG, screenshot dello stato con avviso e del dialogo di conferma. Logcat: solo id macchina e nomi di stato. Core reali di walle e VM non toccati. Nessuna nuova dipendenza.",
+  "changelog": "Added: l'app segnala quando per un herdr-core compatibile esiste una versione più recente e lo aggiorna dopo conferma",
+  "closed_at": "2026-11-26"
 }

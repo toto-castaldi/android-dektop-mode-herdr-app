@@ -11,7 +11,12 @@ sealed interface MachineStatus {
 
     data object Connecting : MachineStatus
 
-    data class Connected(val coreName: String?, val coreVersion: String) : MachineStatus
+    /**
+     * Connected to a compatible core; [availableUpdate] is a newer published version, if the machine
+     * reported one (REQ-CONN-004): the installed core stays in use until the user updates it.
+     */
+    data class Connected(val coreName: String?, val coreVersion: String, val availableUpdate: String? = null) :
+        MachineStatus
 
     /** The machine cannot be reached; the app retries in [retryInMillis]. */
     data class Unreachable(val reason: String, val retryInMillis: Long) : MachineStatus
