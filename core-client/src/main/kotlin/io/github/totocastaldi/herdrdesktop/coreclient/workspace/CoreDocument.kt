@@ -2,6 +2,7 @@ package io.github.totocastaldi.herdrdesktop.coreclient.workspace
 
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.CoreRpc
 import io.github.totocastaldi.herdrdesktop.coreclient.protocol.RpcException
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -11,12 +12,29 @@ import kotlinx.serialization.json.put
 /** The workspace document as read from the core, with the version to write it back. */
 data class WorkspaceSnapshot(val workspace: Workspace, val version: Long)
 
-/** The app's workspace document on a core ([WorkspaceCodec.DOC_NAME]), written with compare-and-set. */
-class CoreDocument(private val rpc: CoreRpc) {
-    suspend fun load(): WorkspaceSnapshot {
-        val result = rpc.call("doc.get", buildJsonObject { put("name", WorkspaceCodec.DOC_NAME) }) as JsonObject
+/**
+ * A workspace document on a core, by default the one shared with the desktop app ([WorkspaceCodec.DOC_NAME]),
+ * written with compare-and-set.
+ */
+class CoreDocument(private val rpc: CoreRpc, private val name: String = WorkspaceCodec.DOC_NAME) {
+    suspend fun load(): WorkspaceSnapshot = read().first
+
+    /** The document and whether it has a value (a document never written, or deleted, has none). */
+    internal suspend fun read(): Pair<WorkspaceSnapshot, Boolean> {
+        val result = rpc.call("doc.get", buildJsonObject { put("name", name) }) as JsonObject
         val version = (result["version"] as? JsonPrimitive)?.longOrNull ?: 0L
-        return WorkspaceSnapshot(WorkspaceCodec.decode(result["value"]), version)
+        val value = result["value"]
+        return WorkspaceSnapshot(WorkspaceCodec.decode(value), version) to (value != null && value !is JsonNull)
+    }
+
+    /** Deletes the value if nobody wrote since [version]; the core keeps the version. */
+    internal suspend fun delete(version: Long) {
+        val params = buildJsonObject {
+            put("name", name)
+            put("value", JsonNull)
+            put("version", version)
+        }
+        rpc.call("doc.set", params)
     }
 
     /**
@@ -39,7 +57,7 @@ class CoreDocument(private val rpc: CoreRpc) {
         val changed = change(current.workspace)
         if (changed == current.workspace) return current
         val params = buildJsonObject {
-            put("name", WorkspaceCodec.DOC_NAME)
+            put("name", name)
             put("value", WorkspaceCodec.encode(changed))
             put("version", current.version)
         }

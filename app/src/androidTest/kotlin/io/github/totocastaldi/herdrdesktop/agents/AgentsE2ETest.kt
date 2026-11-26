@@ -24,6 +24,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineAuth
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Workspace
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceClient
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
+import io.github.totocastaldi.herdrdesktop.workspace.E2eSpaces
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -67,6 +68,7 @@ class AgentsE2ETest {
     private val container get() = app.container
     private var scenario: ActivityScenario<MainActivity>? = null
     private var machine: Machine? = null
+    private val spaces = E2eSpaces()
     private var worker: String? = null
 
     @After
@@ -76,7 +78,7 @@ class AgentsE2ETest {
                 runBlocking {
                     val client = WorkspaceClient(rpc)
                     worker?.let { runCatching { client.terminals.end(it) } }
-                    client.document.load().workspace.spaces.forEach { client.closeSpace(it.id) }
+                    spaces.cleanUp(rpc)
                 }
             }
             container.connections.forget(m.id)
@@ -157,6 +159,7 @@ class AgentsE2ETest {
         hostKey?.let { assertEquals("host key of $host", it, presented.fingerprint) }
         container.connections.confirmHostKey(added.id, presented)
         rule.waitUntil(TIMEOUT_MILLIS) { container.workspaces.state(added.id).value is WorkspaceState.Ready }
+        spaces.record(checkNotNull(container.connections.sessions.value[added.id]))
         // By the machine's own tag: other machines of the device may be connected and show "Apri" too.
         rule.onNodeWithTag("open-${checkNotNull(machine).id}").performClick()
         rule.onNodeWithText(text(R.string.workspace_spaces)).assertExists()

@@ -28,6 +28,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineAuth
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Workspace
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceClient
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
+import io.github.totocastaldi.herdrdesktop.workspace.E2eSpaces
 import java.io.File
 import java.io.FileInputStream
 import kotlinx.coroutines.runBlocking
@@ -63,6 +64,7 @@ class WindowsE2ETest {
     private val destroyed = mutableListOf<Activity>()
     private var scenario: ActivityScenario<MainActivity>? = null
     private var machine: Machine? = null
+    private val spaces = E2eSpaces()
     private var display: Int? = null
     private var originalDensity: Int? = null
 
@@ -102,9 +104,7 @@ class WindowsE2ETest {
         restoreDensity()
         machine?.let { m ->
             container.connections.sessions.value[m.id]?.let { rpc ->
-                runBlocking {
-                    WorkspaceClient(rpc).let { c -> c.document.load().workspace.spaces.forEach { c.closeSpace(it.id) } }
-                }
+                runBlocking { spaces.cleanUp(rpc) }
             }
             container.connections.forget(m.id)
             container.machines.remove(m.id)
@@ -295,6 +295,7 @@ class WindowsE2ETest {
         assertEquals("host key of $host", expected, presented.fingerprint)
         container.connections.confirmHostKey(added.id, presented)
         rule.waitUntil(TIMEOUT_MILLIS) { container.workspaces.state(added.id).value is WorkspaceState.Ready }
+        spaces.record(checkNotNull(container.connections.sessions.value[added.id]))
         rule.onNode(hasText(text(R.string.machine_open)) and hasAnyAncestor(hasAnyDescendant(hasText(NAME))))
             .performClick()
         return added
