@@ -54,7 +54,15 @@ private val DIVIDER = 6.dp
  * The focused pane gets the keyboard; splitting, resizing and closing go to the core first.
  */
 @Composable
-internal fun TabPanes(spaceId: String, tab: Tab, state: WorkspaceState.Ready, controls: Controls, host: PaneHost?) {
+@Suppress("LongParameterList")
+internal fun TabPanes(
+    spaceId: String,
+    tab: Tab,
+    state: WorkspaceState.Ready,
+    controls: Controls,
+    host: PaneHost?,
+    focusPane: String? = null
+) {
     val leaves = PaneLayout.leaves(tab.root)
     var focused by remember(tab.id) { mutableStateOf(leaves.firstOrNull()?.id) }
     if (leaves.none { it.id == focused }) focused = leaves.lastOrNull()?.id
@@ -82,9 +90,11 @@ internal fun TabPanes(spaceId: String, tab: Tab, state: WorkspaceState.Ready, co
         (ids - known).firstOrNull()?.let { focused = it }
         known = ids
     }
+    // A pane chosen in the agents sidebar takes the focus.
+    LaunchedEffect(focusPane) { focusPane?.takeIf { id -> leaves.any { it.id == id } }?.let { focused = it } }
     LaunchedEffect(focused) { focused?.let { requesters[it] }?.let { runCatching { it.requestFocus() } } }
 
-    val focus = PaneFocus(focused, requesters) { focused = it }
+    val focus = PaneFocusState(focused, requesters) { focused = it }
     val scope = PaneScope(TabRef(spaceId, tab, state), controls, host, terminals, focus)
     Box(Modifier.fillMaxSize()) { scope.Node(tab.root, Modifier.fillMaxSize()) }
 }
@@ -93,7 +103,7 @@ internal fun TabPanes(spaceId: String, tab: Tab, state: WorkspaceState.Ready, co
 private class TabRef(val spaceId: String, val tab: Tab, val state: WorkspaceState.Ready)
 
 /** The focused pane, the focus requester of every pane and how a pane takes the focus. */
-private class PaneFocus(
+private class PaneFocusState(
     val focused: String?,
     val requesters: MutableMap<String, FocusRequester>,
     val onFocus: (String) -> Unit
@@ -105,7 +115,7 @@ private class PaneScope(
     val controls: Controls,
     val host: PaneHost?,
     val terminals: MutableMap<String, PaneTerminal>,
-    focus: PaneFocus
+    focus: PaneFocusState
 ) {
     val spaceId = ref.spaceId
     val tab = ref.tab

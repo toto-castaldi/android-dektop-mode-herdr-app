@@ -259,7 +259,7 @@ private fun MachineRow(
     actions: MachineActions
 ) {
     val endpoint = "${machine.user}@${machine.host}:${machine.port}"
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth().testTag(machineRowTag(machine.id))) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(machine.name, style = MaterialTheme.typography.titleMedium)
@@ -267,7 +267,12 @@ private fun MachineRow(
                     if (local != null) stringResource(R.string.local_machine_endpoint, endpoint) else endpoint,
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Text(statusText(status), color = statusColor(status), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    statusText(status),
+                    color = statusColor(status),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.testTag(machineStatusTag(machine.id))
+                )
                 if (local != null) LocalMachineHelp(status, local)
                 CoreInstallHelp(status, actions.proposeCore)
                 if (status == MachineStatus.LocalNetworkDenied) LocalNetworkDeniedHelp(openAppSettings)

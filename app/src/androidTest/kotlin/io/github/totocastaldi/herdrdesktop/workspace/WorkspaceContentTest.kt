@@ -99,7 +99,7 @@ class WorkspaceContentTest {
     private fun text(id: Int, vararg args: Any) = rule.activity.getString(id, *args)
 
     private fun show(s: WorkspaceState = state) = rule.setContent {
-        MaterialTheme { WorkspaceContent("walle", s, actions) {} }
+        MaterialTheme { WorkspaceContent("walle", s, actions, onBack = {}) }
     }
 
     @Test
@@ -158,6 +158,43 @@ class WorkspaceContentTest {
         rule.onNode(hasSetTextAction()).performTextReplacement("build")
         rule.onNodeWithText(text(R.string.save)).performClick()
         assertEquals(listOf("moveTab sp1 tb1 1", "renameTab sp1 tb1 build"), calls)
+    }
+
+    @Test
+    fun newWindowOpensOnAnotherSpaceThanTheSelectedOne() {
+        val opened = mutableListOf<String?>()
+        rule.setContent {
+            MaterialTheme {
+                WorkspaceContent(
+                    "walle",
+                    state,
+                    actions,
+                    {},
+                    WorkspaceLinks(
+                        window = WindowOptions(onNewWindow = {
+                            opened +=
+                                it
+                        })
+                    )
+                )
+            }
+        }
+        rule.onNodeWithText(text(R.string.workspace_new_window)).performClick()
+        rule.onNodeWithText("Server").performClick()
+        rule.onNodeWithText(text(R.string.workspace_new_window)).performClick()
+        assertEquals(listOf("sp2", "sp1"), opened)
+    }
+
+    @Test
+    fun windowOpensOnTheRequestedSpace() {
+        rule.setContent {
+            MaterialTheme {
+                WorkspaceContent("walle", state, actions, {
+                }, WorkspaceLinks(window = WindowOptions(initialSpace = "sp2")))
+            }
+        }
+        rule.onNodeWithText(text(R.string.workspace_terminal, "t3", "/srv")).assertIsDisplayed()
+        rule.onNodeWithText(text(R.string.workspace_new_window)).assertDoesNotExist()
     }
 
     @Test

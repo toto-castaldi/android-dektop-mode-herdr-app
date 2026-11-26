@@ -7,7 +7,7 @@ App Android nativa che porta l'esperienza dell'app desktop [Herdr](https://herdr
 - Non ci sono account, server intermedi o telemetria. Le chiavi SSH restano nell'Android Keystore.
 - Dispositivo di riferimento: Pixel 11 Pro.
 
-Progetto indipendente e open source, rilasciato sotto licenza Apache-2.0. Non è un prodotto ufficiale di Herdr.
+Progetto indipendente e open source, rilasciato sotto licenza Apache-2.0 (vedi [`LICENSE`](LICENSE)). Non è un prodotto ufficiale di Herdr.
 
 ## Stato
 
@@ -51,6 +51,11 @@ adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.workspac
 adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.workspace.TerminalPerformanceE2ETest \
   -e wsPerf true -e wsHost <host della LAN> -e wsUser <utente> [-e wsDisplay <id>] \
   io.github.totocastaldi.herdrdesktop.test/androidx.test.runner.AndroidJUnitRunner   # latenza e frame rate (REQ-NFR-003), risultati in logcat con tag PaneE2E
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.agHost=<host> \
+  -Pandroid.testInstrumentationRunnerArguments.agUser=<utente>                    # sidebar degli agenti su un core reale (agPort, agHostKey, agDisplay, agDeleteKey)
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=io.github.totocastaldi.herdrdesktop.WindowsE2ETest   # finestre su monitor esterno in Desktop Mode (winDisplay; con wsHost, wsUser e wsHostKey anche due finestre su un core reale; wsKey=write crea solo la chiave). Con am instrument -w, senza disinstallare
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo
 ./gradlew ktlintFormat                                                            # corregge lo stile Kotlin
 ```
@@ -66,7 +71,7 @@ L'APK di debug è in `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Licenze
 
-Le licenze del codice di terze parti incluso nell'app sono in [`NOTICE`](NOTICE), copiato anche nell'APK.
+Il progetto è rilasciato sotto la Apache License 2.0, il cui testo integrale è in [`LICENSE`](LICENSE). Le licenze del codice di terze parti incluso nell'app sono in [`NOTICE`](NOTICE). Entrambi i file sono copiati anche nell'APK, come `assets/LICENSE` e `assets/NOTICE`.
 
 ## Documentazione
 

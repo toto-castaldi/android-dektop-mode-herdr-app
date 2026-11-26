@@ -6,7 +6,9 @@ La versione si può chiudere solo quando, sul dispositivo di riferimento (Pixel 
 - su una macchina remota senza herdr-core, o con una versione incompatibile, l'app lo installa o lo aggiorna dopo conferma e si collega;
 - l'app si collega al herdr-core del Linux Terminal come "Questo dispositivo";
 - l'utente crea uno spazio con due tab, divide una tab in due pane e in un pane avvia Claude Code, con colori, Unicode e scrollback corretti;
+- uno spazio creato nell'app desktop Herdr sullo stesso core compare nell'app con le sue tab e i suoi pane, e uno spazio creato nell'app compare nell'app desktop;
 - un agente che avvia un worker con `hc run` mostra entrambi nella sidebar con stati che si aggiornano; il worker in Blocked si apre in peek, l'utente risponde e lo stato cambia;
+- un agente in un pane avvia con `hc run --label herdr.space=<id>` un worker che compare in una nuova tab del suo spazio, gli manda un messaggio con `hc send` e ne aspetta la fine con `hc wait`;
 - chiusa e riaperta l'app, spazi, tab e terminali sono ripristinati e gli agenti hanno continuato a lavorare;
 - l'utente usa l'app solo con tastiera e mouse: scorciatoie per spazi, tab e pane, combinazioni Ctrl e Alt nel terminale, selezione, copia e incolla, rotella, menu contestuale;
 - le soglie di reattività di REQ-NFR-003 sono rispettate;

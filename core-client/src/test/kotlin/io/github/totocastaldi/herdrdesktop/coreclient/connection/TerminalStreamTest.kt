@@ -7,7 +7,10 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -159,8 +162,48 @@ class TerminalStreamTest {
         assertTrue(stream.events.receiveCatching().isClosed)
     }
 
+    @Test
+    fun `a terminal stream and a notification channel share the session, each with its own credit and close`() =
+        runTest {
+            val core = StreamCore(FEATURES_PLAIN, attachAutomatic = false)
+            val session = open(core, backgroundScope)
+            val stream = session.attach(AttachRequest("t7", 80, 24))
+            val lines = mutableListOf<String>()
+            val collector = backgroundScope.launch { session.lines(EVENTS).collect { lines += it } }
+
+            core.push(Frame(EVENTS, FrameKind.DATA, "{\"a\":1}\n{\"b\"".toByteArray()))
+            core.push(Frame(CHANNEL, FrameKind.DATA, "echo".toByteArray()))
+            core.push(Frame(EVENTS, FrameKind.DATA, ":2}\n".toByteArray()))
+
+            assertEquals("paint", (stream.events.receive() as StreamEvent.Output).bytes.decodeToString())
+            assertEquals("echo", (stream.events.receive() as StreamEvent.Output).bytes.decodeToString())
+            stream.consumed(4)
+            val eventBytes = "{\"a\":1}\n{\"b\":2}\n".length
+            withTimeout(WAIT_MILLIS) { while (credited(core, EVENTS) < eventBytes) yield() }
+            assertEquals(listOf("""{"a":1}""", """{"b":2}"""), lines)
+            assertEquals(eventBytes, credited(core, EVENTS))
+            assertEquals(4, credited(core, CHANNEL))
+
+            // Closing the notification channel ends its lines only; the terminal keeps streaming.
+            core.push(Frame(EVENTS, FrameKind.CLOSE, ByteArray(0)))
+            core.push(Frame(CHANNEL, FrameKind.DATA, "more".toByteArray()))
+            withTimeout(WAIT_MILLIS) { collector.join() }
+            assertEquals("more", (stream.events.receive() as StreamEvent.Output).bytes.decodeToString())
+
+            // Detaching the viewer closes only the terminal's channel.
+            stream.close()
+            assertEquals(listOf(CHANNEL), core.sent.filter { it.kind == FrameKind.CLOSE }.map { it.channel })
+        }
+
+    /** Bytes the app gave back as credit on [channel]. */
+    private fun credited(core: StreamCore, channel: Int) = core.sent
+        .filter { it.kind == FrameKind.CREDIT && it.channel == channel }
+        .sumOf { ByteBuffer.wrap(it.payload).order(ByteOrder.LITTLE_ENDIAN).int }
+
     private companion object {
         const val CHANNEL = 5
+        const val EVENTS = 9
+        const val WAIT_MILLIS = 5_000L
         const val FEATURES_AUTOMATIC = """["framed","attach","automatic_input"]"""
         const val FEATURES_PLAIN = """["framed","attach"]"""
 

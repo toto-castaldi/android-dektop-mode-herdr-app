@@ -1,0 +1,27 @@
+{
+  "id": "BUG-002",
+  "title": "Con due finestre sulla stessa macchina un agente visibile non viene segnato come visto",
+  "version": "v0.1.0",
+  "epic": "EPIC-004",
+  "module": "MOD-002",
+  "type": "Bug",
+  "priority": "P2",
+  "status": "Todo",
+  "dependencies": [],
+  "requirements": [
+    "REQ-AGT-001",
+    "REQ-DM-001"
+  ],
+  "design_references": [
+    "design/integrations"
+  ],
+  "found_in": "v0.1.0",
+  "steps_to_reproduce": "1) Collegarsi a una macchina con un agente Done in una tab dello spazio A. 2) Aprire una seconda finestra dell'app sulla stessa macchina, sullo spazio B. 3) Nella prima finestra mostrare la tab dell'agente; la seconda finestra (in primo piano anch'essa o che ridisegna) segnala i propri terminali con AgentsManager.setLooking(machineId, …).",
+  "expected": "L'agente mostrato in una qualsiasi finestra in primo piano viene segnato come visto (herdr.seen=turn) e passa da Done a Idle.",
+  "actual": "AgentsManager tiene un solo insieme di terminali guardati per macchina: ogni finestra sovrascrive quello dell'altra, quindi l'agente visibile solo nella prima finestra può restare Done.",
+  "acceptance_criteria": [
+    "AgentsManager tiene i terminali guardati per finestra (o per chiamante) e considera guardato un terminale se lo mostra almeno una finestra in primo piano; chiudere o mandare in secondo piano una finestra toglie solo i suoi.",
+    "Test di regressione JVM in AgentsManagerTest: due finestre sulla stessa macchina, l'agente mostrato da una sola riceve herdr.seen; quando quella finestra smette di mostrarlo non viene più scritto.",
+    "Verificato sul Pixel 11 Pro in Desktop Mode con due finestre sulla stessa macchina e un herdr-core reale."
+  ]
+}

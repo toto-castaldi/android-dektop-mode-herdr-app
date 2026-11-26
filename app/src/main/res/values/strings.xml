@@ -37,6 +37,7 @@
     <string name="status_disconnected">Non collegata</string>
     <string name="status_connecting">Collegamento in corso…</string>
     <string name="status_connected">Connessa · herdr-core %1$s</string>
+    <string name="status_connected_update">Connessa · herdr-core %1$s · aggiornamento disponibile: %2$s</string>
     <string name="status_unreachable">Non raggiungibile (%1$s) · nuovo tentativo tra %2$d s</string>
     <string name="status_auth_failed">Autenticazione fallita</string>
     <string name="status_host_key_unconfirmed">Host key da confermare</string>
@@ -66,6 +67,7 @@
     <string name="core_missing_hello">hello fallito (%1$s).</string>
     <string name="core_install">Installa herdr-core</string>
     <string name="core_update">Aggiorna herdr-core</string>
+    <string name="core_help_update_available">È disponibile herdr-core %2$s (versione installata: %1$s). L\'app continua a usare il core installato finché non lo aggiorni.</string>
     <string name="core_retry">Riprova</string>
     <string name="core_no_output">Nessun output dal comando.</string>
     <string name="core_confirm_install_title">Installare herdr-core su %1$s?</string>
@@ -115,6 +117,7 @@
     <string name="host_key_changed_text_local">La host key della VM del Linux Terminal non corrisponde a quella confermata: il collegamento è bloccato. Succede se la VM è stata reimpostata; se l\'hai fatto tu, usa \"Reimposta host key\".</string>
     <string name="machine_open">Apri</string>
     <string name="workspace_back">← Macchine</string>
+    <string name="workspace_new_window">Nuova finestra</string>
     <string name="workspace_unavailable">La macchina non è collegata: spazi e tab tornano quando l\'app si ricollega al core.</string>
     <string name="workspace_loading">Lettura di spazi e tab dal core…</string>
     <string name="workspace_failed">Impossibile leggere spazi e tab dal core: %1$s</string>
@@ -146,4 +149,12 @@
     <string name="pane_ended">Il programma è terminato (%1$s).</string>
     <string name="pane_ended_code">Il programma è terminato con codice %1$d.</string>
     <string name="pane_failed">Impossibile collegarsi al terminale: %1$s</string>
+    <string name="agents_title">Agenti</string>
+    <string name="agents_none">Nessun agente sulle macchine collegate.</string>
+    <string name="agents_where">%1$s · %2$s</string>
+    <string name="agents_no_pane">%1$s · %2$s · senza pane</string>
+    <string name="agent_working">Working</string>
+    <string name="agent_blocked">Blocked</string>
+    <string name="agent_done">Done</string>
+    <string name="agent_idle">Idle</string>
 </resources>

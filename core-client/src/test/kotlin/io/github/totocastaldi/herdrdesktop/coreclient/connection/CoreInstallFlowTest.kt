@@ -5,6 +5,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandResult
 import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandRunner
 import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreInstaller
 import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreOperation
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreUpdateCheck
 import io.github.totocastaldi.herdrdesktop.coreclient.install.MissingPrerequisite
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.Machine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineAuth
@@ -18,10 +19,11 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Installing and updating herdr-core through [ConnectionManager] (REQ-CONN-003). */
+/** Installing and updating herdr-core through [ConnectionManager] (REQ-CONN-003, REQ-CONN-004). */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CoreInstallFlowTest {
     private class MemoryStore : MachineStore {
@@ -140,7 +142,10 @@ class CoreInstallFlowTest {
         gate.complete(Unit)
         runCurrent()
 
-        assertEquals(listOf(CoreInstaller.PREREQUISITES_COMMAND, CoreInstaller.INSTALL_COMMAND), commands.run)
+        assertEquals(
+            listOf(CoreInstaller.PREREQUISITES_COMMAND, CoreInstaller.INSTALL_COMMAND, CoreUpdateCheck.LATEST_COMMAND),
+            commands.run
+        )
         assertEquals(MachineStatus.Connected("vps", "0.1.22"), manager.status(machine.id))
         assertEquals(2, transport.opened)
     }
@@ -204,8 +209,104 @@ class CoreInstallFlowTest {
         manager.updateCore(machine.id)
         runCurrent()
 
-        assertEquals(listOf(CoreInstaller.UPDATE_COMMAND), commands.run)
+        assertEquals(listOf(CoreInstaller.UPDATE_COMMAND, CoreUpdateCheck.LATEST_COMMAND), commands.run)
         assertEquals(MachineStatus.Connected("vps", "0.1.22"), manager.status(machine.id))
+    }
+
+    private val compatibleOld = {
+        FakeCoreStream(
+            helloReply = """{"jsonrpc":"2.0","id":1,"result":{"core":{"name":"vps"},"framed":true,""" +
+                """"generation":1,"methods":["hello","server.status"],"version":"0.1.20"}}"""
+        )
+    }
+    private val manifest = CommandResult.Exited(0, """{"version":"0.1.22","generation":1,"targets":{}}""")
+
+    /** Answers latest.json with [latest] and the update command with its JSON. */
+    private fun updateCommands(latest: CommandResult) = Commands {
+        if (it == CoreUpdateCheck.LATEST_COMMAND) {
+            latest
+        } else {
+            CommandResult.Exited(0, """{"was":"0.1.20","now":"0.1.22","updated":true}""")
+        }
+    }
+
+    @Test
+    fun `an older compatible core shows the available update and stays in use until the user confirms`() = runTest {
+        val commands = updateCommands(manifest)
+        val manager = manager(Streams(compatibleOld, current), commands)
+
+        manager.connect(machine.id)
+        advanceTimeBy(120_000)
+        runCurrent()
+
+        assertEquals(MachineStatus.Connected("vps", "0.1.20", "0.1.22"), manager.status(machine.id))
+        assertTrue(machine.id in manager.sessions.value)
+        assertEquals(listOf(CoreUpdateCheck.LATEST_COMMAND), commands.run)
+
+        manager.updateCore(machine.id)
+        runCurrent()
+
+        assertEquals(
+            listOf(CoreUpdateCheck.LATEST_COMMAND, CoreInstaller.UPDATE_COMMAND, CoreUpdateCheck.LATEST_COMMAND),
+            commands.run
+        )
+        assertEquals(MachineStatus.Connected("vps", "0.1.22"), manager.status(machine.id))
+    }
+
+    @Test
+    fun `no warning when the core is the latest or the manifest cannot be read`() = runTest {
+        listOf(
+            CommandResult.Exited(0, """{"version":"0.1.20"}"""),
+            CommandResult.Exited(0, "<html>502</html>"),
+            CommandResult.Exited(6, "curl: (6) Could not resolve host"),
+            CommandResult.NotRun("unreachable")
+        ).forEach { latest ->
+            val manager = manager(Streams(compatibleOld), updateCommands(latest))
+
+            manager.connect(machine.id)
+            runCurrent()
+
+            assertEquals(MachineStatus.Connected("vps", "0.1.20"), manager.status(machine.id))
+            assertTrue(machine.id in manager.sessions.value)
+            assertTrue(runCatching { manager.updateCore(machine.id) }.exceptionOrNull() is IllegalArgumentException)
+            manager.disconnect(machine.id)
+        }
+    }
+
+    @Test
+    fun `the update check does not delay the connection`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val commands = CommandRunner { _, _, _ ->
+            gate.await()
+            manifest
+        }
+        val manager = manager(Streams(compatibleOld), commands)
+
+        manager.connect(machine.id)
+        runCurrent()
+        assertEquals(MachineStatus.Connected("vps", "0.1.20"), manager.status(machine.id))
+        assertTrue(machine.id in manager.sessions.value)
+
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(MachineStatus.Connected("vps", "0.1.20", "0.1.22"), manager.status(machine.id))
+    }
+
+    @Test
+    fun `automatic reconnections do not check again`() = runTest {
+        val first = compatibleOld()
+        val commands = updateCommands(manifest)
+        val manager = manager(Streams({ first }, compatibleOld), commands)
+
+        manager.connect(machine.id)
+        runCurrent()
+        first.drop()
+        advanceTimeBy(2_000)
+        runCurrent()
+
+        assertEquals(MachineStatus.Connected("vps", "0.1.20"), manager.status(machine.id))
+        assertEquals(1, commands.run.count { it == CoreUpdateCheck.LATEST_COMMAND })
+        assertFalse(CoreInstaller.UPDATE_COMMAND in commands.run)
     }
 
     @Test
@@ -221,6 +322,6 @@ class CoreInstallFlowTest {
         runCurrent()
         assertTrue(manager.status(machine.id) is MachineStatus.Connected)
         assertTrue(runCatching { manager.installCore(machine.id) }.exceptionOrNull() is IllegalArgumentException)
-        assertTrue(commands.run.isEmpty())
+        assertEquals(listOf(CoreUpdateCheck.LATEST_COMMAND), commands.run)
     }
 }

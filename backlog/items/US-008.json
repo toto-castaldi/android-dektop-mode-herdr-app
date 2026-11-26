@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P1",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "us/US-008-finestre-ridimensionabili-display-esterno",
   "dependencies": [
     "US-004"
   ],
@@ -21,5 +22,8 @@
     "Sul Pixel 11 Pro in Desktop Mode con monitor esterno, l'app si ridimensiona e si massimizza; il layout si adatta e non perde lo stato.",
     "L'utente apre una seconda finestra dell'app con un altro spazio; le due finestre funzionano in parallelo.",
     "Spostare la finestra tra display o cambiare la densità non riavvia i terminali né perde il layout."
-  ]
+  ],
+  "outcome": "Ogni finestra è un'istanza di MainActivity in un task proprio (FLAG_ACTIVITY_NEW_DOCUMENT|MULTIPLE_TASK): \"Nuova finestra\" nella schermata degli spazi apre un'altra finestra sulla stessa macchina e sullo spazio successivo (WindowTarget, extra macchina e spazio). Selezione di spazio e tab per finestra in rememberSaveable (Saver per le tab); connessioni e stato del core condivisi nell'AppContainer. configChanges esteso (uiMode, colorMode, fontScale, fontWeightAdjustment oltre a dimensioni, layout e densità): resize, massimizzazione, densità e cambio display non ricreano l'attività. Test JVM WindowTargetTest (4); gate verde. Sul Pixel 11 Pro in Desktop Mode (monitor LG, display 4) con am instrument: WindowsTest (due task separati), WorkspaceContentTest 8/8 (nuova finestra su un altro spazio, spazio iniziale), MainActivityTest 4/4; WindowsE2ETest verde 3 volte di fila: am task resize, Meta+= (massimizza), wm density x1,5 e ritorno, Meta+Ctrl+D verso il display del telefono e ritorno, con la stessa istanza dell'attività e una bozza non salvata ancora nel dialogo; con herdr-core reale su walle (0.1.20, sessione separata us008-e2e, chiave e2e-workspace autorizzata dall'utente, host key confrontata con l'impronta SHA256:XZAul8… data dall'utente): due finestre su due spazi, rinomina vista da entrambe, terminali del core invariati dopo massimizzazione, densità e spostamento tra display. Il test rimette l'override di densità dell'utente (un run iniziale l'aveva azzerato da 122 a 111 dpi, ripristinato a 122). Logcat senza chiavi, password o contenuto dei terminali; nessuna nuova dipendenza. Dopo i test: sessione us008-e2e fermata e il suo stato rimosso da walle. Limiti: i terminali non sono ancora mostrati nei pane (US-005), quindi la conservazione dei terminali è verificata sul core; due finestre possono chiedere entrambe il permesso di rete locale.",
+  "changelog": "Added: più finestre dell'app in Desktop Mode, ognuna sul proprio spazio, ridimensionabili e spostabili tra display senza perdere lo stato",
+  "closed_at": "2026-11-26"
 }

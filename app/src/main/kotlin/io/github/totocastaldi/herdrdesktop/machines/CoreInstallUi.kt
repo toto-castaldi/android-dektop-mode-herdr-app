@@ -38,8 +38,9 @@ import io.github.totocastaldi.herdrdesktop.coreclient.protocol.Compatibility
 const val CORE_OUTPUT_TAG = "core-command-output"
 
 /**
- * Message and action under a machine whose core is missing, too old, or being installed or updated
- * (REQ-CONN-003). [propose] asks the user to confirm the operation; nothing runs before that.
+ * Message and action under a machine whose core is missing, too old, has a newer version
+ * available, or is being installed or updated (REQ-CONN-003, REQ-CONN-004). [propose] asks the user
+ * to confirm the operation; nothing runs before that.
  */
 @Composable
 fun CoreInstallHelp(status: MachineStatus, propose: (CoreOperation) -> Unit) {
@@ -54,6 +55,11 @@ fun CoreInstallHelp(status: MachineStatus, propose: (CoreOperation) -> Unit) {
         is MachineStatus.CoreIncompatible -> (status.compatibility as? Compatibility.CoreUpdateNeeded)?.let { update ->
             missingDetail(update.missing)?.let { HelpText(it) }
             HelpText(stringResource(R.string.core_help_update))
+            Button(onClick = { propose(CoreOperation.UPDATE) }) { Text(stringResource(R.string.core_update)) }
+        }
+
+        is MachineStatus.Connected -> status.availableUpdate?.let {
+            HelpText(stringResource(R.string.core_help_update_available, status.coreVersion, it))
             Button(onClick = { propose(CoreOperation.UPDATE) }) { Text(stringResource(R.string.core_update)) }
         }
 
