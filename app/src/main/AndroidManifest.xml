@@ -4,6 +4,9 @@
     <!-- Only for SSH connections to the machines configured by the user. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Android 17: needed to connect to machines on the local network (private and link-local addresses). -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
     <!-- Linux Terminal: the app checks it is enabled and opens it for the local machine. -->
     <queries>
         <package android:name="com.android.virtualization.terminal" />

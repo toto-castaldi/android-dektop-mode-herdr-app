@@ -33,6 +33,8 @@ python3 .agents/tools/backlog.py status
 ./gradlew :core-client:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.e2eHost=<host> \
   -Pandroid.testInstrumentationRunnerArguments.e2eUser=<utente>                  # SSH reale dal dispositivo verso un host
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.lanHost=<host della LAN>        # permesso di rete locale verso un host SSH reale della LAN
 ./gradlew :core-client:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.e2eLocal=running                   # core locale: Terminal aperto (oppure =stopped, Terminal chiuso)
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo

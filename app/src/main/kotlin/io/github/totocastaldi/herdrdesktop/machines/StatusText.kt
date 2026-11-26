@@ -40,6 +40,10 @@ fun statusText(status: MachineStatus): String = when (status) {
 
 @Composable
 private fun localStatusText(status: MachineStatus): String = when (status) {
+    MachineStatus.LocalNetworkPermissionNeeded -> stringResource(R.string.status_local_network_needed)
+
+    MachineStatus.LocalNetworkDenied -> stringResource(R.string.status_local_network_denied)
+
     MachineStatus.LocalTerminalMissing -> stringResource(R.string.status_local_missing)
 
     is MachineStatus.LocalTerminalNotRunning -> stringResource(
@@ -56,7 +60,7 @@ private fun localStatusText(status: MachineStatus): String = when (status) {
         stringResource(R.string.status_local_not_configured_retry, it.seconds())
     } ?: stringResource(R.string.status_local_not_configured)
 
-    else -> error("Not a local machine status: $status")
+    else -> error("Not a local machine or local network status: $status")
 }
 
 private fun Long.seconds(): Int = (this / MILLIS_PER_SECOND).toInt()
@@ -66,6 +70,7 @@ fun statusColor(status: MachineStatus): Color = when (status) {
     is MachineStatus.Connected -> MaterialTheme.colorScheme.primary
 
     MachineStatus.Disconnected, MachineStatus.Connecting, is MachineStatus.HostKeyUnconfirmed,
+    MachineStatus.LocalNetworkPermissionNeeded,
     is MachineStatus.LocalTerminalStarting ->
         MaterialTheme.colorScheme.onSurfaceVariant
 

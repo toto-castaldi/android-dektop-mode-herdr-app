@@ -43,6 +43,12 @@ fun interface LocalTerminalProbe {
     fun available(): Boolean
 }
 
+/** What the device allows: the Linux Terminal for the local machine, the local network for LAN hosts. */
+data class DeviceAccess(
+    val localTerminal: LocalTerminalProbe = LocalTerminalProbe { true },
+    val localNetwork: LocalNetworkAccess = LocalNetworkAccess.Unrestricted
+)
+
 /**
  * Keeps one connection per machine the user connected, and its [MachineStatus]. A dropped or
  * unreachable connection is retried with exponential backoff; authentication, host key and core
@@ -54,7 +60,7 @@ class ConnectionManager(
     private val scope: CoroutineScope,
     private val policy: ConnectionPolicy = ConnectionPolicy(),
     private val log: ConnectionLog = ConnectionLog { _, _ -> },
-    private val localTerminal: LocalTerminalProbe = LocalTerminalProbe { true }
+    private val device: DeviceAccess = DeviceAccess()
 ) {
     private val state = MutableStateFlow<Map<String, MachineStatus>>(emptyMap())
     val statuses: StateFlow<Map<String, MachineStatus>> = state.asStateFlow()
@@ -64,8 +70,6 @@ class ConnectionManager(
     @Volatile
     private var terminalPhase = TerminalPhase.UNKNOWN
     private var terminalTimer: Job? = null
-
-    fun status(id: String): MachineStatus = state.value[id] ?: MachineStatus.Disconnected
 
     /** Starts (or restarts) connecting to the machine [id]. */
     fun connect(id: String) {
@@ -113,6 +117,24 @@ class ConnectionManager(
         connect(LocalMachine.ID)
     }
 
+    /**
+     * Result of asking the user for the local network permission: if granted, the machines waiting for it
+     * connect again; otherwise they show that local network access is not allowed.
+     */
+    fun localNetworkPermissionResult(granted: Boolean) {
+        val waiting = state.value.filterValues {
+            it == MachineStatus.LocalNetworkPermissionNeeded || it == MachineStatus.LocalNetworkDenied
+        }.keys
+        waiting.forEach { id ->
+            if (granted) {
+                connect(id)
+            } else {
+                jobs.stop(id)
+                set(id, MachineStatus.LocalNetworkDenied)
+            }
+        }
+    }
+
     /** Forgets the machine's connection state, for example after removing it. */
     fun forget(id: String) {
         jobs.stop(id)
@@ -145,25 +167,31 @@ class ConnectionManager(
         val refused: Boolean = false
     )
 
-    private suspend fun attempt(machine: Machine): Outcome = when (
-        val opened = if (machine.isLocal && !localTerminal.available()) null else transport.open(machine)
-    ) {
-        null -> Outcome(MachineStatus.LocalTerminalMissing)
+    private suspend fun attempt(machine: Machine): Outcome {
+        device.blockingStatus(machine)?.let { return Outcome(it) }
+        return when (val opened = transport.open(machine)) {
+            is OpenResult.Unreachable -> Outcome(reason = opened.reason, refused = opened.refused)
 
-        is OpenResult.Unreachable -> Outcome(reason = opened.reason, refused = opened.refused)
+            OpenResult.AuthFailed ->
+                Outcome(
+                    if (machine.isLocal) {
+                        MachineStatus.LocalTerminalNotConfigured(
+                            true,
+                            null
+                        )
+                    } else {
+                        MachineStatus.AuthFailed
+                    }
+                )
 
-        OpenResult.AuthFailed ->
-            Outcome(
-                if (machine.isLocal) MachineStatus.LocalTerminalNotConfigured(true, null) else MachineStatus.AuthFailed
-            )
+            is OpenResult.HostKeyRejected -> Outcome(opened.decision.toStatus())
 
-        is OpenResult.HostKeyRejected -> Outcome(opened.decision.toStatus())
-
-        is OpenResult.Opened -> when (val handshake = CoreSession.handshake(opened.stream, scope)) {
-            is HandshakeResult.Ready -> serve(machine, handshake)
-            HandshakeResult.CoreMissing -> Outcome(MachineStatus.CoreMissing)
-            is HandshakeResult.Incompatible -> Outcome(MachineStatus.CoreIncompatible(handshake.compatibility))
-            is HandshakeResult.Failed -> Outcome(reason = handshake.reason)
+            is OpenResult.Opened -> when (val handshake = CoreSession.handshake(opened.stream, scope)) {
+                is HandshakeResult.Ready -> serve(machine, handshake)
+                HandshakeResult.CoreMissing -> Outcome(MachineStatus.CoreMissing)
+                is HandshakeResult.Incompatible -> Outcome(MachineStatus.CoreIncompatible(handshake.compatibility))
+                is HandshakeResult.Failed -> Outcome(reason = handshake.reason)
+            }
         }
     }
 
@@ -188,6 +216,18 @@ class ConnectionManager(
         state.update { it + (id to status) }
         machines.get(id)?.let { log.statusChanged(it, status) }
     }
+}
+
+fun ConnectionManager.status(id: String): MachineStatus = statuses.value[id] ?: MachineStatus.Disconnected
+
+/** Status that prevents even trying to connect to [machine], or null. */
+private suspend fun DeviceAccess.blockingStatus(machine: Machine): MachineStatus? = when {
+    machine.isLocal && !localTerminal.available() -> MachineStatus.LocalTerminalMissing
+
+    // Without the permission Android drops the connection silently: ask instead of hanging.
+    !localNetwork.granted() && localNetwork.needsPermission(machine.host) -> MachineStatus.LocalNetworkPermissionNeeded
+
+    else -> null
 }
 
 /** Cancels the run of [id]; cancelling it closes its session (see serve). */
