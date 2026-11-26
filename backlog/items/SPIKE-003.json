@@ -6,7 +6,8 @@
   "module": "MOD-003",
   "type": "Spike",
   "priority": "P0",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "spike/SPIKE-003-emulazione-rendering-terminale",
   "dependencies": [],
   "requirements": [
     "REQ-NFR-003"
