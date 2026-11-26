@@ -39,6 +39,9 @@ import kotlinx.coroutines.flow.first
  */
 fun interface FrameObserver {
     fun onFrame(session: TerminalSession, vsyncNanos: Long, version: Long)
+
+    /** A key pressed in [session], with its `KeyEvent.getEventTime()` (`uptimeMillis` clock). */
+    fun onKeyDown(session: TerminalSession, eventTimeMillis: Long) = Unit
 }
 
 /** Cell size of the terminal font, in pixels. */
@@ -93,7 +96,10 @@ fun TerminalView(
         }
         // Before the input method: a physical keyboard's keys go straight to the program, without the round
         // trip through the IME process that would add to the key-to-echo latency (REQ-NFR-003).
-        .onInterceptKeyBeforeSoftKeyboard { event -> sendKey(session, event.nativeKeyEvent, event.type) }
+        .onInterceptKeyBeforeSoftKeyboard { event ->
+            if (event.type == KeyEventType.KeyDown) frameObserver?.onKeyDown(session, event.nativeKeyEvent.eventTime)
+            sendKey(session, event.nativeKeyEvent, event.type)
+        }
         .focusable()
         .pointerInput(session) {
             awaitPointerEventScope {

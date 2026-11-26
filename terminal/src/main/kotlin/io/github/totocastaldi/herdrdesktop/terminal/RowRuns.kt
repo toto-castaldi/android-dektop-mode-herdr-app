@@ -62,18 +62,30 @@ object RowRunsBuilder {
         addBackground(backgrounds, column, cells, if (attributes.inverse) fg else bg, screen.background)
         val text = screen.textAt(column, row)
         if (!drawn(text, attributes)) return
-        val style = TextStyle(
-            if (attributes.inverse) bg else fg,
-            attributes.bold,
-            attributes.italic,
-            attributes.faint,
-            attributes.underline,
-            attributes.strikethrough,
-            attributes.overline
-        )
+        // Compared as a number: a style object is made only when a run starts.
+        val styleKey = ((if (attributes.inverse) bg else fg).toLong() shl STYLE_SHIFT) or
+            (attributes.bits and STYLE_BITS).toLong()
         val shown = if (text.isEmpty() || text == " " || attributes.invisible) " " else text
-        texts.add(column, cells, shown, style, cells == 1 && (isAscii(shown) || fitsCell(shown)))
+        texts.add(column, cells, shown, styleKey, cells == 1 && (isAscii(shown) || fitsCell(shown)))
     }
+
+    /** The style of a key made by `addCell`. */
+    private fun styleOf(key: Long): TextStyle {
+        val a = CellAttributes((key and STYLE_BITS.toLong()).toInt())
+        return TextStyle(
+            (key shr STYLE_SHIFT).toInt(),
+            a.bold,
+            a.italic,
+            a.faint,
+            a.underline,
+            a.strikethrough,
+            a.overline
+        )
+    }
+
+    /** Attribute bits that change how text is drawn, once inverse and invisible are resolved. */
+    private const val STYLE_BITS = 0x7C7
+    private const val STYLE_SHIFT = 16
 
     private fun color(value: Int, default: Int) = if (value == ScreenRows.NO_COLOR) default else value
 
@@ -101,11 +113,13 @@ object RowRunsBuilder {
         private var open: StringBuilder? = null
         private var openColumn = 0
         private var openCells = 0
-        private var openStyle: TextStyle? = null
+        private var openKey = 0L
+        private var lastKey = -1L
+        private var lastStyle: TextStyle? = null
 
-        fun add(column: Int, cells: Int, text: String, style: TextStyle, grouped: Boolean) {
+        fun add(column: Int, cells: Int, text: String, styleKey: Long, grouped: Boolean) {
             val builder = open
-            if (grouped && builder != null && extends(style, column)) {
+            if (grouped && builder != null && extends(styleKey, column)) {
                 builder.append(text)
                 openCells += cells
                 return
@@ -115,13 +129,22 @@ object RowRunsBuilder {
                 open = StringBuilder(text)
                 openColumn = column
                 openCells = cells
-                openStyle = style
+                openKey = styleKey
             } else {
-                done += TextRun(column, cells, text, style, grouped = false)
+                done += TextRun(column, cells, text, style(styleKey), grouped = false)
             }
         }
 
-        private fun extends(style: TextStyle, column: Int) = openStyle == style && openColumn + openCells == column
+        private fun extends(styleKey: Long, column: Int) = openKey == styleKey && openColumn + openCells == column
+
+        /** Neighbouring runs often share a style: the last one is reused. */
+        private fun style(key: Long): TextStyle {
+            lastStyle?.takeIf { lastKey == key }?.let { return it }
+            return styleOf(key).also {
+                lastKey = key
+                lastStyle = it
+            }
+        }
 
         fun runs(): List<TextRun> {
             close()
@@ -130,7 +153,7 @@ object RowRunsBuilder {
 
         private fun close() {
             val builder = open ?: return
-            done += TextRun(openColumn, openCells, builder.toString(), checkNotNull(openStyle), grouped = true)
+            done += TextRun(openColumn, openCells, builder.toString(), style(openKey), grouped = true)
             open = null
         }
     }

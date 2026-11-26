@@ -14,6 +14,7 @@ import io.github.totocastaldi.herdrdesktop.terminal.TerminalSize
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
@@ -75,7 +76,9 @@ internal class PaneTerminal(private val rpc: CoreRpc, val address: String, scope
             return@coroutineScope
         }
         mutableState.value = PaneTerminalState.Live
-        val writer = launch {
+        // Unconfined: a key queued from the UI thread is written right there, without waking another thread
+        // (part of the key-to-echo latency, REQ-NFR-003); the order of the queue is kept.
+        val writer = launch(Dispatchers.Unconfined) {
             for (send in outbound) {
                 // A failed write means the session is gone: the reader sees the end of the stream.
                 if (runCatching { send(stream) }.isFailure) break

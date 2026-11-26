@@ -67,6 +67,9 @@ class TerminalPerformanceE2ETest {
     private val drawn = CopyOnWriteArrayList<Triple<TerminalSession, Long, Long>>()
     private val sessions = ConcurrentHashMap.newKeySet<TerminalSession>()
 
+    /** `KeyEvent.getEventTime()` of the keys the panes received. */
+    private val keyTimes = CopyOnWriteArrayList<Long>()
+
     @After
     fun cleanUp() {
         container.frameObserver = null
@@ -142,7 +145,9 @@ class TerminalPerformanceE2ETest {
             val code = if (i % 2 == 0) KeyEvent.KEYCODE_X else KeyEvent.KEYCODE_DEL
             val version = session.version
             drawn.clear()
-            val t0 = key(code)
+            keyTimes.clear()
+            systemKey(code)
+            val t0 = awaitUntil { keyTimes.firstOrNull() }
             val frame = awaitUntil { drawn.firstOrNull { it.first === session && it.third > version } }
             metrics.awaitCompletion(frame.second)?.let {
                 latencies +=
@@ -223,10 +228,16 @@ class TerminalPerformanceE2ETest {
     }
 
     private fun connect(): Machine {
-        container.frameObserver = FrameObserver { session, _, version ->
-            sessions += session
-            if (drawn.size > MAX_KEPT_FRAMES) drawn.clear()
-            drawn += Triple(session, System.nanoTime(), version)
+        container.frameObserver = object : FrameObserver {
+            override fun onFrame(session: TerminalSession, vsyncNanos: Long, version: Long) {
+                sessions += session
+                if (drawn.size > MAX_KEPT_FRAMES) drawn.clear()
+                drawn += Triple(session, System.nanoTime(), version)
+            }
+
+            override fun onKeyDown(session: TerminalSession, eventTimeMillis: Long) {
+                keyTimes += eventTimeMillis
+            }
         }
         container.machines.machines.value.filter { it.name == NAME }.forEach {
             container.connections.forget(it.id)
@@ -273,6 +284,16 @@ class TerminalPerformanceE2ETest {
                 true
             )
         }
+    }
+
+    /**
+     * Presses and releases one key through the system's `input` command, which stamps the event when it
+     * injects it, as the kernel does for a physical keyboard; injecting from the test process instead adds
+     * about 17 ms before the event reaches the window.
+     */
+    private fun systemKey(code: Int) {
+        val displayArg = display?.let { "-d $it " }.orEmpty()
+        instrumentation.uiAutomation.executeShellCommand("input ${displayArg}keyevent $code").close()
     }
 
     /** Presses and releases one key; returns the down event's time (`uptimeMillis`). */

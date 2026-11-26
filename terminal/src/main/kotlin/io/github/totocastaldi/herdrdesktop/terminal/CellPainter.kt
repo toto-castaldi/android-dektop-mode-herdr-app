@@ -19,6 +19,9 @@ internal class CellPainter(textSizePx: Float) {
     }
     private val fill = Paint()
     private val ascent: Float
+
+    /** Shift of the second drawing of bold text, about a sixteenth of the font size. */
+    private val boldOffset = (textSizePx / BOLD_DIVISOR).coerceAtLeast(1f)
     private val cellAdvance: Float
     val metrics: CellMetrics
 
@@ -38,6 +41,11 @@ internal class CellPainter(textSizePx: Float) {
     }
     private var capacity = INITIAL_ROWS
 
+    /** Row hashes of the last frame, its rows that were not in the frame before, and how many rows it had. */
+    private var shown: Set<Int> = emptySet()
+    private var misses = 0
+    private var lastRows = 0
+
     init {
         val advance = paint.measureText("M")
         val font = paint.fontMetrics
@@ -55,10 +63,20 @@ internal class CellPainter(textSizePx: Float) {
         fill.color = OPAQUE or screen.background
         canvas.drawRect(0f, 0f, width, height, fill)
         val ch = metrics.heightPx.toFloat()
-        val cached = screen is RawScreen && canvas.isHardwareAccelerated
+        // Rows are recorded for reuse unless most of them were not on screen in the last frame (continuous
+        // output), where recording would only add work.
+        val cached = screen is RawScreen && canvas.isHardwareAccelerated && misses * 2 <= lastRows
+        misses = 0
+        lastRows = screen.size.rows
+        val hashes = HashSet<Int>(screen.size.rows * 2)
         capacity = (screen.size.rows * ROWS_KEPT).coerceAtLeast(INITIAL_ROWS)
         for (row in 0 until screen.size.rows) {
             val top = row * ch
+            if (screen is RawScreen) {
+                val hash = screen.rowHash(row)
+                hashes += hash
+                if (hash !in shown) misses++
+            }
             if (cached) {
                 val node = rowNode(screen as RawScreen, row)
                 canvas.save()
@@ -69,6 +87,7 @@ internal class CellPainter(textSizePx: Float) {
                 drawRow(canvas, screen, row, top)
             }
         }
+        shown = hashes
         screen.cursor?.takeIf { it.visible }?.let { drawCursor(canvas, screen, it, focused) }
     }
 
@@ -106,10 +125,13 @@ internal class CellPainter(textSizePx: Float) {
     private fun drawText(canvas: Canvas, run: TextRun, x: Float, top: Float) {
         val style = run.style
         paint.color = (if (style.faint) FAINT else OPAQUE) or style.foreground
-        paint.isFakeBoldText = style.bold
-        paint.textSkewX = if (style.italic) ITALIC_SKEW else 0f
         val width = run.cells * metrics.widthPx.toFloat()
-        if (run.text.isNotBlank()) canvas.drawText(run.text, x, top + ascent, paint)
+        if (run.text.isNotBlank()) {
+            canvas.drawText(run.text, x, top + ascent, paint)
+            // Bold as overstrike: the same cached glyphs drawn again, shifted. Skia's synthetic bold
+            // (`isFakeBoldText`) costs the render thread too much for continuous output (REQ-NFR-003).
+            if (style.bold) canvas.drawText(run.text, x + boldOffset, top + ascent, paint)
+        }
         fill.color = paint.color
         val ch = metrics.heightPx.toFloat()
         val line = (ch / LINE_DIVISOR).coerceAtLeast(1f)
@@ -136,8 +158,6 @@ internal class CellPainter(textSizePx: Float) {
                 val text = s.textAt(cursor.column, cursor.row)
                 if (text.isNotBlank()) {
                     paint.color = OPAQUE or s.background
-                    paint.isFakeBoldText = false
-                    paint.textSkewX = 0f
                     canvas.drawText(text, x, y + ascent, paint)
                 }
             }
@@ -154,8 +174,8 @@ internal class CellPainter(textSizePx: Float) {
     private companion object {
         const val OPAQUE = 0xFF000000.toInt()
         const val FAINT = 0x99000000.toInt()
-        const val ITALIC_SKEW = -0.2f
         const val LINE_DIVISOR = 16f
+        const val BOLD_DIVISOR = 16f
         const val INITIAL_ROWS = 64
         const val ROWS_KEPT = 3
         const val LOAD_FACTOR = 0.75f
