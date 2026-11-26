@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.MachineStatus
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreOperation
 import io.github.totocastaldi.herdrdesktop.coreclient.protocol.Compatibility
 
 private const val MILLIS_PER_SECOND = 1_000L
@@ -27,15 +28,48 @@ fun statusText(status: MachineStatus): String = when (status) {
 
     is MachineStatus.HostKeyChanged -> stringResource(R.string.status_host_key_changed)
 
-    MachineStatus.CoreMissing -> stringResource(R.string.status_core_missing)
+    else -> coreStatusText(status) ?: localStatusText(status)
+}
+
+@Composable
+private fun coreStatusText(status: MachineStatus): String? = when (status) {
+    is MachineStatus.CoreMissing -> stringResource(R.string.status_core_missing)
 
     is MachineStatus.CoreIncompatible -> when (val c = status.compatibility) {
         is Compatibility.AppUpdateNeeded -> stringResource(R.string.status_core_app_update)
-        is Compatibility.CoreUpdateNeeded -> stringResource(R.string.status_core_update, c.reason)
+
+        is Compatibility.CoreUpdateNeeded -> stringResource(
+            R.string.status_core_update,
+            c.foundVersion ?: stringResource(R.string.core_version_unknown),
+            c.requiredVersion
+        )
+
         Compatibility.Compatible -> stringResource(R.string.status_connected, "")
     }
 
-    else -> localStatusText(status)
+    is MachineStatus.CoreInstalling -> stringResource(
+        if (status.operation ==
+            CoreOperation.INSTALL
+        ) {
+            R.string.status_core_installing
+        } else {
+            R.string.status_core_updating
+        }
+    )
+
+    is MachineStatus.CoreInstallFailed -> {
+        val exit = status.exitStatus?.toString() ?: "?"
+        stringResource(
+            if (status.operation == CoreOperation.INSTALL) {
+                R.string.status_core_install_failed
+            } else {
+                R.string.status_core_update_failed
+            },
+            exit
+        )
+    }
+
+    else -> null
 }
 
 @Composable
@@ -70,7 +104,7 @@ fun statusColor(status: MachineStatus): Color = when (status) {
     is MachineStatus.Connected -> MaterialTheme.colorScheme.primary
 
     MachineStatus.Disconnected, MachineStatus.Connecting, is MachineStatus.HostKeyUnconfirmed,
-    MachineStatus.LocalNetworkPermissionNeeded,
+    MachineStatus.LocalNetworkPermissionNeeded, is MachineStatus.CoreInstalling,
     is MachineStatus.LocalTerminalStarting ->
         MaterialTheme.colorScheme.onSurfaceVariant
 

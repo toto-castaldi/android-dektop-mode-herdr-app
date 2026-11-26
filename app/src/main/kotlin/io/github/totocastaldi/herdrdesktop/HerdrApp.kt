@@ -41,13 +41,15 @@ class AppContainer(app: Application) {
     }
     val linuxTerminal = LinuxTerminal(app)
     val localNetwork = AndroidLocalNetworkAccess(app)
+    private val ssh = SshlibTransport(keys, secrets)
     val connections = ConnectionManager(
         machines = machines,
-        transport = SshlibTransport(keys, secrets),
+        transport = ssh,
         scope = scope,
         // Status names only: no keys, passwords or terminal content (AGENTS.md §7).
         log = ConnectionLog { machine, status -> Log.i(TAG, "machine ${machine.id}: ${status.javaClass.simpleName}") },
-        device = DeviceAccess(localTerminal = linuxTerminal, localNetwork = localNetwork)
+        device = DeviceAccess(localTerminal = linuxTerminal, localNetwork = localNetwork),
+        commands = ssh
     )
 
     /** Spaces and tabs of the connected machines, read from their cores. */

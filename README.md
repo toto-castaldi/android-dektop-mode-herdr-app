@@ -37,6 +37,10 @@ python3 .agents/tools/backlog.py status
   -Pandroid.testInstrumentationRunnerArguments.lanHost=<host della LAN>        # permesso di rete locale verso un host SSH reale della LAN
 ./gradlew :core-client:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.e2eLocal=running                   # core locale: Terminal aperto (oppure =stopped, Terminal chiuso)
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.coreHost=<host> \
+  -Pandroid.testInstrumentationRunnerArguments.coreUser=<utente> \
+  -Pandroid.testInstrumentationRunnerArguments.coreCase=install                   # installazione reale del core (oppure =update, =fail; corePort, coreDisplay)
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo
 ./gradlew ktlintFormat                                                            # corregge lo stile Kotlin
 ```

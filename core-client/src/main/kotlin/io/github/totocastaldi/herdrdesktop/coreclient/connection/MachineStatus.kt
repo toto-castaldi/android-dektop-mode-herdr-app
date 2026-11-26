@@ -1,6 +1,8 @@
 package io.github.totocastaldi.herdrdesktop.coreclient.connection
 
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKey
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CoreOperation
+import io.github.totocastaldi.herdrdesktop.coreclient.install.MissingPrerequisite
 import io.github.totocastaldi.herdrdesktop.coreclient.protocol.Compatibility
 
 /** Connection state of a machine, as shown next to it in the app. */
@@ -22,7 +24,18 @@ sealed interface MachineStatus {
     /** The host key differs from the confirmed one: the connection is blocked. */
     data class HostKeyChanged(val confirmed: HostKey, val presented: HostKey) : MachineStatus
 
-    data object CoreMissing : MachineStatus
+    /**
+     * herdr-core is not installed. The app proposes the installer only if [missingPrerequisites] is empty;
+     * otherwise it says what is missing.
+     */
+    data class CoreMissing(val missingPrerequisites: List<MissingPrerequisite> = emptyList()) : MachineStatus
+
+    /** The user confirmed [operation] and its command is running; [output] is its output so far. */
+    data class CoreInstalling(val operation: CoreOperation, val output: String) : MachineStatus
+
+    /** The command of [operation] failed or could not run; [output] is its output, or the reason it did not run. */
+    data class CoreInstallFailed(val operation: CoreOperation, val exitStatus: Int?, val output: String) :
+        MachineStatus
 
     /** The host is on the local network and the app must ask the user for the local network permission. */
     data object LocalNetworkPermissionNeeded : MachineStatus

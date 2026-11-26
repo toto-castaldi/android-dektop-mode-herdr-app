@@ -25,10 +25,46 @@ class CompatibilityTest {
     }
 
     @Test
-    fun `older generation, old version or missing method ask to update the core`() {
-        assertTrue(CoreProtocol.check(ok.copy(generation = 0)) is Compatibility.CoreUpdateNeeded)
-        assertTrue(CoreProtocol.check(ok.copy(version = "0.1.10")) is Compatibility.CoreUpdateNeeded)
-        assertTrue(CoreProtocol.check(ok.copy(methods = listOf("hello"))) is Compatibility.CoreUpdateNeeded)
+    fun `old version asks to update the core, with found and required version`() {
+        assertEquals(
+            Compatibility.CoreUpdateNeeded("0.1.10", "0.1.11"),
+            CoreProtocol.check(ok.copy(version = "0.1.10"))
+        )
+        assertEquals(
+            Compatibility.CoreUpdateNeeded("0.1.10-rc2", CoreProtocol.MIN_CORE_VERSION),
+            CoreProtocol.check(ok.copy(version = "0.1.10-rc2"))
+        )
+    }
+
+    @Test
+    fun `minimum version is compatible`() {
+        assertEquals(Compatibility.Compatible, CoreProtocol.check(ok.copy(version = CoreProtocol.MIN_CORE_VERSION)))
+        assertEquals(Compatibility.Compatible, CoreProtocol.check(ok.copy(version = "0.2.0")))
+    }
+
+    @Test
+    fun `older generation, missing method or no framed mode ask to update the core`() {
+        assertEquals(
+            Compatibility.CoreUpdateNeeded("0.1.22", missing = Compatibility.Missing.Generation(0)),
+            CoreProtocol.check(ok.copy(generation = 0))
+        )
+        assertEquals(
+            Compatibility.CoreUpdateNeeded("0.1.22", missing = Compatibility.Missing.Methods(listOf("server.status"))),
+            CoreProtocol.check(ok.copy(methods = listOf("hello")))
+        )
+        assertEquals(
+            Compatibility.CoreUpdateNeeded("0.1.22", missing = Compatibility.Missing.Framed),
+            CoreProtocol.check(ok.copy(framed = false))
+        )
+    }
+
+    @Test
+    fun `another hello error asks to update the core without a known version`() {
+        val error = RpcError(-32601, "method not found", "method_not_found")
+        assertEquals(
+            Compatibility.CoreUpdateNeeded(null, missing = Compatibility.Missing.HelloError("method_not_found")),
+            CoreProtocol.checkError(error)
+        )
     }
 
     @Test

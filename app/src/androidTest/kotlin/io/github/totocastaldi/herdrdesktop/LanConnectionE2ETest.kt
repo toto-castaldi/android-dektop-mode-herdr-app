@@ -75,7 +75,7 @@ class LanConnectionE2ETest {
 
         composeRule.waitUntil(TIMEOUT_MILLIS) {
             when (container.connections.status(lan.id)) {
-                is MachineStatus.Connected, MachineStatus.AuthFailed, MachineStatus.CoreMissing,
+                is MachineStatus.Connected, MachineStatus.AuthFailed, is MachineStatus.CoreMissing,
                 is MachineStatus.CoreIncompatible, MachineStatus.LocalNetworkPermissionNeeded -> true
 
                 else -> false

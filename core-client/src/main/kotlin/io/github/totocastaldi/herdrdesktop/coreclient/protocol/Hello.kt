@@ -26,8 +26,31 @@ sealed interface Compatibility {
     /** The core speaks a newer protocol generation: the app must be updated. */
     data class AppUpdateNeeded(val coreGeneration: Int?) : Compatibility
 
-    /** The core is too old for the app: it must be updated. */
-    data class CoreUpdateNeeded(val reason: String) : Compatibility
+    /**
+     * The core is too old for the app: it must be updated. [foundVersion] is the version of the core
+     * (null when `hello` failed), [requiredVersion] the oldest the app supports, [missing] what the
+     * core lacks besides the version.
+     */
+    data class CoreUpdateNeeded(
+        val foundVersion: String?,
+        val requiredVersion: String = CoreProtocol.MIN_CORE_VERSION,
+        val missing: Missing? = null
+    ) : Compatibility
+
+    /** What an otherwise recent enough core lacks. */
+    sealed interface Missing {
+        /** The core speaks an older protocol generation. */
+        data class Generation(val generation: Int) : Missing
+
+        /** The core lacks methods the app calls. */
+        data class Methods(val methods: List<String>) : Missing
+
+        /** The core does not offer framed mode. */
+        data object Framed : Missing
+
+        /** `hello` failed with this error kind. */
+        data class HelloError(val kind: String?) : Missing
+    }
 }
 
 object CoreProtocol {
@@ -51,16 +74,18 @@ object CoreProtocol {
         return when {
             hello.generation > GENERATION -> Compatibility.AppUpdateNeeded(hello.generation)
 
-            hello.generation < GENERATION -> Compatibility.CoreUpdateNeeded("generation ${hello.generation}")
+            compareVersions(hello.version, MIN_CORE_VERSION) < 0 -> Compatibility.CoreUpdateNeeded(hello.version)
 
-            compareVersions(
-                hello.version,
-                MIN_CORE_VERSION
-            ) < 0 -> Compatibility.CoreUpdateNeeded("version ${hello.version}")
+            hello.generation < GENERATION ->
+                Compatibility.CoreUpdateNeeded(
+                    hello.version,
+                    missing = Compatibility.Missing.Generation(hello.generation)
+                )
 
-            missing.isNotEmpty() -> Compatibility.CoreUpdateNeeded("missing ${missing.joinToString()}")
+            missing.isNotEmpty() ->
+                Compatibility.CoreUpdateNeeded(hello.version, missing = Compatibility.Missing.Methods(missing))
 
-            !hello.framed -> Compatibility.CoreUpdateNeeded("framed mode not available")
+            !hello.framed -> Compatibility.CoreUpdateNeeded(hello.version, missing = Compatibility.Missing.Framed)
 
             else -> Compatibility.Compatible
         }
@@ -70,7 +95,7 @@ object CoreProtocol {
     fun checkError(error: RpcError): Compatibility = if (error.kind == "unsupported_generation") {
         Compatibility.AppUpdateNeeded(null)
     } else {
-        Compatibility.CoreUpdateNeeded(error.kind ?: "hello failed")
+        Compatibility.CoreUpdateNeeded(null, missing = Compatibility.Missing.HelloError(error.kind))
     }
 
     /** Compares dotted numeric versions; a pre-release suffix (`-rc1`) is ignored. */
