@@ -11,7 +11,7 @@ Progetto indipendente e open source, rilasciato sotto licenza Apache-2.0. Non è
 
 ## Stato
 
-In sviluppo verso la v0.1.0. Esiste lo scaffold del progetto: un'app minima che si apre come finestra ridimensionabile in Desktop Mode. Lo stato aggiornato si vede con:
+In sviluppo verso la v0.1.0. L'app si apre come finestra ridimensionabile in Desktop Mode e gestisce le macchine con herdr-core: aggiunta, modifica e rimozione, chiave SSH Ed25519 generata nell'Android Keystore (con copia della chiave pubblica) o password, conferma dell'impronta della host key, stato del collegamento e riconnessione automatica. Lo stato aggiornato si vede con:
 
 ```bash
 python3 .agents/tools/backlog.py status
@@ -30,6 +30,9 @@ python3 .agents/tools/backlog.py status
 ```bash
 ./gradlew ktlintCheck detekt compileDebugKotlin testDebugUnitTest assembleDebug   # quality gate
 ./gradlew connectedDebugAndroidTest                                               # test sul dispositivo
+./gradlew :core-client:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.e2eHost=<host> \
+  -Pandroid.testInstrumentationRunnerArguments.e2eUser=<utente>                  # SSH reale dal dispositivo verso un host
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo
 ./gradlew ktlintFormat                                                            # corregge lo stile Kotlin
 ```

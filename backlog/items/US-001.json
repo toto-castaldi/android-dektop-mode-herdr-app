@@ -6,7 +6,8 @@
   "module": "MOD-002",
   "type": "User Story",
   "priority": "P0",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "us/US-001-core-remoto-ssh",
   "dependencies": [
     "TEC-002",
     "SPIKE-001"
@@ -28,5 +29,8 @@
     "Al primo collegamento l'app mostra l'impronta della host key e chiede conferma; con una host key cambiata il collegamento è bloccato con un avviso (test unitari).",
     "Ogni macchina mostra lo stato: connessa, non raggiungibile, autenticazione fallita, core assente o incompatibile; caduta la connessione, l'app si ricollega da sola.",
     "Durante un collegamento i log (logcat) non contengono chiavi, password o passphrase, e l'app apre connessioni solo verso la macchina configurata."
-  ]
+  ],
+  "outcome": "Gestione macchine in core-client e app: elenco persistente (machines.json), chiave Ed25519 nell'Android Keystore (ripiego ECDSA P-256) con copia della chiave pubblica, password cifrate AES-GCM con chiave del Keystore, verifica e conferma della host key, trasporto ConnectBot sshlib 0.6.9 con hello framed e controllo di compatibilità, ConnectionManager con stati e riconnessione (backoff 1-30 s, ping server.status). Verificato sul Pixel 11 Pro in Desktop Mode (finestra sul monitor esterno): chiave generata ssh-ed25519 (impronta coincidente con ssh-keygen), macchina aggiunta, impronta della host key di walle mostrata e confermata, Connessa a herdr-core 0.1.20 con la chiave del Keystore; ucciso sshd-session dell'app, ricollegata da sola in circa 1,5 s; dopo force-stop la macchina persiste e si ricollega. Test strumentali: AndroidKeystoreTest, FileMachineStoreTest, MainActivityTest (aggiunta macchina con password), SshlibTransportE2ETest contro walle reale (host key sconosciuta rifiutata, cambiata bloccata, chiave non autorizzata = autenticazione fallita, host non instradabile = non raggiungibile). Test JVM: HostKeyPolicyTest, ConnectionManagerTest, CompatibilityTest, FrameTest, SshPublicKeyTest, MachineRepositoryTest. Logcat (connected test e sessione reale): nessuna chiave, password o passphrase; unica connessione TCP dell'app verso 100.113.109.93:22. Licenze delle dipendenze verificate (Apache-2.0, MIT, BSD-3-Clause, ISC, BSL-1.0). Limiti: autenticazione a password verso un host reale non provata (solo cifratura e salvataggio); core assente o incompatibile verificati solo con test unitari su un core simulato; modifica della macchina provata solo con test unitari; contenuto degli appunti non riletto.",
+  "changelog": "Added: macchine con herdr-core via SSH: chiave nel Keystore o password, conferma della host key, stato e riconnessione automatica",
+  "closed_at": "2026-11-26"
 }

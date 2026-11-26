@@ -3,4 +3,54 @@
     <string name="app_name">Herdr Desktop</string>
     <string name="welcome_title">Herdr Desktop for Android</string>
     <string name="welcome_subtitle">Nessuna macchina configurata</string>
+
+    <string name="machines_title">Macchine</string>
+    <string name="machine_add">Aggiungi macchina</string>
+    <string name="machine_edit">Modifica</string>
+    <string name="machine_remove">Rimuovi</string>
+    <string name="machine_connect">Collega</string>
+    <string name="machine_disconnect">Scollega</string>
+    <string name="machine_remove_title">Rimuovere %1$s?</string>
+    <string name="machine_remove_text">La macchina e la sua host key confermata vengono dimenticate. I terminali sul core continuano a girare.</string>
+    <string name="machine_dialog_add">Nuova macchina</string>
+    <string name="machine_dialog_edit">Modifica macchina</string>
+    <string name="field_name">Nome</string>
+    <string name="field_host">Host</string>
+    <string name="field_port">Porta</string>
+    <string name="field_user">Utente</string>
+    <string name="field_invalid">Valore non valido</string>
+    <string name="auth_key">Chiave SSH dell\'app</string>
+    <string name="auth_password">Password</string>
+    <string name="field_password">Password</string>
+    <string name="field_password_keep">Lascia vuoto per mantenere la password salvata</string>
+    <string name="auth_key_missing">Genera prima la chiave SSH dell\'app</string>
+    <string name="save">Salva</string>
+    <string name="cancel">Annulla</string>
+    <string name="close">Chiudi</string>
+
+    <string name="key_title">Chiave SSH dell\'app</string>
+    <string name="key_none">Nessuna chiave: generane una nell\'Android Keystore e aggiungi la chiave pubblica ad ~/.ssh/authorized_keys sulle macchine.</string>
+    <string name="key_generate">Genera chiave</string>
+    <string name="key_copy">Copia chiave pubblica</string>
+    <string name="key_copied">Chiave pubblica copiata</string>
+    <string name="key_info">%1$s · %2$s</string>
+
+    <string name="status_disconnected">Non collegata</string>
+    <string name="status_connecting">Collegamento in corso…</string>
+    <string name="status_connected">Connessa · herdr-core %1$s</string>
+    <string name="status_unreachable">Non raggiungibile (%1$s) · nuovo tentativo tra %2$d s</string>
+    <string name="status_auth_failed">Autenticazione fallita</string>
+    <string name="status_host_key_unconfirmed">Host key da confermare</string>
+    <string name="status_host_key_changed">Host key cambiata: collegamento bloccato</string>
+    <string name="status_core_missing">herdr-core assente</string>
+    <string name="status_core_app_update">Core incompatibile: aggiorna l\'app</string>
+    <string name="status_core_update">Core incompatibile: aggiorna herdr-core (%1$s)</string>
+
+    <string name="host_key_confirm_title">Primo collegamento a %1$s</string>
+    <string name="host_key_confirm_text">L\'host presenta questa host key. Confermala solo se coincide con quella della macchina (ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub sull\'host).</string>
+    <string name="host_key_confirm">Conferma e collega</string>
+    <string name="host_key_changed_title">Host key cambiata per %1$s</string>
+    <string name="host_key_changed_text">La host key non corrisponde a quella confermata: il collegamento è bloccato. Può essere una reinstallazione dell\'host o un attacco. Se il cambio è legittimo, rimuovi la macchina e aggiungila di nuovo.</string>
+    <string name="host_key_confirmed_label">Confermata</string>
+    <string name="host_key_presented_label">Presentata</string>
 </resources>
