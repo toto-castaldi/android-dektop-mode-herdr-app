@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,8 +43,11 @@ import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
 /** Actions on the core and the dialogs that ask before renaming or closing. */
 internal class Controls(val actions: WorkspaceActions, val prompt: (Prompt) -> Unit)
 
-/** A selectable entry: shown [text], whether it is [selected], test tag ([tag], and `<tag>-menu` for its menu). */
-internal class EntryModel(val text: String, val selected: Boolean, val tag: String)
+/**
+ * A selectable entry: shown [text], whether it is [selected], test tag ([tag], and `<tag>-menu` for its menu).
+ * [bounded] entries share a width-limited row and shorten their text; the others take the width they need.
+ */
+internal class EntryModel(val text: String, val selected: Boolean, val tag: String, val bounded: Boolean = false)
 
 @Composable
 internal fun SpaceList(
@@ -62,7 +64,7 @@ internal fun SpaceList(
                 val name = label(index, space)
                 val actions = controls.actions
                 Entry(
-                    EntryModel(name, space.id == selected, "space-$index"),
+                    EntryModel(name, space.id == selected, "space-$index", bounded = true),
                     onClick = { onSelect(space.id) },
                     menu = listOf(
                         stringResource(R.string.workspace_rename) to { controls.prompt(Prompt.RenameSpace(space)) },
@@ -121,16 +123,21 @@ private fun Entry(
 ) {
     var open by remember { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
+    val background = if (model.selected) colors.secondaryContainer else colors.surface
     Row(
-        modifier
-            .background(if (model.selected) colors.secondaryContainer else colors.surface, RoundedCornerShape(6.dp))
-            .clickable(onClick = onClick)
-            .testTag(model.tag)
-            .padding(start = 12.dp),
+        modifier.background(background, RoundedCornerShape(6.dp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(model.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        Spacer(Modifier.width(4.dp))
+        // Only the label selects: the menu button next to it must not.
+        Text(
+            model.text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = (if (model.bounded) Modifier.weight(1f) else Modifier)
+                .clickable(onClick = onClick)
+                .testTag(model.tag)
+                .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp)
+        )
         Box {
             TextButton(onClick = { open = true }, modifier = Modifier.testTag("${model.tag}-menu")) { Text("⋮") }
             DropdownMenu(expanded = open, onDismissRequest = { open = false }) {

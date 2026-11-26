@@ -6,7 +6,7 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-004-spazi-e-tab",
   "dependencies": [
     "US-001"
@@ -24,5 +24,8 @@
     "Uno spazio senza nome mostra la cartella del primo terminale; una nuova tab parte dalla cartella del terminale attivo.",
     "Chiusa e riaperta l'app, spazi, tab e terminali in esecuzione sono ripristinati dal core; chiudere una tab termina i suoi terminali sul core.",
     "Le regole di nome e cartella iniziale sono coperte da test unitari."
-  ]
+  ],
+  "outcome": "Spazi e tab salvati nel documento herdr-android di ogni core (stessa forma del documento dell'app desktop, mai letto né scritto herdr-app: scelta B dell'utente), con compare-and-set e nuova lettura su conflict. core-client: CoreRpc (implementato da CoreSession), ConnectionManager.sessions, workspace/ (Workspace e WorkspaceCodec che conserva i campi sconosciuti, WorkspaceNames, WorkspaceEdits, CoreDocument, CoreTerminals, WorkspaceClient, WorkspaceManager); kotlinx-serialization esposta come api. Creare spazio o tab avvia la shell del core (terminal.run con cwd, etichetta app=herdr-android) e se la scrittura fallisce la termina; chiudere tab o spazio termina e rimuove i terminali (kill+rm). app: pulsante Apri sulla macchina connessa, WorkspaceScreen con elenco spazi, barra delle tab, menu ⋮ (Rinomina, Sposta, Chiudi con conferma), segnaposto del terminale (rendering in US-005), rilettura ogni 5 s. Regole coperte da test JVM: WorkspaceRulesTest (11: nome dalla cartella del primo terminale, poi dalla cartella dello spazio; etichetta di posizione delle tab; cartella della nuova tab dal terminale attivo; rinomina, riordino, rimozione), WorkspaceCodecTest (4), WorkspaceClientTest (11: conflitti, terminali terminati alla chiusura e su errore, ripristino da un altro client), WorkspaceManagerTest (4: nuova lettura dopo riconnessione). Gate verde (109 test JVM). Sul Pixel 11 Pro in Desktop Mode (finestra freeform sul monitor LG, display 4): WorkspaceContentTest 6/6; WorkspaceE2ETest con herdr-core reale, remoto (walle 0.1.20 via Tailscale) e locale (VM del Linux Terminal 0.1.22, droid@127.0.0.1:2222), entrambi verdi: crea, rinomina, riordina e chiude spazi e tab dalla UI, nuova tab nella cartella del terminale attivo (cd /tmp via terminal.send), chiusura che termina i terminali, ripristino dopo una riconnessione; test di riapertura setup, poi am force-stop, poi verify: spazio, tab e terminali vivi ripristinati dal core in un processo nuovo (verificato anche a mano con screenshot dopo la riapertura dal launcher). Test eseguiti con una chiave di test autorizzata temporaneamente con restrict e un forced command su una sessione HC_SESSION separata, senza toccare il core principale dell'utente; poi chiavi ripristinate (identiche ai backup), sessioni fermate, chiave di test cancellata dal Keystore. Suite :app strumentale 16/16 (LocalNetworkPermissionTest richiede il permesso non concesso all'avvio: revocato per la prova e poi concesso di nuovo come prima). Logcat: nessuna chiave, password o contenuto di terminali. Nessuna nuova dipendenza. Bug trovati dai test UI e corretti: click della tab finito sul pulsante del menu, etichette delle tab a larghezza zero nella riga scorrevole. Limiti: i cambi di cartella arrivano per rilettura periodica (nessun evento dal core); selezione attiva solo in memoria; resta sul core principale di walle un documento us004-probe vuoto (doc.set a null mantiene la versione) dalle prove del protocollo.",
+  "changelog": "Added: spazi e tab per macchina collegata (crea, rinomina, riordina, chiudi), ripristinati dal core alla riapertura",
+  "closed_at": "2026-11-26"
 }

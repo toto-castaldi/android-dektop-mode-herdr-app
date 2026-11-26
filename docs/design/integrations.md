@@ -29,6 +29,15 @@
 - `seq` riparte a ogni avvio del core: dopo una riconnessione l'app prende uno snapshot nuovo invece di riprendere da un `seq` vecchio.
 - I terminali di macchine aggiunte a quel core arrivano nello stesso flusso con indirizzo `macchina/t7`.
 
+### Spazi e tab
+
+- Spazi e tab non sono un concetto del core: l'app li salva nel documento opaco `herdr-android` di ogni core (`doc.get`/`doc.set`), con la stessa forma del documento dell'app desktop ma separato da esso. L'app non legge né scrive mai `herdr-app`, quindi i due client non condividono spazi e tab. Formato in `data-model.md`.
+- Ogni modifica (creare, rinominare, spostare, chiudere) rilegge il documento e lo scrive con compare-and-set sulla `version` letta; su errore `conflict` rilegge e riapplica la modifica, fino a 5 tentativi. Un documento invariato non viene scritto. Lo stato mostrato è sempre la risposta del core.
+- Creare uno spazio o una tab avvia la shell del core con `terminal.run` (`cwd` della nuova tab, etichetta `app=herdr-android`) e poi aggiunge al documento una tab con un solo pane; se la scrittura fallisce, il terminale appena avviato viene terminato.
+- Chiudere una tab (o uno spazio, con tutte le sue tab) la toglie dal documento e poi termina e rimuove i suoi terminali con `terminal.kill` e `terminal.rm`; un terminale già finito o assente (`finished`, `not_found`) non è un errore. Nient'altro termina terminali: chiudere l'app o perdere la connessione li lascia in esecuzione.
+- `WorkspaceManager` (`core-client`) tiene lo stato per macchina: a ogni nuova sessione (`ConnectionManager.sessions`, anche dopo una riconnessione o un riavvio dell'app) rilegge documento e terminali dal core; senza sessione lo stato è "non disponibile". Le azioni di una macchina girano una alla volta; un errore lascia lo stato mostrato e riporta il motivo.
+- La cartella corrente di un terminale è `foreground.cwd` di `terminal.list` (oppure `cwd` se manca). Non esiste un evento per i cambi di cartella: con la schermata aperta l'app rilegge documento e terminali ogni 5 s.
+
 ### I/O dei terminali
 
 - `terminal.attach {terminal, cols, rows, history?, display?}` apre uno stream: primo paint (schermo, history, stato, titolo) e poi i byte grezzi del programma, che l'app passa al modulo `terminal`.
