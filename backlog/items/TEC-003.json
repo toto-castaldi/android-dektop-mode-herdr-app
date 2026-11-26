@@ -5,7 +5,8 @@
   "epic": "EPIC-001",
   "type": "Task",
   "priority": "P0",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "task/TEC-003-adottare-template-4-5-0",
   "dependencies": [],
   "design_references": [
     "PROCESS §3",
@@ -19,5 +20,7 @@
     "Il Process version in docs/PROCESS.md è 4.5.0 e backlog template-check non segnala aggiornamenti",
     "Le copie delle skill per Claude Code (.claude/skills/), se presenti, sono allineate a .agents/skills/",
     "backlog check passa"
-  ]
+  ],
+  "outcome": "Adottato il template 4.5.0: docs/PROCESS.md, docs/PROCESS-PARALLEL.md e .agents/skills/orchestrate/SKILL.md copiati senza modifiche dal tag v4.5.0 (diff con il tag vuoto; le differenze rispetto a 4.4.0 sono solo quelle delle release notes). .claude/skills/orchestrate/SKILL.md è lo stesso file di .agents/skills/orchestrate/SKILL.md e diff -r .agents/skills .claude/skills è vuoto. backlog template-check: 4.5.0 è l'ultima release. Item di sola documentazione e processo: gate Gradle non necessario (AGENTS.md §6).",
+  "closed_at": "2026-11-26"
 }
