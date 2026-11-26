@@ -19,3 +19,10 @@ flowchart LR
 3. **Lavorare:** l'app mostra spazi e tab dal core; l'utente divide le tab in pane, ogni pane è collegato a un terminale del core e ne trasmette input e dimensioni.
 4. **Seguire gli agenti:** l'app riceve dal core gli stati degli agenti e li mostra nella sidebar; un agente senza pane si apre in peek.
 5. **Chiudere e riaprire:** chiudere l'app non ferma i terminali; riaprendola, l'app ricostruisce spazi, tab e pane dallo stato del core.
+
+## Finestre in Desktop Mode
+
+- Ogni finestra è un'istanza di `MainActivity` in un task proprio (`FLAG_ACTIVITY_NEW_DOCUMENT | FLAG_ACTIVITY_MULTIPLE_TASK`), quindi una finestra separata, ridimensionabile e massimizzabile (REQ-DM-001).
+- "Nuova finestra", nella schermata degli spazi, apre un'altra finestra sulla stessa macchina e sullo spazio successivo a quello selezionato; macchina e spazio iniziali passano negli extra dell'intent (`WindowTarget`).
+- Connessioni, sessioni e stato degli spazi stanno nell'`AppContainer` dell'applicazione e sono condivisi tra le finestre; ogni finestra tiene solo la propria selezione (macchina, spazio, tab) nello stato salvato.
+- L'attività dichiara in `configChanges` dimensioni, layout, densità, display e tema: ridimensionare, massimizzare, spostare la finestra tra display o cambiare la densità non la ricrea, e Compose ridisegna il layout senza perdere stato né connessioni.

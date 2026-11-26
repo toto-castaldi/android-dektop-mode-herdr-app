@@ -48,6 +48,8 @@ python3 .agents/tools/backlog.py status
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.agHost=<host> \
   -Pandroid.testInstrumentationRunnerArguments.agUser=<utente>                    # sidebar degli agenti su un core reale (agPort, agHostKey, agDisplay, agDeleteKey)
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=io.github.totocastaldi.herdrdesktop.WindowsE2ETest   # finestre su monitor esterno in Desktop Mode (winDisplay; con wsHost, wsUser e wsHostKey anche due finestre su un core reale; wsKey=write crea solo la chiave). Con am instrument -w, senza disinstallare
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo
 ./gradlew ktlintFormat                                                            # corregge lo stile Kotlin
 ```
