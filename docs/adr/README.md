@@ -9,3 +9,4 @@ Use an ADR for a decision with relevant alternatives or long-term consequences t
 
 | ADR | Title | State | Item |
 | --- | ----- | ----- | ---- |
+| [ADR-001](ADR-001-emulatore-terminale.md) | Emulatore e renderer del terminale | Accepted | SPIKE-003 |
