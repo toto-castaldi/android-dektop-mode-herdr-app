@@ -2,6 +2,7 @@ package io.github.totocastaldi.herdrdesktop
 
 import android.app.Application
 import android.util.Log
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentsManager
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.ConnectionLog
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.ConnectionManager
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.DeviceAccess
@@ -54,6 +55,9 @@ class AppContainer(app: Application) {
 
     /** Spaces and tabs of the connected machines, read from their cores. */
     val workspaces = WorkspaceManager(connections.sessions, scope)
+
+    /** Agents of the connected machines and their states, from the cores' events. */
+    val agents = AgentsManager(connections.sessions, scope)
 
     /** Machines whose host key is already confirmed are connected at start. */
     fun connectConfirmedMachines() {

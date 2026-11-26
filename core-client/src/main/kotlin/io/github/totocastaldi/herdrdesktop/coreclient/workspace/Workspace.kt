@@ -12,7 +12,17 @@ import kotlinx.serialization.json.doubleOrNull
  */
 data class Workspace(val spaces: List<Space> = emptyList(), val extra: JsonObject = EMPTY) {
     fun space(id: String): Space? = spaces.firstOrNull { it.id == id }
+
+    /** The space, tab and pane showing [terminal], or null when no pane shows it. */
+    fun paneOf(terminal: String): PaneLocation? = spaces.firstNotNullOfOrNull { space ->
+        space.tabs.firstNotNullOfOrNull { tab ->
+            tab.root.leafOf(terminal)?.let { PaneLocation(space.id, tab.id, it.id) }
+        }
+    }
 }
+
+/** Where a terminal is shown: space, tab and pane ids. */
+data class PaneLocation(val spaceId: String, val tabId: String, val paneId: String)
 
 /** A space: optional [name] (blank when unnamed), optional [folder], ordered [tabs]. */
 data class Space(
@@ -59,6 +69,11 @@ sealed interface PaneNode {
     fun terminals(): List<String> = when (this) {
         is Leaf -> listOfNotNull(terminal)
         is Split -> children.flatMap { it.terminals() }
+    }
+
+    fun leafOf(terminal: String): Leaf? = when (this) {
+        is Leaf -> takeIf { it.terminal == terminal }
+        is Split -> children.firstNotNullOfOrNull { it.leafOf(terminal) }
     }
 }
 
