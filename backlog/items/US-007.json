@@ -1,0 +1,25 @@
+{
+  "id": "US-007",
+  "title": "Peek di un agente",
+  "version": "v0.1.0",
+  "epic": "EPIC-004",
+  "module": "MOD-001",
+  "type": "User Story",
+  "priority": "P2",
+  "status": "Todo",
+  "dependencies": [
+    "US-005",
+    "US-006"
+  ],
+  "requirements": [
+    "REQ-AGT-002"
+  ],
+  "design_references": [
+    "design/context"
+  ],
+  "description": "Come utente voglio guardare e rispondere a un agente senza pane senza perdere la mia tab, per sbloccarlo e tornare al lavoro.",
+  "acceptance_criteria": [
+    "Selezionare un agente senza pane lo apre in peek sopra la tab corrente, con terminale interattivo.",
+    "Chiuso il peek, la tab corrente è come prima; l'azione \"tieni come tab\" apre l'agente in una nuova tab dello spazio."
+  ]
+}
