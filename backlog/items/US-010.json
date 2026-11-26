@@ -1,0 +1,25 @@
+{
+  "id": "US-010",
+  "title": "Mouse: selezione, copia e incolla, scroll e menu contestuale",
+  "version": "v0.1.0",
+  "epic": "EPIC-005",
+  "module": "MOD-003",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-005"
+  ],
+  "requirements": [
+    "REQ-DM-003"
+  ],
+  "design_references": [
+    "design/context"
+  ],
+  "description": "Come utente voglio usare il mouse come in un terminale desktop: selezionare, copiare, incollare, scorrere e aprire menu contestuali.",
+  "acceptance_criteria": [
+    "L'utente seleziona testo con il mouse, lo copia negli appunti e incolla dagli appunti nel terminale.",
+    "La rotella scorre lo scrollback; un clic sposta il focus tra pane; il tasto destro apre un menu contestuale con copia, incolla e azioni del pane.",
+    "Con un programma che attiva il mouse reporting, clic e rotella sono inoltrati al programma (test unitari sulla codifica degli eventi)."
+  ]
+}
