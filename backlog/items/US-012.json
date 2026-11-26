@@ -6,7 +6,7 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-012-spazi-e-tab-condivisi",
   "dependencies": [
     "US-005",
@@ -26,5 +26,8 @@
     "Gli spazi e le tab salvati finora nel documento herdr-android vengono portati nel documento condiviso al primo collegamento, senza terminare terminali; il documento herdr-android non viene più scritto.",
     "Le parti del documento che l'app non usa (per esempio pane di mod, layout, stato del solo desktop) restano invariate dopo le scritture dell'app; test unitari con documenti reali dell'app desktop.",
     "Verificato end-to-end sul Pixel 11 Pro in Desktop Mode con l'app desktop Herdr e un herdr-core reale: modifiche in entrambi i sensi."
-  ]
+  ],
+  "outcome": "Spazi, tab e pane letti e scritti nel documento herdr-app di ogni core, lo stesso dell'app desktop, con compare-and-set e nuova lettura sul conflitto (CoreDocument, WorkspaceCodec.DOC_NAME). Il codec conserva intere le parti che l'app non usa: nodi stack o di tipi sconosciuti, block di mod o senza terminal (mostrati come pane vuoti), campi di size oltre a weight (px), floating, background, font_size, campi ignoti di spazi, tab e radice. terminal.run porta herdr.space e herdr.tab con gli id già scelti (anche per i pane divisi), oltre ad app=herdr-android e herdr.seen=0. L'app desktop adotta i terminali etichettati senza pane: dopo un conflitto l'app non aggiunge una tab o un pane il cui terminale il documento mostra già (Workspace.shows). Migrazione (WorkspaceMigration.migrateLegacy) alla prima lettura di ogni sessione: gli spazi di herdr-android con id assente vengono aggiunti a herdr-app, i loro terminali ricevono le etichette, poi il valore di herdr-android viene cancellato e non più scritto; nessun terminale avviato o terminato; se la migrazione fallisce herdr-app viene mostrato lo stesso. Test JVM: DesktopDocumentTest (documento letto da un core reale usato dall'app desktop, più un documento con mod, stack, px e floating: riscrittura identica e modifiche che lasciano invariato il resto), SharedLabelsTest, WorkspaceMigrationTest, WorkspaceManagerTest (migrazione al collegamento); gate verde (209 test JVM). Sul Pixel 11 Pro in Desktop Mode (display esterno 5), con l'app desktop Herdr collegata al core reale (sessione predefinita, chiave dell'app, impronta della host key verificata): SharedWorkspaceE2ETest verde. App verso desktop: spazio creato e rinominato, tab nuova rinominata e spostata, pane diviso; l'app desktop li mostra (etichetta where \"<spazio> / <tab>\" che scrive sui terminali che mostra, aggiornata a ogni cambio); tab chiusa senza che l'app desktop la rimetta. Desktop verso app: una tab e un pane creati dall'app desktop (adozione di terminali etichettati) e un pane chiuso dall'app desktop (terminale finito) compaiono nell'app aperta senza riavvio; gli spazi dell'utente restano identici. Migrazione reale: lo spazio del documento herdr-android del core (un terminale) è entrato in herdr-app con le etichette, l'app desktop lo ha mostrato e herdr-android ora è null; poco dopo lo spazio è stato chiuso dall'app desktop, non dall'app (terminale finito ma non rimosso, mentre closeSpace lo rimuove). Le pulizie degli E2E esistenti (WorkspaceE2ETest, PaneE2ETest, TerminalPerformanceE2ETest, WindowsE2ETest, AgentsE2ETest) chiudono ora solo gli spazi creati dal test (E2eSpaces) invece di svuotare il documento, ora condiviso; compilate ma non rieseguite (servono le chiavi di test isolate). Logcat senza chiavi, password né contenuto dei terminali.",
+  "changelog": "Changed: spazi, tab e pane sono condivisi con l'app desktop Herdr collegata allo stesso core; gli spazi salvati prima passano lì",
+  "closed_at": "2026-11-26"
 }
