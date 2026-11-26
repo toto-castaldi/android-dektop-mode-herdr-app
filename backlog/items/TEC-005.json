@@ -5,7 +5,7 @@
   "epic": "EPIC-001",
   "type": "Task",
   "priority": "P2",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "task/TEC-005-file-license-apache-2-0",
   "dependencies": [],
   "requirements": [
@@ -23,5 +23,8 @@
   ],
   "remarks": [
     "Emerso alla chiusura di TEC-004, che ha aggiunto NOTICE."
-  ]
+  ],
+  "outcome": "LICENSE in radice con il testo integrale della Apache License 2.0 (sha256 cfc7749b… identico a https://www.apache.org/licenses/LICENSE-2.0.txt). Il task buildSrc NoticeAsset diventa LegalAssets (:app:legalAssets) e copia LICENSE e NOTICE negli asset: unzip -l dell'APK di assembleDebug mostra assets/LICENSE (stesso sha256) e assets/NOTICE (identico al file del repository). README (intro e Licenze), NOTICE e design/configuration rimandano a LICENSE. Gate ktlintCheck detekt, compileDebugKotlin, testDebugUnitTest, assembleDebug passato. Nessun comportamento visibile in Desktop Mode, nessuna nuova dipendenza né log: nessuna verifica sul dispositivo necessaria.",
+  "changelog": "Added: il testo della licenza Apache-2.0 è nel repository e nell'APK, accanto a NOTICE",
+  "closed_at": "2026-11-26"
 }

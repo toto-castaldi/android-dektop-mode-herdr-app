@@ -1,4 +1,5 @@
-Herdr Desktop for Android, rilasciato sotto licenza Apache-2.0.
+Herdr Desktop for Android, rilasciato sotto licenza Apache-2.0: il testo
+integrale della licenza è nel file LICENSE, accanto a questo file.
 
 L'app include la libreria nativa libherdrterminal.so, che contiene libghostty-vt
 e il codice di terze parti che libghostty-vt collega staticamente, elencato in

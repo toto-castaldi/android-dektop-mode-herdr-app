@@ -1,18 +1,18 @@
-import io.github.totocastaldi.herdrdesktop.gradle.NoticeAsset
+import io.github.totocastaldi.herdrdesktop.gradle.LegalAssets
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
-// Licenses of the third-party code in the APK, packaged as assets/NOTICE.
-val noticeAsset = tasks.register<NoticeAsset>("noticeAsset") {
-    notice.set(rootProject.layout.projectDirectory.file("NOTICE"))
+// The app license and the licenses of the third-party code, packaged as assets/LICENSE and assets/NOTICE.
+val legalAssets = tasks.register<LegalAssets>("legalAssets") {
+    files.from(rootProject.layout.projectDirectory.files("LICENSE", "NOTICE"))
 }
 
 androidComponents {
     onVariants { variant ->
-        variant.sources.assets?.addGeneratedSourceDirectory(noticeAsset, NoticeAsset::assets)
+        variant.sources.assets?.addGeneratedSourceDirectory(legalAssets, LegalAssets::assets)
     }
 }
 
