@@ -10,3 +10,4 @@ A spike is a backlog item of type `Spike` (`SPIKE-NNN`) that answers explicit qu
 | Spike | Title | Outcome |
 | ----- | ----- | ------- |
 | [SPIKE-001](SPIKE-001-api-trasporto-herdr-core.md) | API e trasporto di herdr-core per un client Android | Positive |
+| [SPIKE-002](SPIKE-002-core-locale-linux-terminal.md) | herdr-core locale nel Linux Terminal di Android | Partial |

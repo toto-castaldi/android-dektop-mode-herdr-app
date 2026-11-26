@@ -6,7 +6,7 @@
   "module": "MOD-002",
   "type": "Spike",
   "priority": "P0",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "spike/SPIKE-002-core-locale-linux-terminal",
   "dependencies": [],
   "design_references": [
@@ -19,5 +19,7 @@
     "Il report descrive come l'app rileva che il core manca o è incompatibile e come lo installa o aggiorna, sia nella VM sia su un host Linux remoto, con i comandi provati e il loro esito.",
     "Il report elenca limiti e rischi (permessi, VM non avviata, consumo di batteria) e propone come l'app li segnala all'utente.",
     "La decisione è registrata in design/integrations e la voce corrispondente è tolta dalle Open decisions di docs/design/README.md."
-  ]
+  ],
+  "outcome": "Report docs/spikes/SPIKE-002-core-locale-linux-terminal.md (Partial). Pixel 11 Pro, Android 17 (API 37, CD1A.261005.003), Terminal in Desktop Mode: herdr-core 0.1.22 linux-aarch64 si installa (installer ufficiale, 0.1.20 in sessione isolata) e si aggiorna (hc update, terminali sopravvissuti) nella VM Debian 13.7; hello via 127.0.0.1:2222 ok. La VM resta viva in background/minimizzata (verificato 10 min, in carica) e si spegne chiudendo il Terminal (terminali stopped_by_restart). L'app raggiunge la VM solo su 127.0.0.1:2222 (port forwarding del Terminal, sshd configurato a mano); l'IP 10.211.207.222 non è raggiungibile per UID di app (prova con run-as, da confermare con l'app vera in US-002). Bug: dopo un riavvio della VM nello stesso processo del Terminal il port forwarding non torna (riprodotto 2 volte; rimedio arresto forzato). Rilevamento core assente (exit 127) e installazione/aggiornamento provati anche su crilin e walle. Decisione in design/integrations (sezione Core locale), voce tolta dalle Open decisions. Non verificati: batteria senza alimentazione, durata di ore, porta 22. Quality gate non applicabile (scaffold assente, item di sola documentazione).",
+  "closed_at": "2026-11-26"
 }
