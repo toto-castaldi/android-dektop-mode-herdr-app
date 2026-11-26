@@ -1,0 +1,22 @@
+{
+  "id": "SPIKE-002",
+  "title": "herdr-core locale nel Linux Terminal di Android",
+  "version": "v0.1.0",
+  "epic": "EPIC-002",
+  "module": "MOD-002",
+  "type": "Spike",
+  "priority": "P0",
+  "status": "Todo",
+  "dependencies": [],
+  "design_references": [
+    "design/integrations",
+    "design/context"
+  ],
+  "description": "Verificare sul Pixel 11 Pro se herdr-core (build Linux arm64) gira nella VM Debian del Linux Terminal di Android, se resta attivo quando il terminale è chiuso e come un'app Android lo raggiunge (rete della VM, porta SSH, port forwarding, altro). Capire come l'app può installarlo o aggiornarlo nella VM e su un host remoto.",
+  "acceptance_criteria": [
+    "Il report docs/spikes/SPIKE-002-core-locale-linux-terminal.md risponde a: herdr-core si installa e si avvia nella VM del Linux Terminal del Pixel 11 Pro (versione di Android e di herdr-core riportate); quanto resta attivo con l'app Terminal chiusa o in background; da quale indirizzo e porta un'app Android lo raggiunge.",
+    "Il report descrive come l'app rileva che il core manca o è incompatibile e come lo installa o aggiorna, sia nella VM sia su un host Linux remoto, con i comandi provati e il loro esito.",
+    "Il report elenca limiti e rischi (permessi, VM non avviata, consumo di batteria) e propone come l'app li segnala all'utente.",
+    "La decisione è registrata in design/integrations e la voce corrispondente è tolta dalle Open decisions di docs/design/README.md."
+  ]
+}
