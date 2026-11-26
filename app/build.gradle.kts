@@ -1,6 +1,19 @@
+import io.github.totocastaldi.herdrdesktop.build.NoticeAsset
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+// Licenses of the third-party code in the APK, packaged as assets/NOTICE.
+val noticeAsset = tasks.register<NoticeAsset>("noticeAsset") {
+    notice.set(rootProject.layout.projectDirectory.file("NOTICE"))
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(noticeAsset, NoticeAsset::assets)
+    }
 }
 
 android {
