@@ -36,10 +36,14 @@ import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.WindowTarget
 import io.github.totocastaldi.herdrdesktop.agents.PaneFocus
 import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentsManager
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Axis
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Space
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceNames
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.closePane
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.resizeSplit
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.splitPane
 import kotlinx.coroutines.delay
 
 /** How often the shown folders and the document are read again from the core while the screen is open. */
@@ -64,9 +68,22 @@ fun WorkspaceScreen(
         }
     }
     val actions = remember(manager, machineId) { ManagerActions(manager, machineId) }
+    val rpc = container.connections.sessions.collectAsState().value[machineId]
+    val host = remember(rpc) { rpc?.let { PaneHost(it, container.scope, container.frameObserver) } }
     val shown = rememberShownAgents(container.agents, machineId)
     val agents = AgentLink(focus?.takeIf { it.machineId == machineId }, shown)
-    WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack, WorkspaceLinks(agents, window))
+    WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack, WorkspaceLinks(agents, window, host))
+}
+
+/** What the user can do on the panes of a tab; each action is sent to the core. */
+interface PaneActions {
+    /** Splits pane [paneId] along [axis] with a new shell started in [folder] (the core's default when null). */
+    fun splitPane(spaceId: String, tabId: String, paneId: String, axis: Axis, folder: String?)
+
+    /** Closes pane [paneId] and ends its terminal; the last pane closes the tab. */
+    fun closePane(spaceId: String, tabId: String, paneId: String)
+
+    fun resizeSplit(spaceId: String, tabId: String, splitId: String, weights: List<Double>)
 }
 
 /**
@@ -87,7 +104,7 @@ private fun rememberShownAgents(agents: AgentsManager, machineId: String): (Set<
 class AgentLink(val focus: PaneFocus? = null, val onShown: (Set<String>) -> Unit = {})
 
 /** What the user can do on spaces and tabs; each action is sent to the core. */
-interface WorkspaceActions {
+interface WorkspaceActions : PaneActions {
     fun createSpace()
 
     fun renameSpace(spaceId: String, name: String)
@@ -105,7 +122,9 @@ interface WorkspaceActions {
     fun closeTab(spaceId: String, tabId: String)
 }
 
-private class ManagerActions(private val m: WorkspaceManager, private val id: String) : WorkspaceActions {
+private class ManagerActions(private val m: WorkspaceManager, private val id: String) :
+    WorkspaceActions,
+    PaneActions by ManagerPaneActions(m, id) {
     override fun createSpace() {
         m.perform(id) { createSpace() }
     }
@@ -139,11 +158,32 @@ private class ManagerActions(private val m: WorkspaceManager, private val id: St
     }
 }
 
+private class ManagerPaneActions(private val m: WorkspaceManager, private val id: String) : PaneActions {
+    override fun splitPane(spaceId: String, tabId: String, paneId: String, axis: Axis, folder: String?) {
+        m.perform(id) { splitPane(spaceId, tabId, paneId, axis, folder) }
+    }
+
+    override fun closePane(spaceId: String, tabId: String, paneId: String) {
+        m.perform(id) { closePane(spaceId, tabId, paneId) }
+    }
+
+    override fun resizeSplit(spaceId: String, tabId: String, splitId: String, weights: List<Double>) {
+        m.perform(id) { resizeSplit(spaceId, tabId, splitId, weights) }
+    }
+}
+
 /** The space a window opens on and how it opens another window (none when null). */
 class WindowOptions(val initialSpace: String? = null, val onNewWindow: ((spaceId: String?) -> Unit)? = null)
 
-/** What the screen shares with the rest of its window: the agents sidebar and the window itself. */
-class WorkspaceLinks(val agents: AgentLink = AgentLink(), val window: WindowOptions = WindowOptions())
+/**
+ * What the screen shares with the rest of its window: the agents sidebar, the window itself and how its panes
+ * reach their terminals ([host], null when the screen only shows the layout).
+ */
+class WorkspaceLinks(
+    val agents: AgentLink = AgentLink(),
+    val window: WindowOptions = WindowOptions(),
+    val host: PaneHost? = null
+)
 
 /**
  * Spaces and tabs of one window. The selection belongs to the window and survives resizing, display and
@@ -181,7 +221,7 @@ fun WorkspaceContent(
                 is WorkspaceState.Failed -> Message(stringResource(R.string.workspace_failed, state.reason))
 
                 is WorkspaceState.Ready ->
-                    ReadyContent(state, actions, links.agents, selectedSpace) { selectedSpace = it }
+                    ReadyContent(state, actions, links, selectedSpace) { selectedSpace = it }
             }
         }
     }
@@ -196,10 +236,11 @@ internal fun Message(text: String) {
 private fun ReadyContent(
     state: WorkspaceState.Ready,
     actions: WorkspaceActions,
-    agents: AgentLink,
+    links: WorkspaceLinks,
     selectedSpace: String?,
     onSelectSpace: (String) -> Unit
 ) {
+    val agents = links.agents
     val spaces = state.workspace.spaces
     val selectedTabs = rememberSaveable(saver = TabSelectionSaver) { mutableStateMapOf() }
     var known by remember { mutableStateOf<Set<String>?>(null) }
@@ -248,7 +289,12 @@ private fun ReadyContent(
                         actions.createTab(space.id, WorkspaceNames.newTabFolder(space, tab, state::cwdOf))
                     }
                     HorizontalDivider()
-                    if (tab == null) Message(stringResource(R.string.workspace_no_tabs)) else TabBody(tab, state)
+                    if (tab == null) {
+                        Message(stringResource(R.string.workspace_no_tabs))
+                    } else {
+                        val focusPane = agents.focus?.location?.takeIf { it.tabId == tab.id }?.paneId
+                        TabPanes(space.id, tab, state, controls, links.host, focusPane)
+                    }
                 }
             }
         }

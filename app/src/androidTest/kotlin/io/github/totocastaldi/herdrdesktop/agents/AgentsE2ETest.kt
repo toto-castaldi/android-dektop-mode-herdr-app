@@ -4,8 +4,6 @@ import android.app.ActivityOptions
 import android.content.Intent
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.assertTextContains
-import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -48,7 +46,8 @@ import org.junit.runner.RunWith
  * (`printf` in the shell of a tab, and a worker started by it); the test ends the terminals it started.
  * `-e agHostKey SHA256:…` checks the presented host key before confirming it.
  * `-e agDisplay <id>` opens the app on that display (Desktop Mode); `-e agPauseMillis <ms>` holds each step on
- * screen; `-e agDeleteKey true` deletes the test key at the end.
+ * screen; `-e agDeleteKey true` deletes the test key at the end; `-e agKey write` only creates a new test key
+ * and writes its public part, without connecting, to authorize it on the host first.
  */
 @RunWith(AndroidJUnit4::class)
 class AgentsE2ETest {
@@ -88,6 +87,15 @@ class AgentsE2ETest {
             container.keys.delete(KEY_ALIAS)
             File(app.getExternalFilesDir(null), "agents-e2e.pub").delete()
         }
+    }
+
+    /** `-e agKey write`: a new test key, replacing any left from earlier runs, without connecting anywhere. */
+    @Test
+    fun writesANewTestKey() {
+        assumeTrue("agKey not given", args.getString("agKey") == "write")
+        container.keys.delete(KEY_ALIAS)
+        val key = container.keys.generate(KEY_ALIAS)
+        File(app.getExternalFilesDir(null), "agents-e2e.pub").writeText(key.authorizedKeysLine() + "\n")
     }
 
     @Test
@@ -149,9 +157,8 @@ class AgentsE2ETest {
         hostKey?.let { assertEquals("host key of $host", it, presented.fingerprint) }
         container.connections.confirmHostKey(added.id, presented)
         rule.waitUntil(TIMEOUT_MILLIS) { container.workspaces.state(added.id).value is WorkspaceState.Ready }
-        rule.onNode(
-            hasText(text(R.string.machine_open)) and hasAnyAncestor(hasAnyDescendant(hasText(NAME)))
-        ).performClick()
+        // By the machine's own tag: other machines of the device may be connected and show "Apri" too.
+        rule.onNodeWithTag("open-${checkNotNull(machine).id}").performClick()
         rule.onNodeWithText(text(R.string.workspace_spaces)).assertExists()
         return added
     }

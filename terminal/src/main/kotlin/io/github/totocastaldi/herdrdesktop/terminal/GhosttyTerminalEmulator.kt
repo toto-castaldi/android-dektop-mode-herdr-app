@@ -32,10 +32,34 @@ class GhosttyTerminalEmulator(initialSize: TerminalSize, scrollbackBytes: Long =
         }
     }
 
-    override fun snapshot(): ScreenSnapshot = withHandle {
-        val data = checkNotNull(GhosttyNative.nativeSnapshot(it)) { "snapshot failed" }
-        SnapshotDecoder.decode(data)
+    override fun scroll(rows: Int) {
+        withHandle {
+            val result = GhosttyNative.nativeScroll(it, rows)
+            check(result == 0) { "scroll failed with libghostty-vt result $result" }
+        }
     }
+
+    override fun snapshot(): ScreenSnapshot = SnapshotDecoder.decode(raw())
+
+    /** Arrays reused by [screen] across frames. */
+    private var screenBuffer = IntArray(0)
+    private var startsBuffer = IntArray(0)
+
+    /**
+     * Read in place, without a cell object per cell, in arrays reused across calls: the result is valid
+     * until the next call.
+     */
+    override fun screen(): RawScreen = withHandle {
+        var length = GhosttyNative.nativeSnapshotInto(it, screenBuffer)
+        if (length < -1) {
+            screenBuffer = IntArray(-length + -length / GROWTH_DIVISOR)
+            length = GhosttyNative.nativeSnapshotInto(it, screenBuffer)
+        }
+        check(length >= 0) { "snapshot failed" }
+        RawScreen(screenBuffer, startsBuffer).also { screen -> startsBuffer = screen.starts }
+    }
+
+    private fun raw(): IntArray = withHandle { checkNotNull(GhosttyNative.nativeSnapshot(it)) { "snapshot failed" } }
 
     override fun encodeKey(input: KeyInput): ByteArray = withHandle {
         GhosttyNative.nativeEncodeKey(
@@ -66,5 +90,8 @@ class GhosttyTerminalEmulator(initialSize: TerminalSize, scrollbackBytes: Long =
     companion object {
         /** Scrollback memory limit per terminal. */
         const val DEFAULT_SCROLLBACK_BYTES: Long = 10L * 1024 * 1024
+
+        /** A grown snapshot buffer gets a quarter more than needed, for the next frames. */
+        private const val GROWTH_DIVISOR = 4
     }
 }

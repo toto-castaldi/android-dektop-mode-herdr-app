@@ -23,6 +23,8 @@ internal sealed interface Prompt {
     data class CloseSpace(val space: Space, val label: String) : Prompt
 
     data class CloseTab(val spaceId: String, val tab: Tab, val label: String) : Prompt
+
+    data class ClosePane(val spaceId: String, val tabId: String, val paneId: String, val label: String) : Prompt
 }
 
 @Composable
@@ -47,6 +49,12 @@ internal fun PromptDialog(prompt: Prompt, actions: WorkspaceActions, dismiss: ()
             stringResource(R.string.workspace_close_tab_text),
             dismiss
         ) { actions.closeTab(prompt.spaceId, prompt.tab.id) }
+
+        is Prompt.ClosePane -> ConfirmDialog(
+            stringResource(R.string.pane_close_title, prompt.label),
+            stringResource(R.string.pane_close_text),
+            dismiss
+        ) { actions.closePane(prompt.spaceId, prompt.tabId, prompt.paneId) }
     }
 }
 

@@ -16,6 +16,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.ssh.SshlibTransport
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceManager
 import io.github.totocastaldi.herdrdesktop.machines.AndroidLocalNetworkAccess
 import io.github.totocastaldi.herdrdesktop.machines.LinuxTerminal
+import io.github.totocastaldi.herdrdesktop.terminal.FrameObserver
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +59,13 @@ class AppContainer(app: Application) {
 
     /** Agents of the connected machines and their states, from the cores' events. */
     val agents = AgentsManager(connections.sessions, scope)
+
+    /**
+     * Told about every frame drawn by a terminal pane; set only by the measurements of REQ-NFR-003
+     * (instrumented tests), null otherwise.
+     */
+    @Volatile
+    var frameObserver: FrameObserver? = null
 
     /** Machines whose host key is already confirmed are connected at start. */
     fun connectConfirmedMachines() {

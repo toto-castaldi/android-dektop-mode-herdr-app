@@ -5,12 +5,12 @@ package io.github.totocastaldi.herdrdesktop.terminal
  * `size.columns` cells, row by row. Colors are `0xRRGGBB`.
  */
 data class ScreenSnapshot(
-    val size: TerminalSize,
-    val foreground: Int,
-    val background: Int,
-    val cursor: Cursor?,
+    override val size: TerminalSize,
+    override val foreground: Int,
+    override val background: Int,
+    override val cursor: Cursor?,
     val cells: List<Cell>
-) {
+) : ScreenRows {
     init {
         require(cells.size == size.columns * size.rows) {
             "expected ${size.columns * size.rows} cells, got ${cells.size}"
@@ -19,6 +19,16 @@ data class ScreenSnapshot(
 
     /** Cell at [column], [row], both from 0. */
     fun cell(column: Int, row: Int): Cell = cells[row * size.columns + column]
+
+    override fun foregroundAt(column: Int, row: Int) = cell(column, row).foreground ?: ScreenRows.NO_COLOR
+
+    override fun backgroundAt(column: Int, row: Int) = cell(column, row).background ?: ScreenRows.NO_COLOR
+
+    override fun attributesAt(column: Int, row: Int) = cell(column, row).attributes
+
+    override fun widthAt(column: Int, row: Int) = cell(column, row).width
+
+    override fun textAt(column: Int, row: Int) = cell(column, row).text
 
     /** Text of [row], one character per cell, with blank cells as spaces and wide tails skipped. */
     fun rowText(row: Int): String = buildString {

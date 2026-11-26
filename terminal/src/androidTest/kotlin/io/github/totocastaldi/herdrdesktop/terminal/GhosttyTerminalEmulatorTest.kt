@@ -86,6 +86,19 @@ class GhosttyTerminalEmulatorTest {
         assertEquals("AB" + " ".repeat(8), snapshot.rowText(1))
     }
 
+    @Test
+    fun scrollShowsTheScrollbackAndZeroReturnsToTheActiveArea() {
+        write((1..20).joinToString("\r\n") { "line $it" })
+
+        terminal.scroll(-10)
+        val back = terminal.snapshot()
+        terminal.scroll(0)
+        val active = terminal.snapshot()
+
+        assertEquals("line 7", back.rowText(0).trim())
+        assertEquals("line 20", active.rowText(3).trim())
+    }
+
     private companion object {
         const val PALETTE_RED = 0xCC6666
         const val PALETTE_21 = 0x0000FF

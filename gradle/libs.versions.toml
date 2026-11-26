@@ -29,6 +29,9 @@ libghostty-vt-android-api = "35"
 libghostty-vt = "1.0.2"
 libghostty-vt-sha256 = "1dcafa8a3357f3a6bbf4f2696e61de611400c5469518716793dfffd35f008b3e"
 libghostty-vt-deps-sha256 = "c56156dbea82fdf71f13bf0d704cdf4393b6a04208d7f9691e0d7f60c7f9ca4d"
+# Terminal font (OFL-1.1) packaged by :terminal as assets, downloaded and checked with SHA-256.
+jetbrains-mono = "2.304"
+jetbrains-mono-sha256 = "6f6376c6ed2960ea8a963cd7387ec9d76e3f629125bc33d1fdcd7eb7012f7bbf"
 zig = "0.17.1"
 zig-sha256-linux-intel = "3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a"
 zig-sha256-linux-arm = "a1546d5646eb184437918d6635ca6b762a0e889eac09cef720ee7a1ed3fe7795"
@@ -45,6 +48,7 @@ compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview"
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-junit" }

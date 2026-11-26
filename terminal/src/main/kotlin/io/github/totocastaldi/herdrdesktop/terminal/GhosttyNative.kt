@@ -19,7 +19,14 @@ internal object GhosttyNative {
     external fun nativeResize(handle: Long, columns: Int, rows: Int, cellWidth: Int, cellHeight: Int): Int
 
     @JvmStatic
+    external fun nativeScroll(handle: Long, delta: Int): Int
+
+    @JvmStatic
     external fun nativeSnapshot(handle: Long): IntArray?
+
+    /** Fills [out] and returns the length; minus the length needed if [out] is too small, -1 on failure. */
+    @JvmStatic
+    external fun nativeSnapshotInto(handle: Long, out: IntArray): Int
 
     @Suppress("LongParameterList")
     @JvmStatic

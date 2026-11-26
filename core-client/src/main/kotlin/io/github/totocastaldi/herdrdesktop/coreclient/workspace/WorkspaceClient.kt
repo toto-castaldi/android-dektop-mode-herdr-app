@@ -16,9 +16,9 @@ fun interface IdGenerator {
 
 /**
  * Spaces and tabs of one core (REQ-WS-001): changes [document] and starts and ends the terminals of the
- * tabs. Closing a tab or a space ends its terminals; nothing else does.
+ * tabs. Closing a tab or a space ends its terminals, as closing a pane does (`WorkspacePanes.kt`); nothing else does.
  */
-class WorkspaceClient(rpc: CoreRpc, private val ids: IdGenerator = IdGenerator.Random) {
+class WorkspaceClient(rpc: CoreRpc, internal val ids: IdGenerator = IdGenerator.Random) {
     val document = CoreDocument(rpc)
     val terminals = CoreTerminals(rpc)
 
@@ -81,7 +81,7 @@ class WorkspaceClient(rpc: CoreRpc, private val ids: IdGenerator = IdGenerator.R
         WorkspaceEdits.singlePaneTab(ids.next(TAB_PREFIX), ids.next(PANE_PREFIX), terminal)
 
     /** Runs [block]; if it fails, the just started [terminal] is ended so that no terminal is left without a tab. */
-    private suspend fun <T> endOnFailure(terminal: TerminalInfo, block: suspend () -> T): T = try {
+    internal suspend fun <T> endOnFailure(terminal: TerminalInfo, block: suspend () -> T): T = try {
         block()
     } catch (
         @Suppress("TooGenericExceptionCaught") e: Exception
@@ -90,7 +90,7 @@ class WorkspaceClient(rpc: CoreRpc, private val ids: IdGenerator = IdGenerator.R
         throw e
     }
 
-    private companion object {
+    internal companion object {
         const val SPACE_PREFIX = "sp"
         const val TAB_PREFIX = "tb"
         const val PANE_PREFIX = "p"

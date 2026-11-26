@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import io.github.totocastaldi.herdrdesktop.agents.AgentSidebar
 import io.github.totocastaldi.herdrdesktop.agents.PaneFocus
 import io.github.totocastaldi.herdrdesktop.machines.LocalNetworkPermissionRequest
@@ -41,34 +44,40 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
-                var openMachine by rememberSaveable { mutableStateOf(target.machineId) }
-                var focus by remember { mutableStateOf<PaneFocus?>(null) }
-                val open = openMachine
-                Row(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f)) {
-                        if (open == null) {
-                            MachinesScreen(container, onOpen = { openMachine = it })
-                        } else {
-                            val window = WindowOptions(
-                                initialSpace = target.spaceId.takeIf { open == target.machineId },
-                                onNewWindow = { space ->
-                                    startActivity(windowIntent(this@MainActivity, WindowTarget(open, space)))
-                                }
-                            )
-                            WorkspaceScreen(container, open, focus, window, onBack = { openMachine = null })
-                        }
-                    }
-                    VerticalDivider()
-                    AgentSidebar(container) {
-                        openMachine = it.machineId
-                        focus = it
-                    }
-                }
-                // Runtime permissions need an activity: asked here for the machines waiting for it.
-                val statuses by container.connections.statuses.collectAsState()
-                LocalNetworkPermissionRequest(statuses, container.connections)
+                // Test tags as resource ids, so that UiAutomator finds them in the instrumented tests.
+                Box(Modifier.semantics { testTagsAsResourceId = true }) { Content(container, target) }
             }
         }
+    }
+
+    @Composable
+    private fun Content(container: AppContainer, target: WindowTarget) {
+        var openMachine by rememberSaveable { mutableStateOf(target.machineId) }
+        var focus by remember { mutableStateOf<PaneFocus?>(null) }
+        val open = openMachine
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f)) {
+                if (open == null) {
+                    MachinesScreen(container, onOpen = { openMachine = it })
+                } else {
+                    val window = WindowOptions(
+                        initialSpace = target.spaceId.takeIf { open == target.machineId },
+                        onNewWindow = { space ->
+                            startActivity(windowIntent(this@MainActivity, WindowTarget(open, space)))
+                        }
+                    )
+                    WorkspaceScreen(container, open, focus, window, onBack = { openMachine = null })
+                }
+            }
+            VerticalDivider()
+            AgentSidebar(container) {
+                openMachine = it.machineId
+                focus = it
+            }
+        }
+        // Runtime permissions need an activity: asked here for the machines waiting for it.
+        val statuses by container.connections.statuses.collectAsState()
+        LocalNetworkPermissionRequest(statuses, container.connections)
     }
 
     companion object {

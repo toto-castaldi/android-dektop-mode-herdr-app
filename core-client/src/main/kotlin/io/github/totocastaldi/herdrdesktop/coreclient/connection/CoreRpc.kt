@@ -15,4 +15,11 @@ fun interface CoreRpc {
      * from the first frame on; the flow ends when the core closes the channel or the session ends.
      */
     fun lines(channel: Int): Flow<String> = emptyFlow()
+
+    /**
+     * Opens a raw stream to a terminal with `terminal.attach`; throws `RpcException` if the terminal is gone.
+     * Only a framed session ([CoreSession]) has streams.
+     */
+    suspend fun attach(request: AttachRequest): TerminalStream =
+        throw UnsupportedOperationException("terminal streams need a framed session")
 }

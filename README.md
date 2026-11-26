@@ -22,7 +22,7 @@ python3 .agents/tools/backlog.py status
 - JDK 21 (per esempio OpenJDK 21 della distribuzione).
 - Android SDK con le licenze accettate (`sdkmanager --licenses`) e `ANDROID_HOME` impostato, oppure `sdk.dir=<percorso dell'SDK>` in `local.properties` (file locale, fuori dal repository). Basta `cmdline-tools`: platform e build-tools necessari li installa il build.
 - Gradle non va installato: si usa il wrapper `./gradlew`, che scarica la versione fissata. Le versioni di plugin e dipendenze sono in `gradle/libs.versions.toml`.
-- Per il terminale (libreria nativa libghostty-vt): `tar` con supporto xz e accesso di rete al primo build. NDK e CMake li installa il build (oppure `sdkmanager "ndk;29.0.14206865" "cmake;3.22.1"`); Zig non va installato: il build scarica la versione fissata e verifica i checksum di Zig e dei sorgenti di libghostty-vt (`gradle/libs.versions.toml`). Host di build: Linux o macOS. La prima compilazione nativa richiede alcuni minuti; l'APK contiene solo `arm64-v8a`.
+- Per il terminale (libreria nativa libghostty-vt): `tar` con supporto xz e accesso di rete al primo build. NDK e CMake li installa il build (oppure `sdkmanager "ndk;29.0.14206865" "cmake;3.22.1"`); Zig non va installato: il build scarica la versione fissata e verifica i checksum di Zig, dei sorgenti di libghostty-vt e del font del terminale JetBrains Mono (`gradle/libs.versions.toml`). Host di build: Linux o macOS. La prima compilazione nativa richiede alcuni minuti; l'APK contiene solo `arm64-v8a`.
 - Python 3.10+ per gli strumenti del backlog.
 - Per i test sul dispositivo: `adb` (Android SDK platform-tools) e un dispositivo Android con Desktop Mode e Linux Terminal, visibile in `adb devices`. Riferimento: Pixel 11 Pro.
 
@@ -45,6 +45,12 @@ python3 .agents/tools/backlog.py status
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.wsHost=<host> \
   -Pandroid.testInstrumentationRunnerArguments.wsUser=<utente>                    # spazi e tab su un core reale (wsPort, wsDisplay, wsRestart=setup|verify, wsDeleteKey)
+adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.workspace.PaneE2ETest \
+  -e wsHost <host> -e wsUser <utente> [-e wsDisplay <id>] [-e wsHostKey SHA256:…] \
+  io.github.totocastaldi.herdrdesktop.test/androidx.test.runner.AndroidJUnitRunner   # pane e terminali su un core reale
+adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.workspace.TerminalPerformanceE2ETest \
+  -e wsPerf true -e wsHost <host della LAN> -e wsUser <utente> [-e wsDisplay <id>] \
+  io.github.totocastaldi.herdrdesktop.test/androidx.test.runner.AndroidJUnitRunner   # latenza e frame rate (REQ-NFR-003), risultati in logcat con tag PaneE2E
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.agHost=<host> \
   -Pandroid.testInstrumentationRunnerArguments.agUser=<utente>                    # sidebar degli agenti su un core reale (agPort, agHostKey, agDisplay, agDeleteKey)

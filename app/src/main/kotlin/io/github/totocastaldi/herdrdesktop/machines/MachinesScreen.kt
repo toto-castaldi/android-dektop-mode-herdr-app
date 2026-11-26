@@ -278,7 +278,9 @@ private fun MachineRow(
                 if (status == MachineStatus.LocalNetworkDenied) LocalNetworkDeniedHelp(openAppSettings)
             }
             if (status is MachineStatus.Connected) {
-                Button(onClick = actions.open) { Text(stringResource(R.string.machine_open)) }
+                Button(onClick = actions.open, modifier = Modifier.testTag("open-${machine.id}")) {
+                    Text(stringResource(R.string.machine_open))
+                }
                 Spacer(Modifier.width(8.dp))
             }
             if (status is MachineStatus.CoreInstalling) {
