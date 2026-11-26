@@ -1,0 +1,23 @@
+{
+  "id": "TEC-003",
+  "title": "Adottare la versione 4.5.0 del template",
+  "version": "v0.1.0",
+  "epic": "EPIC-001",
+  "type": "Task",
+  "priority": "P0",
+  "status": "Todo",
+  "dependencies": [],
+  "design_references": [
+    "PROCESS §3",
+    "PROCESS §5",
+    "process/release",
+    "PROCESS-PARALLEL"
+  ],
+  "description": "Adottare il template agile-project-template 4.5.0 (da 4.4.0): l'orchestratore rimuove il clone di un worker subito dopo il merge del suo item senza chiedere conferma, e si ferma a chiedere solo se il clone contiene lavoro non committato o non pushato. Release notes: https://github.com/toto-castaldi/agile-project-template/releases/tag/v4.5.0",
+  "acceptance_criteria": [
+    "docs/PROCESS.md, docs/PROCESS-PARALLEL.md e .agents/skills/orchestrate/SKILL.md sono copiati senza modifiche dalla release v4.5.0 del template",
+    "Il Process version in docs/PROCESS.md è 4.5.0 e backlog template-check non segnala aggiornamenti",
+    "Le copie delle skill per Claude Code (.claude/skills/), se presenti, sono allineate a .agents/skills/",
+    "backlog check passa"
+  ]
+}
