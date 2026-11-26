@@ -12,6 +12,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshKeyStore
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.Machine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineAuth
 import java.io.IOException
+import java.net.ConnectException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
@@ -63,9 +64,16 @@ class SshlibTransport(
     private suspend fun connect(client: SshClient, machine: Machine, verifier: PinningVerifier): OpenResult {
         val failure = when (val connected = client.connect()) {
             ConnectResult.Success -> null
+
             is ConnectResult.HostKeyRejected -> OpenResult.HostKeyRejected(checkNotNull(verifier.rejected))
-            is ConnectResult.TransportError -> OpenResult.Unreachable(connected.cause.javaClass.simpleName)
+
+            is ConnectResult.TransportError -> OpenResult.Unreachable(
+                connected.cause.javaClass.simpleName,
+                refused = isConnectionRefused(connected.cause)
+            )
+
             is ConnectResult.AlgorithmMismatch -> OpenResult.Unreachable("algorithm mismatch")
+
             is ConnectResult.ProtocolError -> OpenResult.Unreachable("protocol error")
         }
         return failure ?: authenticateAndOpen(client, machine)
@@ -159,3 +167,13 @@ class SshlibTransport(
         const val EXIT_STATUS_WAIT_MILLIS = 5_000L
     }
 }
+
+/**
+ * True if [error] says that nothing listens on the port. sshlib 0.6.x reports it as a
+ * `TransportException` without cause, whose message lists the socket errors ("Connection refused").
+ */
+internal fun isConnectionRefused(error: Throwable): Boolean = generateSequence(error) { it.cause }.any {
+    it is ConnectException || it.message?.let { m -> REFUSED.any(m::contains) } == true
+}
+
+private val REFUSED = listOf("Connection refused", "ECONNREFUSED")

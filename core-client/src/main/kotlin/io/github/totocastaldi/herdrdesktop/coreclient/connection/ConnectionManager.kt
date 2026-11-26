@@ -2,8 +2,10 @@ package io.github.totocastaldi.herdrdesktop.coreclient.connection
 
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKey
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKeyDecision
+import io.github.totocastaldi.herdrdesktop.coreclient.machine.LocalMachine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.Machine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineRepository
+import io.github.totocastaldi.herdrdesktop.coreclient.machine.isLocal
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -28,8 +30,18 @@ data class ConnectionPolicy(
     val initialRetryMillis: Long = 1_000L,
     val maxRetryMillis: Long = 30_000L,
     val pingIntervalMillis: Long = 30_000L,
-    val pingTimeoutMillis: Long = 10_000L
+    val pingTimeoutMillis: Long = 10_000L,
+    /** After the user opens the Linux Terminal, how long a refused local connection means "VM starting". */
+    val localStartMillis: Long = 60_000L
 )
+
+/** Where the user is with the Linux Terminal, from the app's point of view. */
+private enum class TerminalPhase { UNKNOWN, STARTING, OPENED }
+
+/** Tells whether the Android Linux Terminal app is installed and enabled. */
+fun interface LocalTerminalProbe {
+    fun available(): Boolean
+}
 
 /**
  * Keeps one connection per machine the user connected, and its [MachineStatus]. A dropped or
@@ -41,25 +53,30 @@ class ConnectionManager(
     private val transport: CoreTransport,
     private val scope: CoroutineScope,
     private val policy: ConnectionPolicy = ConnectionPolicy(),
-    private val log: ConnectionLog = ConnectionLog { _, _ -> }
+    private val log: ConnectionLog = ConnectionLog { _, _ -> },
+    private val localTerminal: LocalTerminalProbe = LocalTerminalProbe { true }
 ) {
     private val state = MutableStateFlow<Map<String, MachineStatus>>(emptyMap())
     val statuses: StateFlow<Map<String, MachineStatus>> = state.asStateFlow()
 
     private val jobs = mutableMapOf<String, Job>()
 
+    @Volatile
+    private var terminalPhase = TerminalPhase.UNKNOWN
+    private var terminalTimer: Job? = null
+
     fun status(id: String): MachineStatus = state.value[id] ?: MachineStatus.Disconnected
 
     /** Starts (or restarts) connecting to the machine [id]. */
     fun connect(id: String) {
-        stop(id)
+        jobs.stop(id)
         val job = scope.launch { run(id) }
         synchronized(jobs) { jobs[id] = job }
     }
 
     /** Closes the connection to [id]; terminals keep running on the core. */
     fun disconnect(id: String) {
-        stop(id)
+        jobs.stop(id)
         set(id, MachineStatus.Disconnected)
     }
 
@@ -73,15 +90,33 @@ class ConnectionManager(
         connect(id)
     }
 
-    /** Forgets the machine's connection state, for example after removing it. */
-    fun forget(id: String) {
-        stop(id)
-        state.update { it - id }
+    /**
+     * The user opened the Linux Terminal from the app: a refused local connection now means the VM is
+     * starting, and after [ConnectionPolicy.localStartMillis] that the VM is not configured. Retries at once.
+     */
+    fun localTerminalOpened() {
+        terminalPhase = TerminalPhase.STARTING
+        terminalTimer?.cancel()
+        terminalTimer = scope.launch {
+            delay(policy.localStartMillis)
+            terminalPhase = TerminalPhase.OPENED
+            // Atomic, so that a connection established meanwhile is not overwritten.
+            state.update { all ->
+                val starting = all[LocalMachine.ID] as? MachineStatus.LocalTerminalStarting
+                if (starting == null) {
+                    all
+                } else {
+                    all + (LocalMachine.ID to MachineStatus.LocalTerminalNotConfigured(false, starting.retryInMillis))
+                }
+            }
+        }
+        connect(LocalMachine.ID)
     }
 
-    private fun stop(id: String) {
-        // Cancelling the run closes its session (see serve).
-        synchronized(jobs) { jobs.remove(id) }?.cancel()
+    /** Forgets the machine's connection state, for example after removing it. */
+    fun forget(id: String) {
+        jobs.stop(id)
+        state.update { it - id }
     }
 
     private suspend fun run(id: String) {
@@ -93,7 +128,7 @@ class ConnectionManager(
             // A disconnect may have cancelled this run while the attempt was ending.
             currentCoroutineContext().ensureActive()
             if (outcome.connected) retry = policy.initialRetryMillis
-            set(id, outcome.status ?: MachineStatus.Unreachable(outcome.reason, retry))
+            set(id, outcome.status ?: retryStatus(machine, outcome.reason, outcome.refused, terminalPhase, retry))
             if (outcome.status != null) return
             delay(retry)
             retry = (retry * 2).coerceAtMost(policy.maxRetryMillis)
@@ -103,12 +138,24 @@ class ConnectionManager(
     }
 
     /** End of an attempt: a final [status] that stops retrying, or a [reason] to retry. */
-    private class Outcome(val status: MachineStatus? = null, val reason: String = "", val connected: Boolean = false)
+    private class Outcome(
+        val status: MachineStatus? = null,
+        val reason: String = "",
+        val connected: Boolean = false,
+        val refused: Boolean = false
+    )
 
-    private suspend fun attempt(machine: Machine): Outcome = when (val opened = transport.open(machine)) {
-        is OpenResult.Unreachable -> Outcome(reason = opened.reason)
+    private suspend fun attempt(machine: Machine): Outcome = when (
+        val opened = if (machine.isLocal && !localTerminal.available()) null else transport.open(machine)
+    ) {
+        null -> Outcome(MachineStatus.LocalTerminalMissing)
 
-        OpenResult.AuthFailed -> Outcome(MachineStatus.AuthFailed)
+        is OpenResult.Unreachable -> Outcome(reason = opened.reason, refused = opened.refused)
+
+        OpenResult.AuthFailed ->
+            Outcome(
+                if (machine.isLocal) MachineStatus.LocalTerminalNotConfigured(true, null) else MachineStatus.AuthFailed
+            )
 
         is OpenResult.HostKeyRejected -> Outcome(opened.decision.toStatus())
 
@@ -123,6 +170,7 @@ class ConnectionManager(
     /** Keeps a ready session until it closes or stops answering pings. */
     private suspend fun serve(machine: Machine, ready: HandshakeResult.Ready): Outcome {
         val session = ready.session
+        if (machine.isLocal) terminalPhase = TerminalPhase.UNKNOWN
         set(machine.id, MachineStatus.Connected(ready.hello.core?.name, ready.hello.version))
         try {
             var alive = true
@@ -140,6 +188,19 @@ class ConnectionManager(
         state.update { it + (id to status) }
         machines.get(id)?.let { log.statusChanged(it, status) }
     }
+}
+
+/** Cancels the run of [id]; cancelling it closes its session (see serve). */
+private fun MutableMap<String, Job>.stop(id: String) {
+    synchronized(this) { remove(id) }?.cancel()
+}
+
+/** Status while waiting to retry; refused local connections are explained in terms of the Linux Terminal. */
+private fun retryStatus(machine: Machine, reason: String, refused: Boolean, phase: TerminalPhase, retry: Long) = when {
+    !machine.isLocal || !refused -> MachineStatus.Unreachable(reason, retry)
+    phase == TerminalPhase.STARTING -> MachineStatus.LocalTerminalStarting(retry)
+    phase == TerminalPhase.OPENED -> MachineStatus.LocalTerminalNotConfigured(false, retry)
+    else -> MachineStatus.LocalTerminalNotRunning(retry)
 }
 
 private fun HostKeyDecision.toStatus(): MachineStatus = when (this) {

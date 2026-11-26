@@ -24,8 +24,11 @@ fun interface CoreTransport {
 sealed interface OpenResult {
     class Opened(val stream: CoreStream) : OpenResult
 
-    /** Network failure, timeout or closed connection: worth retrying. */
-    data class Unreachable(val reason: String) : OpenResult
+    /**
+     * Network failure, timeout or closed connection: worth retrying. [refused] is true when nothing
+     * listens on the port (TCP connection refused), which tells the states of the local machine apart.
+     */
+    data class Unreachable(val reason: String, val refused: Boolean = false) : OpenResult
 
     /** The host key is unconfirmed or changed: the connection was refused before authenticating. */
     data class HostKeyRejected(val decision: HostKeyDecision) : OpenResult

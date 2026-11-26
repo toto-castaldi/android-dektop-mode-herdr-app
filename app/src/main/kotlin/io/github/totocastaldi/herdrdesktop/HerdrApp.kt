@@ -11,6 +11,7 @@ import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshKeyStore
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.FileMachineStore
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineRepository
 import io.github.totocastaldi.herdrdesktop.coreclient.ssh.SshlibTransport
+import io.github.totocastaldi.herdrdesktop.machines.LinuxTerminal
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,13 +33,17 @@ class AppContainer(app: Application) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val keys: SshKeyStore = AndroidKeystoreSshKeys()
     val secrets: SecretCipher = AndroidKeystoreSecretCipher()
-    val machines = MachineRepository(FileMachineStore(File(app.filesDir, "machines.json")))
+    val machines = MachineRepository(FileMachineStore(File(app.filesDir, "machines.json"))).also {
+        it.ensureLocal(app.getString(R.string.local_machine_name))
+    }
+    val linuxTerminal = LinuxTerminal(app)
     val connections = ConnectionManager(
         machines = machines,
         transport = SshlibTransport(keys, secrets),
         scope = scope,
         // Status names only: no keys, passwords or terminal content (AGENTS.md §7).
-        log = ConnectionLog { machine, status -> Log.i(TAG, "machine ${machine.id}: ${status.javaClass.simpleName}") }
+        log = ConnectionLog { machine, status -> Log.i(TAG, "machine ${machine.id}: ${status.javaClass.simpleName}") },
+        localTerminal = linuxTerminal
     )
 
     /** Machines whose host key is already confirmed are connected at start. */

@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshKeyStore
+import io.github.totocastaldi.herdrdesktop.coreclient.machine.LocalMachine
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,6 +25,36 @@ class MainActivityTest {
     fun showsMachinesScreen() {
         composeRule.onNodeWithText(text(R.string.machines_title)).assertIsDisplayed()
         composeRule.onNodeWithText(text(R.string.key_title)).assertIsDisplayed()
+    }
+
+    @Test
+    fun localMachineIsListedWithItsFixedEndpointAndCannotBeEdited() {
+        composeRule.onNodeWithText(text(R.string.local_machine_name)).assertIsDisplayed()
+        composeRule.onNodeWithText(
+            composeRule.activity.getString(R.string.local_machine_endpoint, "droid@127.0.0.1:2222")
+        )
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(text(R.string.local_setup)).assertIsDisplayed()
+        // Only the local machine is listed: no edit or remove action is offered for it.
+        val container = (composeRule.activity.application as HerdrApp).container
+        if (container.machines.machines.value.size == 1) {
+            composeRule.onNodeWithText(text(R.string.machine_edit)).assertDoesNotExist()
+            composeRule.onNodeWithText(text(R.string.machine_remove)).assertDoesNotExist()
+        }
+    }
+
+    @Test
+    fun setupDialogShowsTheCommandWithTheAppKey() {
+        val container = (composeRule.activity.application as HerdrApp).container
+        composeRule.onNodeWithText(text(R.string.local_setup)).performClick()
+        composeRule.onNodeWithText(text(R.string.local_setup_title)).assertIsDisplayed()
+        val key = container.keys.publicKey(SshKeyStore.DEFAULT_ALIAS)
+        if (key != null) {
+            composeRule.onNodeWithText(LocalMachine.setupCommand(key.authorizedKeysLine())).assertIsDisplayed()
+        } else {
+            composeRule.onNodeWithText(text(R.string.local_setup_no_key)).assertIsDisplayed()
+        }
+        composeRule.onNodeWithText(text(R.string.close)).performClick()
     }
 
     @Test

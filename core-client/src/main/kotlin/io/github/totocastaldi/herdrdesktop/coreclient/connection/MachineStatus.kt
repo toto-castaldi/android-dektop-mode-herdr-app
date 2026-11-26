@@ -25,4 +25,19 @@ sealed interface MachineStatus {
     data object CoreMissing : MachineStatus
 
     data class CoreIncompatible(val compatibility: Compatibility) : MachineStatus
+
+    /** Local machine: the Linux Terminal app is not installed or not enabled. */
+    data object LocalTerminalMissing : MachineStatus
+
+    /** Local machine: nothing listens on its port, the Linux Terminal is not running; retried in [retryInMillis]. */
+    data class LocalTerminalNotRunning(val retryInMillis: Long) : MachineStatus
+
+    /** Local machine: the Linux Terminal was just opened and its VM is starting; retried in [retryInMillis]. */
+    data class LocalTerminalStarting(val retryInMillis: Long) : MachineStatus
+
+    /**
+     * Local machine: the Terminal is open but sshd does not answer or the port is not accepted, or the
+     * app key is refused ([keyRefused], no retry); otherwise retried in [retryInMillis].
+     */
+    data class LocalTerminalNotConfigured(val keyRefused: Boolean, val retryInMillis: Long?) : MachineStatus
 }

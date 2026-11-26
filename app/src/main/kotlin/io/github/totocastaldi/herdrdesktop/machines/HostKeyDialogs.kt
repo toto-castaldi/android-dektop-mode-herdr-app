@@ -17,13 +17,21 @@ import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKey
 
 @Composable
-fun HostKeyConfirmDialog(machineName: String, key: HostKey, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun HostKeyConfirmDialog(
+    machineName: String,
+    key: HostKey,
+    local: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.host_key_confirm_title, machineName)) },
         text = {
             Column {
-                Text(stringResource(R.string.host_key_confirm_text))
+                Text(
+                    stringResource(if (local) R.string.host_key_confirm_text_local else R.string.host_key_confirm_text)
+                )
                 Spacer(Modifier.height(12.dp))
                 KeyLine(null, key)
             }
@@ -34,7 +42,13 @@ fun HostKeyConfirmDialog(machineName: String, key: HostKey, onConfirm: () -> Uni
 }
 
 @Composable
-fun HostKeyChangedDialog(machineName: String, confirmed: HostKey, presented: HostKey, onDismiss: () -> Unit) {
+fun HostKeyChangedDialog(
+    machineName: String,
+    confirmed: HostKey,
+    presented: HostKey,
+    local: Boolean,
+    onDismiss: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -42,7 +56,9 @@ fun HostKeyChangedDialog(machineName: String, confirmed: HostKey, presented: Hos
         },
         text = {
             Column {
-                Text(stringResource(R.string.host_key_changed_text))
+                Text(
+                    stringResource(if (local) R.string.host_key_changed_text_local else R.string.host_key_changed_text)
+                )
                 Spacer(Modifier.height(12.dp))
                 KeyLine(stringResource(R.string.host_key_confirmed_label), confirmed)
                 Spacer(Modifier.height(8.dp))

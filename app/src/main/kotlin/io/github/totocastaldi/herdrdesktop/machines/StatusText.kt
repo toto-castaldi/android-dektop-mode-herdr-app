@@ -34,13 +34,39 @@ fun statusText(status: MachineStatus): String = when (status) {
         is Compatibility.CoreUpdateNeeded -> stringResource(R.string.status_core_update, c.reason)
         Compatibility.Compatible -> stringResource(R.string.status_connected, "")
     }
+
+    else -> localStatusText(status)
 }
+
+@Composable
+private fun localStatusText(status: MachineStatus): String = when (status) {
+    MachineStatus.LocalTerminalMissing -> stringResource(R.string.status_local_missing)
+
+    is MachineStatus.LocalTerminalNotRunning -> stringResource(
+        R.string.status_local_not_running,
+        status.retryInMillis.seconds()
+    )
+
+    is MachineStatus.LocalTerminalStarting -> stringResource(
+        R.string.status_local_starting,
+        status.retryInMillis.seconds()
+    )
+
+    is MachineStatus.LocalTerminalNotConfigured -> status.retryInMillis?.let {
+        stringResource(R.string.status_local_not_configured_retry, it.seconds())
+    } ?: stringResource(R.string.status_local_not_configured)
+
+    else -> error("Not a local machine status: $status")
+}
+
+private fun Long.seconds(): Int = (this / MILLIS_PER_SECOND).toInt()
 
 @Composable
 fun statusColor(status: MachineStatus): Color = when (status) {
     is MachineStatus.Connected -> MaterialTheme.colorScheme.primary
 
-    MachineStatus.Disconnected, MachineStatus.Connecting, is MachineStatus.HostKeyUnconfirmed ->
+    MachineStatus.Disconnected, MachineStatus.Connecting, is MachineStatus.HostKeyUnconfirmed,
+    is MachineStatus.LocalTerminalStarting ->
         MaterialTheme.colorScheme.onSurfaceVariant
 
     else -> MaterialTheme.colorScheme.error
