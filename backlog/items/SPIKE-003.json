@@ -6,14 +6,15 @@
   "module": "MOD-003",
   "type": "Spike",
   "priority": "P0",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "spike/SPIKE-003-emulazione-rendering-terminale",
   "dependencies": [],
   "requirements": [
     "REQ-NFR-003"
   ],
   "design_references": [
-    "design/modules"
+    "design/modules",
+    "ADR-001"
   ],
   "description": "Scegliere come emulare e disegnare i terminali nell'app: libghostty via JNI (lo stesso emulatore dell'app desktop), la libreria terminal-view di Termux (GPLv3, incompatibile con la licenza Apache-2.0 del progetto se inclusa), un emulatore o renderer proprio in Compose, o altre librerie. Definire le soglie misurabili di REQ-NFR-003.",
   "acceptance_criteria": [
@@ -21,5 +22,7 @@
     "Un prototipo sul Pixel 11 Pro disegna l'output di un programma TUI reale e il report riporta latenza tasto-eco e frame rate misurati, con il metodo usato.",
     "Il report propone le soglie numeriche di REQ-NFR-003, che vengono scritte nel requisito.",
     "La decisione è registrata in un ADR in docs/adr/ e la voce corrispondente è tolta dalle Open decisions di docs/design/README.md."
-  ]
+  ],
+  "outcome": "Report docs/spikes/SPIKE-003-rendering-terminale.md: confronto di libghostty-vt via JNI, Termux terminal-emulator/terminal-view (Apache-2.0 per eccezione esplicita, non GPLv3), JediTerm ed emulatore proprio su licenza, fedeltà, integrazione Compose, input e costo di build. Prototipo esplorativo (tmp/, non mergiato) sul Pixel 11 Pro in Desktop Mode (monitor LG 2560x1080 a 60 Hz): SSH + hc attach verso herdr-core 0.1.20 sulla stessa LAN, vim, htop e Claude Code disegnati con entrambi i backend; latenza tasto-frame p50 26-31 ms, p95 35-40 ms (tasti sintetici e iniettati con input keyevent, tastiera fisica non misurata a mano); 58,5-59,7 fps con output truecolor/Unicode continuo con libghostty, 56,7 con Termux (parsing al 74% di un core). Soglie scritte in REQ-NFR-003, decisione in ADR-001 (libghostty-vt via JNI, renderer proprio in Compose), open decision tolta da design/README.md, MOD-003 aggiornato. Scoperto che su Android 17 serve il permesso runtime ACCESS_LOCAL_NETWORK per collegarsi alla LAN. Gate di chiusura passato; logcat del prototipo con soli tempi e contatori; nessuna nuova dipendenza nell'app.",
+  "closed_at": "2026-11-26"
 }
