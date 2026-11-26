@@ -1,0 +1,27 @@
+{
+  "id": "US-004",
+  "title": "Spazi e tab",
+  "version": "v0.1.0",
+  "epic": "EPIC-003",
+  "module": "MOD-001",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "US-001"
+  ],
+  "requirements": [
+    "REQ-WS-001"
+  ],
+  "design_references": [
+    "design/context",
+    "design/data-model"
+  ],
+  "description": "Come utente voglio organizzare il lavoro in spazi e tab come nell'app desktop, per tenere separati progetti e macchine.",
+  "acceptance_criteria": [
+    "L'utente crea, rinomina, riordina e chiude spazi e tab su una macchina collegata.",
+    "Uno spazio senza nome mostra la cartella del primo terminale; una nuova tab parte dalla cartella del terminale attivo.",
+    "Chiusa e riaperta l'app, spazi, tab e terminali in esecuzione sono ripristinati dal core; chiudere una tab termina i suoi terminali sul core.",
+    "Le regole di nome e cartella iniziale sono coperte da test unitari."
+  ]
+}
