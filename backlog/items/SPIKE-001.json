@@ -6,7 +6,8 @@
   "module": "MOD-002",
   "type": "Spike",
   "priority": "P0",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "spike/SPIKE-001-api-trasporto-herdr-core",
   "dependencies": [],
   "design_references": [
     "design/integrations",
@@ -18,5 +19,7 @@
     "Il report confronta almeno due librerie SSH per Android (licenza, supporto a chiavi ed25519 nel Keystore, verifica della host key, manutenzione) e raccomanda una scelta.",
     "Un prototipo, anche da riga di comando sulla JVM, elenca i terminali di un herdr-core remoto e riceve almeno un evento di stato; il report riporta comandi ed esito.",
     "La decisione è registrata in design/integrations e la voce corrispondente è tolta dalle Open decisions di docs/design/README.md."
-  ]
+  ],
+  "outcome": "Report docs/spikes/SPIKE-001-api-trasporto-herdr-core.md: herdr-core espone JSON-RPC 2.0/OpenRPC (generation 1, core 0.1.20-0.1.22) raggiunto con un canale SSH exec che lancia hc connect (riga remota di machine add, exit 127 se assente), modalità framed per RPC, eventi (events.subscribe con seq/heartbeat/missed) e stream dei terminali (attach, DATA, RESIZE, CREDIT, CLOSE); compatibilità da hello (generation, versione minima, metodi; errore unsupported_generation verificato). Confronto ConnectBot sshlib, sshj, MINA SSHD, JSch: raccomandata ConnectBot sshlib 0.6.9 (firma esterna via AuthHandler per il Keystore, niente BouncyCastle), sshj alternativa. Prototipo Kotlin/JVM (tmp/, non mergiato, JDK 21 in Docker) eseguito con entrambe le librerie contro herdr-core 0.1.22 su crilin: terminal.list (9 terminali), eventi status working/done, attach con eco dell'input, resize, kill e rm; host key sconosciuta o diversa rifiutata. Decisione registrata in docs/design/integrations.md e tolta dalle Open decisions. Non verificato: Ed25519 nell'Android Keystore del Pixel 11 Pro (ripiego ECDSA P-256). Vincolo per TEC-002: Kotlin >= 2.3 (metadata 2.4 di sshlib). Quality gate non eseguibile: lo scaffold (TEC-002) non esiste ancora e l'item cambia solo documentazione.",
+  "closed_at": "2026-11-26"
 }
