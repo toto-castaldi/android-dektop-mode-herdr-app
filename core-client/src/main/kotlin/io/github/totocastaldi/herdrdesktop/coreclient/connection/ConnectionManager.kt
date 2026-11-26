@@ -65,6 +65,11 @@ class ConnectionManager(
     private val state = MutableStateFlow<Map<String, MachineStatus>>(emptyMap())
     val statuses: StateFlow<Map<String, MachineStatus>> = state.asStateFlow()
 
+    private val sessionState = MutableStateFlow<Map<String, CoreRpc>>(emptyMap())
+
+    /** Sessions of the connected machines: a new instance after every reconnection. */
+    val sessions: StateFlow<Map<String, CoreRpc>> = sessionState.asStateFlow()
+
     private val jobs = mutableMapOf<String, Job>()
 
     @Volatile
@@ -200,6 +205,7 @@ class ConnectionManager(
         val session = ready.session
         if (machine.isLocal) terminalPhase = TerminalPhase.UNKNOWN
         set(machine.id, MachineStatus.Connected(ready.hello.core?.name, ready.hello.version))
+        sessionState.update { it + (machine.id to session) }
         try {
             var alive = true
             while (alive) {
@@ -207,6 +213,7 @@ class ConnectionManager(
                 alive = closed == null && session.ping(policy.pingTimeoutMillis)
             }
         } finally {
+            sessionState.update { if (it[machine.id] === session) it - machine.id else it }
             withContext(NonCancellable) { session.close() }
         }
         return Outcome(reason = "connection lost", connected = true)

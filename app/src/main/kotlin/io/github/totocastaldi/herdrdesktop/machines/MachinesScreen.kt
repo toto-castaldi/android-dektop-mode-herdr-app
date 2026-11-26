@@ -54,7 +54,7 @@ import kotlinx.coroutines.withContext
 
 /** Machine list with status, key management and host key confirmation (REQ-CONN-001, REQ-NFR-001). */
 @Composable
-fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
+fun MachinesScreen(container: AppContainer, onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
     val machines by container.machines.machines.collectAsState()
     val statuses by container.connections.statuses.collectAsState()
     var publicKey by remember { mutableStateOf(container.keys.publicKey(SshKeyStore.DEFAULT_ALIAS)) }
@@ -85,6 +85,7 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
                                 container.connections.connect(machine.id)
                             },
                             disconnect = { container.connections.disconnect(machine.id) },
+                            open = { onOpen(machine.id) },
                             edit = { editing = EditTarget(machine) },
                             remove = { removing = machine }
                         )
@@ -106,13 +107,7 @@ fun MachinesScreen(container: AppContainer, modifier: Modifier = Modifier) {
         )
     }
 
-    removing?.let { machine ->
-        RemoveDialog(machine, onDismiss = { removing = null }) {
-            container.connections.forget(machine.id)
-            container.machines.remove(machine.id)
-            removing = null
-        }
-    }
+    removing?.let { RemoveDialog(container, it) { removing = null } }
 
     LocalDialogs(container, localUi, publicKey) { dismissedChanged = dismissedChanged - LocalMachine.ID }
 
@@ -133,12 +128,18 @@ private fun Header(onAdd: () -> Unit) {
 private class MachineActions(
     val connect: () -> Unit,
     val disconnect: () -> Unit,
+    val open: () -> Unit,
     val edit: () -> Unit,
     val remove: () -> Unit
 )
 
 @Composable
-private fun RemoveDialog(machine: Machine, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+private fun RemoveDialog(container: AppContainer, machine: Machine, onDismiss: () -> Unit) {
+    val onConfirm = {
+        container.connections.forget(machine.id)
+        container.machines.remove(machine.id)
+        onDismiss()
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.machine_remove_title, machine.name)) },
@@ -262,6 +263,10 @@ private fun MachineRow(
                 Text(statusText(status), color = statusColor(status), style = MaterialTheme.typography.bodyMedium)
                 if (local != null) LocalMachineHelp(status, local)
                 if (status == MachineStatus.LocalNetworkDenied) LocalNetworkDeniedHelp(openAppSettings)
+            }
+            if (status is MachineStatus.Connected) {
+                Button(onClick = actions.open) { Text(stringResource(R.string.machine_open)) }
+                Spacer(Modifier.width(8.dp))
             }
             if (status.isRetrying()) {
                 OutlinedButton(onClick = actions.disconnect) { Text(stringResource(R.string.machine_disconnect)) }
