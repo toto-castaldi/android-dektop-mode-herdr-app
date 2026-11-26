@@ -1,7 +1,7 @@
-import io.github.totocastaldi.herdrdesktop.build.ExtractTarball
-import io.github.totocastaldi.herdrdesktop.build.VerifiedDownload
-import io.github.totocastaldi.herdrdesktop.build.ZigBuildLibGhosttyVt
-import io.github.totocastaldi.herdrdesktop.build.ZigHost
+import io.github.totocastaldi.herdrdesktop.gradle.ExtractTarball
+import io.github.totocastaldi.herdrdesktop.gradle.VerifiedDownload
+import io.github.totocastaldi.herdrdesktop.gradle.ZigBuildLibGhosttyVt
+import io.github.totocastaldi.herdrdesktop.gradle.ZigHost
 
 plugins {
     alias(libs.plugins.android.library)

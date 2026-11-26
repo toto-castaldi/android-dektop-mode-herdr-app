@@ -1,4 +1,4 @@
-import io.github.totocastaldi.herdrdesktop.build.NoticeAsset
+import io.github.totocastaldi.herdrdesktop.gradle.NoticeAsset
 
 plugins {
     alias(libs.plugins.android.application)
