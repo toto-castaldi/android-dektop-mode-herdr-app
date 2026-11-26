@@ -1,0 +1,26 @@
+{
+  "id": "TEC-005",
+  "title": "File LICENSE Apache-2.0 nel repository e nell'APK",
+  "version": "v0.1.0",
+  "epic": "EPIC-001",
+  "type": "Task",
+  "priority": "P2",
+  "status": "Todo",
+  "dependencies": [],
+  "requirements": [
+    "REQ-NFR-004"
+  ],
+  "design_references": [
+    "design/configuration",
+    "AGENTS §7"
+  ],
+  "description": "Il progetto è dichiarato Apache-2.0 nel README ma il repository non contiene il testo della licenza; aggiungerlo e distribuirlo con l'APK accanto al NOTICE.",
+  "acceptance_criteria": [
+    "Nella radice del repository c'è LICENSE con il testo integrale e non modificato della Apache License 2.0.",
+    "L'APK di debug contiene il testo della licenza tra gli asset, accanto a NOTICE, verificato ispezionando l'APK prodotto da assembleDebug.",
+    "README e NOTICE rimandano al file LICENSE; il quality gate passa."
+  ],
+  "remarks": [
+    "Emerso alla chiusura di TEC-004, che ha aggiunto NOTICE."
+  ]
+}
