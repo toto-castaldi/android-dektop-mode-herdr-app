@@ -24,5 +24,4 @@ Add a topic by copying `_TEMPLATE.md` to `<topic>.md` (lowercase kebab-case); sp
 
 Decisions still to be closed and the backlog items that will close them:
 
-- Esecuzione di herdr-core nel Linux Terminal di Android e come l'app lo raggiunge e lo installa — SPIKE-002
 - Emulatore e renderer del terminale (libghostty via JNI, terminal-view di Termux, renderer Compose proprio) e soglie di REQ-NFR-003 — SPIKE-003

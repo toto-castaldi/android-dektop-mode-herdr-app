@@ -10,7 +10,7 @@
 
 ### Trasporto
 
-- Una connessione SSH per macchina; su di essa un canale `exec` lancia `hc connect`, che parla il protocollo su stdin/stdout e avvia il core se non sta girando. Nessun port forwarding né socket esposto.
+- Una connessione SSH per macchina; su di essa un canale `exec` lancia `hc connect`, che parla il protocollo su stdin/stdout e avvia il core se non sta girando. Nessun port forwarding SSH né socket esposto.
 - Riga remota, la stessa che herdr-core usa per `machine add`, perché `~/.local/bin` spesso non è nel `PATH` delle sessioni non interattive:
 
   ```sh
@@ -47,7 +47,27 @@ Dalla risposta a `hello` l'app decide:
 
 ### Installazione e aggiornamento
 
-- L'installazione e l'aggiornamento del core usano gli installer ufficiali di Herdr (`curl -fsSL https://releases.herdr.dev/core/install.sh | sh`, `hc update`), eseguiti sulla macchina via SSH solo dopo la conferma dell'utente. I terminali sopravvivono a `hc update`.
+- Stesso flusso per host remoti e per la VM del Linux Terminal. Core assente: exit status 127 della riga remota; core incompatibile: risposta a `hello` (vedi Compatibilità).
+- Prima di proporre l'installazione l'app controlla con un comando via SSH i prerequisiti dell'installer: `uname -s` Linux o Darwin, `uname -m` tra `x86_64`, `amd64`, `arm64`, `aarch64`, `curl` e `tar` presenti. Se mancano, lo dice invece di proporre l'installer.
+- Installazione: `curl -fsSL https://releases.herdr.dev/core/install.sh | sh` sul canale `exec`, nella home dell'utente (`~/.local/bin`), senza root. Non avvia il core: lo avvia il primo `hc connect`.
+- Aggiornamento: `$HOME/.local/bin/herdr-core update` (oppure `herdr-core` trovato nel `PATH`), che risponde in JSON con `was`, `now`, `updated`; i terminali in corso sopravvivono.
+- Entrambi partono solo dopo la conferma dell'utente; l'app mostra l'output del comando e, se riesce, ripete `hello`.
+
+## Core locale nel Linux Terminal
+
+- La macchina "Questo dispositivo" è `droid@127.0.0.1:2222`: il core gira nella VM Debian dell'app Terminal di Android (build `linux-aarch64`) e l'app lo raggiunge con lo stesso trasporto, la stessa verifica della host key e le stesse chiavi del Keystore delle macchine remote.
+- Raggiungibilità: nella VM un sshd ascolta su `2222` (porta alta: Android non inoltra porte sotto 1024) e l'app Terminal la inoltra sul loopback di Android dopo che l'utente l'ha accettata (notifica "Nuova porta aperta", *Impostazioni → Controllo porte*). L'IP della VM sulla rete `avf_tap_fixed` non è raggiungibile dalle app e non si usa.
+- La VM vive solo finché l'app Terminal è aperta, anche in background o minimizzata; chiuderla spegne la VM e termina i terminali del core. L'app non può avviare la VM da sola: può solo aprire il Terminal con il suo intent di avvio.
+- Configurazione iniziale: l'app mostra un comando da incollare nel Terminal che installa `openssh-server`, imposta `Port 2222` in `/etc/ssh/sshd_config.d/port.conf`, riavvia sshd e aggiunge la chiave pubblica dell'app ad `~/.ssh/authorized_keys`; poi chiede di accettare la porta.
+- Stati e messaggi della macchina locale:
+
+  | Condizione | Rilevamento | Messaggio e azione |
+  | --- | --- | --- |
+  | Linux Terminal assente o disattivato | pacchetto `com.android.virtualization.terminal` non installato o non abilitato | come attivarlo nelle Opzioni sviluppatore |
+  | Linux Terminal non attivo | `127.0.0.1:2222` rifiuta la connessione | "Apri Linux Terminal" (intent di avvio), poi nuovo tentativo; avviso che chiuderlo spegne la VM |
+  | Non configurato | connessione rifiutata con il Terminal aperto, o chiave rifiutata | comando di configurazione e accettazione della porta; se la porta era già accettata, arresto forzato del Terminal e nuova apertura (il port forwarding può non tornare dopo un riavvio della VM nello stesso processo) |
+  | VM reimpostata | host key cambiata | rifiuto come per ogni host key cambiata (`security.md`) |
+  | Core assente o incompatibile | exit 127 o `hello` | installazione o aggiornamento come sopra |
 
 ## Gestione dei guasti
 
