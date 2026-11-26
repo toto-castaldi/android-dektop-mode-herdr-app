@@ -6,6 +6,9 @@ naming:
       - Composable
 
 style:
+  MagicNumber:
+    # Enum entries carry wire-protocol codes.
+    ignoreEnums: true
   UnusedPrivateMember:
     # Compose previews are used by the IDE only.
     ignoreAnnotated:

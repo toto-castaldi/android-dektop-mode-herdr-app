@@ -53,6 +53,14 @@ Dalla risposta a `hello` l'app decide:
 - Aggiornamento: `$HOME/.local/bin/herdr-core update` (oppure `herdr-core` trovato nel `PATH`), che risponde in JSON con `was`, `now`, `updated`; i terminali in corso sopravvivono.
 - Entrambi partono solo dopo la conferma dell'utente; l'app mostra l'output del comando e, se riesce, ripete `hello`.
 
+### Collegamento e riconnessione
+
+- `core-client` espone `CoreTransport` (apre un flusso di byte verso `herdr-core connect`) implementato da `SshlibTransport`, e `ConnectionManager`, che tiene una connessione per macchina e il suo stato. Nessuna parte fuori da `core-client/ssh` vede i tipi di sshlib.
+- Sequenza: SSH (timeout 20 s, keepalive SSH 15 s) → verifica della host key → autenticazione (chiave del Keystore tramite `AuthHandler`, oppure password decifrata solo al momento dell'autenticazione) → canale `exec` con la riga remota → `hello` in plain → modalità framed.
+- Esiti che fermano i tentativi fino a un'azione dell'utente: host key da confermare o cambiata, autenticazione fallita, core assente (exit 127), core incompatibile. Gli altri errori (rete, timeout, handshake interrotto) e la caduta di una connessione stabilita portano a "non raggiungibile" con nuovo tentativo dopo 1 s, raddoppiato fino a 30 s.
+- Una connessione stabilita è considerata caduta quando il flusso termina o quando `server.status` non risponde entro 10 s; il controllo parte dopo 30 s senza fine del flusso.
+- Al primo collegamento la host key presentata viene rifiutata, mostrata all'utente e, se confermata, salvata con la macchina; poi l'app si collega di nuovo. All'avvio l'app si collega da sola alle macchine con host key già confermata.
+
 ## Core locale nel Linux Terminal
 
 - La macchina "Questo dispositivo" è `droid@127.0.0.1:2222`: il core gira nella VM Debian dell'app Terminal di Android (build `linux-aarch64`) e l'app lo raggiunge con lo stesso trasporto, la stessa verifica della host key e le stesse chiavi del Keystore delle macchine remote.

@@ -10,4 +10,9 @@ Modello concettuale. La fonte di verità di spazi, tab, pane, terminali e agenti
 - **Terminale** (dal core): indirizzo (ad esempio `t7`, o `vps/t7` su un'altra macchina), cartella, dimensioni, programma.
 - **Agente** (dal core): terminale, stato (Working, Blocked, Done, Idle), terminale che lo ha avviato se è un worker.
 
-La rappresentazione fisica e il formato dei dati scambiati con il core sono definiti dopo lo studio dell'API (vedi `README.md`, Open decisions).
+## Rappresentazione fisica
+
+- **Macchine:** file JSON privato dell'app `files/machines.json` (`FileMachineStore`, sostituito in modo atomico a ogni modifica), formato `{"version": 1, "machines": [...]}`; ogni macchina ha `id` (UUID), `name`, `host`, `port`, `user`, `key_alias` oppure `sealed_password` (Base64 di `iv || ciphertext` AES-GCM, chiave nel Keystore), `host_key_type` e `host_key` (Base64 del blob SSH confermato). Una modifica di host o porta dimentica la host key confermata.
+- **Chiave SSH:** una chiave dell'app nel Keystore con alias `herdr-ssh-default`, condivisa dalle macchine che usano l'autenticazione a chiave; la chiave pubblica si esporta come riga `authorized_keys` con commento `herdr-desktop-android`.
+- **Stato di collegamento:** solo in memoria (`ConnectionManager.statuses`): non collegata, collegamento in corso, connessa (nome e versione del core), non raggiungibile (motivo e prossimo tentativo), autenticazione fallita, host key da confermare, host key cambiata, core assente, core incompatibile.
+- Il formato dei dati scambiati con il core è quello del protocollo di herdr-core (`integrations.md`).
