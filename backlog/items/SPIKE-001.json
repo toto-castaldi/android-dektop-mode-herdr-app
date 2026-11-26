@@ -1,0 +1,22 @@
+{
+  "id": "SPIKE-001",
+  "title": "API e trasporto di herdr-core per un client Android",
+  "version": "v0.1.0",
+  "epic": "EPIC-002",
+  "module": "MOD-002",
+  "type": "Spike",
+  "priority": "P0",
+  "status": "Todo",
+  "dependencies": [],
+  "design_references": [
+    "design/integrations",
+    "design/modules"
+  ],
+  "description": "Capire come un client terzo parla con herdr-core: quale API espone (OpenRPC di `hc schema`), su quale trasporto (socket locale, SSH, altro), come si ricevono flussi ed eventi (stato degli agenti, output dei terminali) e come si inviano input e ridimensionamenti. Studiare come lo fanno l'app desktop (herdrdev/herdr-app) e l'app mobile ufficiale. Scegliere una libreria SSH per Android compatibile con chiavi nell'Android Keystore.",
+  "acceptance_criteria": [
+    "Il report docs/spikes/SPIKE-001-api-trasporto-herdr-core.md risponde a: quale API e quale versione espone herdr-core; come ci si arriva da una macchina remota via SSH; come si ricevono flussi ed eventi; come si legge e si scrive l'I/O di un terminale; come si rileva una versione di core incompatibile.",
+    "Il report confronta almeno due librerie SSH per Android (licenza, supporto a chiavi ed25519 nel Keystore, verifica della host key, manutenzione) e raccomanda una scelta.",
+    "Un prototipo, anche da riga di comando sulla JVM, elenca i terminali di un herdr-core remoto e riceve almeno un evento di stato; il report riporta comandi ed esito.",
+    "La decisione è registrata in design/integrations e la voce corrispondente è tolta dalle Open decisions di docs/design/README.md."
+  ]
+}

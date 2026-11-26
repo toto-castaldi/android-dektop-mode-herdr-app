@@ -15,5 +15,4 @@ Add a topic by copying `_TEMPLATE.md` to `<topic>.md` (lowercase kebab-case); sp
 ## Open decisions
 
 Decisions still to be closed and the backlog items that will close them:
-
-- `<decision>` — `<item ID>`
+- Protocollo e trasporto tra l'app e herdr-core (API OpenRPC di `hc schema`, flussi ed eventi, I/O dei terminali, tunnel SSH) e libreria SSH per Android — SPIKE-001

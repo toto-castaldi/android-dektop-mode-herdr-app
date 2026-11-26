@@ -1,0 +1,5 @@
+{
+  "id": "EPIC-002",
+  "title": "Connessione ai core",
+  "scope": "collegamento a herdr-core remoti via SSH e al core locale nel Linux Terminal di Android, gestione delle chiavi SSH, installazione e aggiornamento di herdr-core."
+}

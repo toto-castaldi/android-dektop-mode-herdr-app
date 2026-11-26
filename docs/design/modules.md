@@ -1,3 +1,7 @@
 # Modules
 
-`<Modules or layers, their responsibilities and allowed dependencies. If the project uses modules to classify backlog items, list them here with stable IDs (MOD-001, MOD-002, …), names, responsibilities and, when known, locations or boundaries. A module is a logical project component, not necessarily a Git submodule. Otherwise, no module catalog is required.>`
+Moduli logici dell'app, usati per classificare gli item del backlog. Non sono sottomoduli Git.
+
+| ID | Nome | Responsabilità | Posizione |
+| --- | --- | --- | --- |
+| `MOD-002` | `core-client` | connessione SSH ai core, client dell'API di herdr-core (richieste, flussi ed eventi), gestione di macchine e chiavi, installazione e aggiornamento del core | da definire con la struttura Gradle (vedi `README.md`, Open decisions) |
