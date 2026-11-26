@@ -7,7 +7,7 @@ App Android nativa che porta l'esperienza dell'app desktop [Herdr](https://herdr
 - Non ci sono account, server intermedi o telemetria. Le chiavi SSH restano nell'Android Keystore.
 - Dispositivo di riferimento: Pixel 11 Pro.
 
-Progetto indipendente e open source, rilasciato sotto licenza Apache-2.0. Non è un prodotto ufficiale di Herdr.
+Progetto indipendente e open source, rilasciato sotto licenza Apache-2.0 (vedi [`LICENSE`](LICENSE)). Non è un prodotto ufficiale di Herdr.
 
 ## Stato
 
@@ -60,7 +60,7 @@ L'APK di debug è in `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Licenze
 
-Le licenze del codice di terze parti incluso nell'app sono in [`NOTICE`](NOTICE), copiato anche nell'APK.
+Il progetto è rilasciato sotto la Apache License 2.0, il cui testo integrale è in [`LICENSE`](LICENSE). Le licenze del codice di terze parti incluso nell'app sono in [`NOTICE`](NOTICE). Entrambi i file sono copiati anche nell'APK, come `assets/LICENSE` e `assets/NOTICE`.
 
 ## Documentazione
 
