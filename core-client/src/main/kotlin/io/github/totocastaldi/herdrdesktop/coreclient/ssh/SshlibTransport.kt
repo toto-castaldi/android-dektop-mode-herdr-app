@@ -7,6 +7,9 @@ import io.github.totocastaldi.herdrdesktop.coreclient.connection.OpenResult
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKey
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKeyDecision
 import io.github.totocastaldi.herdrdesktop.coreclient.hostkey.HostKeyPolicy
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandOutput
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandResult
+import io.github.totocastaldi.herdrdesktop.coreclient.install.CommandRunner
 import io.github.totocastaldi.herdrdesktop.coreclient.keys.SecretCipher
 import io.github.totocastaldi.herdrdesktop.coreclient.keys.SshKeyStore
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.Machine
@@ -15,6 +18,9 @@ import java.io.IOException
 import java.net.ConnectException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import org.connectbot.sshlib.AuthHandler
@@ -32,25 +38,30 @@ import org.connectbot.sshlib.SshSession
 /**
  * [CoreTransport] over ConnectBot sshlib: one SSH connection per machine, host key pinned to the
  * confirmed one, key signatures made by [keys] (the private key never reaches the library),
- * then an `exec` channel running [CORE_CONNECT_COMMAND].
+ * then an `exec` channel running [CORE_CONNECT_COMMAND]. As a [CommandRunner] it runs one-shot
+ * commands (installing or updating herdr-core) on a connection set up the same way.
  */
 class SshlibTransport(
     private val keys: SshKeyStore,
     private val secrets: SecretCipher,
-    private val connectTimeoutMillis: Long = CONNECT_TIMEOUT_MILLIS
-) : CoreTransport {
+    private val connectTimeoutMillis: Long = CONNECT_TIMEOUT_MILLIS,
+    private val commandTimeoutMillis: Long = COMMAND_TIMEOUT_MILLIS
+) : CoreTransport,
+    CommandRunner {
+    private fun client(machine: Machine, verifier: PinningVerifier) = SshClient(
+        SshClientConfig {
+            host = machine.host
+            port = machine.port
+            hostKeyVerifier = verifier
+            keepAliveIntervalMs = KEEPALIVE_MILLIS
+        }
+    )
+
     override suspend fun open(machine: Machine): OpenResult {
         val verifier = PinningVerifier(machine.hostKey)
-        val client = SshClient(
-            SshClientConfig {
-                host = machine.host
-                port = machine.port
-                hostKeyVerifier = verifier
-                keepAliveIntervalMs = KEEPALIVE_MILLIS
-            }
-        )
+        val client = client(machine, verifier)
         val result = try {
-            withTimeout(connectTimeoutMillis) { connect(client, machine, verifier) }
+            withTimeout(connectTimeoutMillis) { connect(client, machine, verifier) ?: openCore(client) }
         } catch (e: TimeoutCancellationException) {
             OpenResult.Unreachable(e.message ?: "timeout")
         } catch (e: CancellationException) {
@@ -61,7 +72,50 @@ class SshlibTransport(
         return result
     }
 
-    private suspend fun connect(client: SshClient, machine: Machine, verifier: PinningVerifier): OpenResult {
+    override suspend fun run(machine: Machine, command: String, onOutput: (String) -> Unit): CommandResult {
+        val verifier = PinningVerifier(machine.hostKey)
+        val client = client(machine, verifier)
+        return try {
+            val failure = try {
+                withTimeout(connectTimeoutMillis) { connect(client, machine, verifier) }
+            } catch (e: TimeoutCancellationException) {
+                OpenResult.Unreachable(e.message ?: "timeout")
+            }
+            if (failure != null) CommandResult.NotRun(failure.describe()) else exec(client, command, onOutput)
+        } finally {
+            client.disconnect()
+        }
+    }
+
+    private suspend fun exec(client: SshClient, command: String, onOutput: (String) -> Unit): CommandResult {
+        val session = client.openSession() ?: return CommandResult.NotRun("cannot open session")
+        val result = if (session.requestExec(command)) {
+            val output = CommandOutput()
+            val status = withTimeoutOrNull(commandTimeoutMillis) { collect(session, output, onOutput) }
+            CommandResult.Exited(status, output.toString())
+        } else {
+            CommandResult.NotRun("exec refused")
+        }
+        session.close()
+        return result
+    }
+
+    /** Reads stdout and stderr until both end, then returns the exit status. */
+    private suspend fun collect(session: SshSession, output: CommandOutput, onOutput: (String) -> Unit): Int? {
+        suspend fun drain(stream: Int, channel: ReceiveChannel<ByteArray>) {
+            for (chunk in channel) onOutput(output.add(stream, chunk))
+        }
+        coroutineScope {
+            launch { drain(STDERR, session.stderr) }
+            drain(STDOUT, session.stdout)
+        }
+        return withTimeoutOrNull(EXIT_STATUS_WAIT_MILLIS) {
+            (session.exitInfo.await() as? SessionExit.Status)?.code?.toInt()
+        }
+    }
+
+    /** Connects and authenticates; returns null on success, otherwise why it failed. */
+    private suspend fun connect(client: SshClient, machine: Machine, verifier: PinningVerifier): OpenResult? {
         val failure = when (val connected = client.connect()) {
             ConnectResult.Success -> null
 
@@ -76,10 +130,10 @@ class SshlibTransport(
 
             is ConnectResult.ProtocolError -> OpenResult.Unreachable("protocol error")
         }
-        return failure ?: authenticateAndOpen(client, machine)
+        return failure ?: authenticate(client, machine)
     }
 
-    private suspend fun authenticateAndOpen(client: SshClient, machine: Machine): OpenResult {
+    private suspend fun authenticate(client: SshClient, machine: Machine): OpenResult? {
         val auth = when (val method = machine.auth) {
             is MachineAuth.Key -> client.authenticate(machine.user, KeystoreAuthHandler(keys, method.alias))
 
@@ -89,7 +143,7 @@ class SshlibTransport(
             )
         }
         return when (auth) {
-            AuthResult.Success -> openCore(client)
+            AuthResult.Success -> null
             is AuthResult.Failure -> OpenResult.AuthFailed
             is AuthResult.Error -> OpenResult.Unreachable("authentication error")
         }
@@ -165,6 +219,9 @@ class SshlibTransport(
         const val CONNECT_TIMEOUT_MILLIS = 20_000L
         const val KEEPALIVE_MILLIS = 15_000L
         const val EXIT_STATUS_WAIT_MILLIS = 5_000L
+        const val COMMAND_TIMEOUT_MILLIS = 10 * 60_000L
+        const val STDOUT = 1
+        const val STDERR = 2
     }
 }
 
@@ -177,3 +234,11 @@ internal fun isConnectionRefused(error: Throwable): Boolean = generateSequence(e
 }
 
 private val REFUSED = listOf("Connection refused", "ECONNREFUSED")
+
+/** Why a connection for a command failed, in the words shown with the failed command. */
+private fun OpenResult.describe(): String = when (this) {
+    is OpenResult.Unreachable -> "unreachable: $reason"
+    is OpenResult.HostKeyRejected -> "host key not confirmed"
+    OpenResult.AuthFailed -> "authentication failed"
+    is OpenResult.Opened -> "opened"
+}

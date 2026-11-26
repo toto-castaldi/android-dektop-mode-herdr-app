@@ -47,7 +47,31 @@
     <string name="local_network_help_denied">La macchina è nella rete locale e Android richiede il permesso di accesso alla rete locale. Concedilo in Impostazioni → App → Herdr Desktop → Autorizzazioni → Dispositivi nelle vicinanze, oppure premi Collega per richiederlo di nuovo.</string>
     <string name="local_network_open_settings">Apri impostazioni dell\'app</string>
     <string name="status_core_app_update">Core incompatibile: aggiorna l\'app</string>
-    <string name="status_core_update">Core incompatibile: aggiorna herdr-core (%1$s)</string>
+    <string name="status_core_update">Core incompatibile: trovata %1$s, richiesta %2$s o successiva</string>
+    <string name="status_core_installing">Installazione di herdr-core in corso…</string>
+    <string name="status_core_updating">Aggiornamento di herdr-core in corso…</string>
+    <string name="status_core_install_failed">Installazione di herdr-core non riuscita (exit status %1$s)</string>
+    <string name="status_core_update_failed">Aggiornamento di herdr-core non riuscito (exit status %1$s)</string>
+
+    <string name="core_version_unknown">versione sconosciuta</string>
+    <string name="core_help_missing">herdr-core non è installato su questa macchina. L\'app può installarlo nella home dell\'utente (~/.local/bin), senza root, con l\'installer ufficiale.</string>
+    <string name="core_help_prerequisites">herdr-core non è installato e l\'installer non può girare su questa macchina: %1$s.</string>
+    <string name="core_prerequisite_command">manca il comando %1$s</string>
+    <string name="core_prerequisite_system">sistema %1$s non supportato (serve Linux o macOS)</string>
+    <string name="core_prerequisite_architecture">architettura %1$s non supportata</string>
+    <string name="core_help_update">L\'app può aggiornare herdr-core con herdr-core update: i terminali in corso continuano a girare.</string>
+    <string name="core_missing_generation">Il core parla la generation %1$d del protocollo.</string>
+    <string name="core_missing_methods">Al core mancano i metodi: %1$s.</string>
+    <string name="core_missing_framed">Il core non offre la modalità framed.</string>
+    <string name="core_missing_hello">hello fallito (%1$s).</string>
+    <string name="core_install">Installa herdr-core</string>
+    <string name="core_update">Aggiorna herdr-core</string>
+    <string name="core_retry">Riprova</string>
+    <string name="core_no_output">Nessun output dal comando.</string>
+    <string name="core_confirm_install_title">Installare herdr-core su %1$s?</string>
+    <string name="core_confirm_update_title">Aggiornare herdr-core su %1$s?</string>
+    <string name="core_confirm_install_text">L\'app esegue sulla macchina, come %1$s e senza root, questo comando, che scarica ed esegue l\'installer ufficiale da releases.herdr.dev. Poi si collega al core.</string>
+    <string name="core_confirm_update_text">L\'app esegue sulla macchina, come %1$s, questo comando, che scarica l\'ultima versione di herdr-core e la sostituisce a quella installata; i terminali in corso continuano a girare. Poi si collega al core.</string>
 
     <string name="host_key_confirm_title">Primo collegamento a %1$s</string>
     <string name="host_key_confirm_text">L\'host presenta questa host key. Confermala solo se coincide con quella della macchina (ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub sull\'host).</string>

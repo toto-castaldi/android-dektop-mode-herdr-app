@@ -92,7 +92,7 @@ class ConnectionManagerTest {
         repo.confirmHostKey(machine.id, serverKey)
         val cases = listOf<Pair<() -> OpenResult, MachineStatus>>(
             { OpenResult.AuthFailed } to MachineStatus.AuthFailed,
-            { OpenResult.Opened(FakeCoreStream(helloReply = null, exitStatus = 127)) } to MachineStatus.CoreMissing,
+            { OpenResult.Opened(FakeCoreStream(helloReply = null, exitStatus = 127)) } to MachineStatus.CoreMissing(),
             { OpenResult.Opened(FakeCoreStream(helloReply = FakeCoreStream.HELLO_FUTURE)) } to
                 MachineStatus.CoreIncompatible(Compatibility.AppUpdateNeeded(2))
         )
