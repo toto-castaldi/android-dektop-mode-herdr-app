@@ -36,6 +36,11 @@ python3 .agents/tools/backlog.py status
   -Pandroid.testInstrumentationRunnerArguments.e2eUser=<utente>                  # SSH reale dal dispositivo verso un host
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.lanHost=<host della LAN>        # permesso di rete locale verso un host SSH reale della LAN
+adb shell pm revoke io.github.totocastaldi.herdrdesktop android.permission.ACCESS_LOCAL_NETWORK
+adb shell pm clear-permission-flags io.github.totocastaldi.herdrdesktop \
+  android.permission.ACCESS_LOCAL_NETWORK user-set user-fixed                      # permesso non concesso: senza, il test del dialogo viene saltato
+adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.LocalNetworkPermissionTest [-e lanHost <host della LAN>] \
+  io.github.totocastaldi.herdrdesktop.test/androidx.test.runner.AndroidJUnitRunner   # dialogo del permesso di rete locale, senza disinstallare
 ./gradlew :core-client:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.e2eLocal=running                   # core locale: Terminal aperto (oppure =stopped, Terminal chiuso)
 ./gradlew :app:connectedDebugAndroidTest \

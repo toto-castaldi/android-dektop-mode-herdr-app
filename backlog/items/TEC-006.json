@@ -6,7 +6,7 @@
   "module": "MOD-001",
   "type": "Task",
   "priority": "P2",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "task/TEC-006-local-network-permission-test-ripetibile",
   "dependencies": [
     "BUG-001"
@@ -20,5 +20,7 @@
     "Con il permesso non concesso il test del dialogo gira e passa come oggi, verificato sul Pixel 11 Pro con install -r e permesso revocato.",
     "Due esecuzioni consecutive di LocalNetworkPermissionTest con install -r, senza disinstallare e senza pm clear, non danno fallimenti.",
     "Il commento del test e il README (sezione dei test strumentali) dicono come eseguire il test del dialogo."
-  ]
+  ],
+  "outcome": "a_deniedPermissionShowsLocalNetworkNotAllowedWithInstructions usa assumeFalse: con ACCESS_LOCAL_NETWORK già concesso viene saltato (AssumptionViolatedException con i comandi per rieseguirlo), senza terminare il processo del test. Trovato durante la verifica: pm revoke da solo non basta, lascia il flag USER_SET e il sistema non mostra il dialogo; serve anche pm clear-permission-flags ... user-set user-fixed. KDoc del test e README (sezione Comandi) riportano revoke + clear-permission-flags + am instrument -w. Verificato sul Pixel 11 Pro con install -r di app e APK di test, senza disinstallare e senza pm clear: con permesso concesso 2/2 OK (a_ saltato con il messaggio); con permesso revocato e flag azzerati 2/2 OK (dialogo mostrato, negato, stato e screenshot local-network-denied.png); esecuzione consecutiva subito dopo 2/2 OK. Gate ktlintCheck detekt compileDebugKotlin testDebugUnitTest assembleDebug superato; logcat senza chiavi né password.",
+  "closed_at": "2026-11-27"
 }
