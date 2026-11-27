@@ -6,7 +6,8 @@
   "module": "MOD-002",
   "type": "User Story",
   "priority": "P1",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "us/US-015-comandi-agenti-verso-app",
   "dependencies": [
     "SPIKE-004",
     "US-013"
