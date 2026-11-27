@@ -6,7 +6,7 @@
   "module": "MOD-002",
   "type": "Bug",
   "priority": "P2",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "fix/BUG-002-agente-visto-con-due-finestre",
   "dependencies": [],
   "requirements": [
@@ -24,5 +24,8 @@
     "AgentsManager tiene i terminali guardati per finestra (o per chiamante) e considera guardato un terminale se lo mostra almeno una finestra in primo piano; chiudere o mandare in secondo piano una finestra toglie solo i suoi.",
     "Test di regressione JVM in AgentsManagerTest: due finestre sulla stessa macchina, l'agente mostrato da una sola riceve herdr.seen; quando quella finestra smette di mostrarlo non viene più scritto.",
     "Verificato sul Pixel 11 Pro in Desktop Mode con due finestre sulla stessa macchina e un herdr-core reale."
-  ]
+  ],
+  "outcome": "AgentsManager.setLooking(machineId, addresses, viewer) tiene i terminali guardati per macchina e per finestra e markSeen usa l'unione; una finestra in secondo piano o chiusa toglie solo i propri; ogni finestra (WorkspaceScreen.rememberShownAgents) passa il proprio token. Test di regressione JVM in AgentsManagerTest (due finestre, l'agente mostrato da una sola riceve herdr.seen e non più quando smette di mostrarlo): fallisce sul codice precedente, passa con la correzione. Gate verde (ktlintCheck detekt, compileDebugKotlin, testDebugUnitTest, assembleDebug). Verificato sul Pixel 11 Pro in Desktop Mode (display esterno, install -r) con herdr-core reale: due finestre RESUMED sulla stessa macchina, spazio A nella seconda e B nella prima (che ha riportato i suoi terminali per ultima); l'agente in A diventato Done ha ricevuto herdr.seen=1 (= turn) ed è passato a Idle nella sidebar; dopo che la seconda finestra è passata allo spazio B, il turno 2 è rimasto Done con herdr.seen=1. Spazi e terminali di prova chiusi dall'app; logcat dell'app senza chiavi, password né contenuto dei terminali. design/integrations aggiornato.",
+  "changelog": "Fixed: con più finestre sulla stessa macchina un agente mostrato in una qualsiasi finestra in primo piano viene segnato come visto",
+  "closed_at": "2026-11-27"
 }
