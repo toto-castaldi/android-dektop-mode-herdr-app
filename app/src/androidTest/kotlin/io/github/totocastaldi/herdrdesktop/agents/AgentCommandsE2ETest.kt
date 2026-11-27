@@ -15,6 +15,7 @@ import io.github.totocastaldi.herdrdesktop.HerdrApp
 import io.github.totocastaldi.herdrdesktop.MainActivity
 import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentClaims
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentCommandCodec
 import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentCommandLog
 import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentCommands
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.CoreRpc
@@ -117,50 +118,50 @@ class AgentCommandsE2ETest {
         writeRecipe(target)
         // The recipe is for bash, whatever the login shell of the machine.
         send(target, shell, "bash")
-        send(target, shell, "source $RECIPE_PATH && echo RICETTA-OK")
+        send(target, shell, "source $RECIPE_PATH && ${mark("RICETTA-OK")}")
         awaitScreen(target, shell, "RICETTA-OK")
         step()
 
         // space.new: a named space with one tab, answered with its ids.
-        send(target, shell, "hda space.new '{\"name\":\"${PREFIX}web\"}' && echo AC-SPACE-OK")
+        send(target, shell, "hda space.new '{\"name\":\"${PREFIX}web\"}' && ${mark("AC-SPACE-OK")}")
         awaitScreen(target, shell, "AC-SPACE-OK")
         awaitWorkspace(target) { ws -> ws.spaces.count { it.name == "${PREFIX}web" } == 1 }
         val web = workspaceOf(target).spaces.single { it.name == "${PREFIX}web" }
         spaces.own(web.id)
-        assertTrue(screenOf(target, shell).contains("\"space\":\"${web.id}\""))
+        assertTrue(answerOf(target, shell).contains("\"space\":\"${web.id}\""))
         step()
 
         // tab.new without space: in the agent's space.
-        send(target, shell, "hda tab.new '{\"name\":\"${PREFIX}tab\"}' && echo AC-TAB-OK")
+        send(target, shell, "hda tab.new '{\"name\":\"${PREFIX}tab\"}' && ${mark("AC-TAB-OK")}")
         awaitScreen(target, shell, "AC-TAB-OK")
         awaitWorkspace(target) { ws -> ws.space(home.id)?.tabs?.map { it.name } == listOf("", "${PREFIX}tab") }
         step()
 
         // pane.split without pane: the agent's pane.
-        send(target, shell, "hda pane.split '{\"direction\":\"down\"}' && echo AC-SPLIT-OK")
+        send(target, shell, "hda pane.split '{\"direction\":\"down\"}' && ${mark("AC-SPLIT-OK")}")
         awaitScreen(target, shell, "AC-SPLIT-OK")
         awaitWorkspace(target) { ws -> ws.space(home.id)?.tabs?.first()?.terminals?.size == 2 }
         step()
 
         // space.select and tab.select bring them to the front in the window.
-        send(target, shell, "hda space.select '{\"id\":\"${web.id}\"}' && echo AC-SSEL-OK")
+        send(target, shell, "hda space.select '{\"id\":\"${web.id}\"}' && ${mark("AC-SSEL-OK")}")
         awaitScreen(target, shell, "AC-SSEL-OK")
         awaitPane(PaneLayout.leaves(web.tabs.single().root).single().id)
         step()
-        send(target, shell, "hda tab.select '{\"index\":1}' && echo AC-TSEL-OK")
+        send(target, shell, "hda tab.select '{\"index\":1}' && ${mark("AC-TSEL-OK")}")
         awaitScreen(target, shell, "AC-TSEL-OK")
         step()
 
         // agent.focus brings the agent's own pane back to the front.
-        send(target, shell, "hda agent.focus \"{\\\"terminal\\\":\\\"\$HC_TERMINAL_ID\\\"}\" && echo AC-FOCUS-OK")
+        send(target, shell, "hda agent.focus \"{\\\"terminal\\\":\\\"\$HC_TERMINAL_ID\\\"}\" && ${mark("AC-FOCUS-OK")}")
         awaitScreen(target, shell, "AC-FOCUS-OK")
         awaitPane(workspaceOf(target).paneOf(shell)!!.paneId)
         step()
 
         // Anything else is unsupported, and nothing is closed.
-        send(target, shell, "hda tab.close '{}'; echo AC-CLOSE-\$?")
+        send(target, shell, "hda tab.close '{}'; ${mark("AC-CLOSE-\$?")}")
         awaitScreen(target, shell, "AC-CLOSE-1")
-        assertTrue(screenOf(target, shell).contains("\"error\":\"unsupported\""))
+        assertTrue(answerOf(target, shell).contains("\"error\":\"unsupported\""))
         assertEquals(3, workspaceOf(target).space(home.id)!!.tabs.sumOf { it.terminals.size })
         step()
 
@@ -170,7 +171,7 @@ class AgentCommandsE2ETest {
 
     /** A request made while the app is not connected runs at the connection, while the agent waits. */
     private fun offlineRequestRunsAtTheConnection(target: Machine, shell: String) {
-        send(target, shell, "sleep 3; hda space.new '{\"name\":\"${PREFIX}offline\"}' && echo AC-OFFLINE-OK")
+        send(target, shell, "sleep 3; hda space.new '{\"name\":\"${PREFIX}offline\"}' && ${mark("AC-OFFLINE-OK")}")
         container.connections.disconnect(target.id)
         rule.waitUntil(TIMEOUT_MILLIS) { container.connections.sessions.value[target.id] == null }
         Thread.sleep(OFFLINE_MILLIS)
@@ -236,6 +237,12 @@ class AgentCommandsE2ETest {
         runBlocking { rpc(m).call("file.write", params) }
     }
 
+    /**
+     * Prints [marker] in upper case from a lower-case command, so that the screen shows it only once the command
+     * ran, not while it is typed.
+     */
+    private fun mark(marker: String) = "echo ${marker.lowercase()} | tr a-z A-Z"
+
     private fun send(m: Machine, terminal: String, text: String) {
         val params = buildJsonObject {
             put("terminal", terminal)
@@ -277,6 +284,13 @@ class AgentCommandsE2ETest {
         } catch (e: ComposeTimeoutException) {
             throw AssertionError("workspace: ${container.workspaces.state(m.id).value}", e)
         }
+    }
+
+    /** The last answer the agent got (its label `herdr-desktop-android.re`); the screen wraps long lines. */
+    private fun answerOf(m: Machine, terminal: String): String {
+        val result = runBlocking { rpc(m).call("terminal.get", buildJsonObject { put("terminal", terminal) }) }
+        return (result.jsonObject["labels"] as? JsonObject)?.get(AgentCommandCodec.RESPONSE_LABEL)
+            ?.jsonPrimitive?.content.orEmpty()
     }
 
     private fun docVersion(m: Machine, name: String): String = runBlocking {
