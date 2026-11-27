@@ -6,7 +6,8 @@
   "module": "MOD-002",
   "type": "Bug",
   "priority": "P2",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "fix/BUG-002-agente-visto-con-due-finestre",
   "dependencies": [],
   "requirements": [
     "REQ-AGT-001",
