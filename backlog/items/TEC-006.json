@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "Task",
   "priority": "P2",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "task/TEC-006-local-network-permission-test-ripetibile",
   "dependencies": [
     "BUG-001"
   ],
