@@ -27,7 +27,7 @@ The scope of the current version is defined in `docs/requirements/README.md`. Do
 
 - L'app è solo client: non esegue terminali né agenti, e non incorpora herdr-core.
 - È un'app nativa indipendente: non portare né copiare il codice Rust/GPUI dell'app desktop. Herdr è un riferimento di comportamento.
-- Niente mod (QuickJS), pubblicazione negli store o UX touch da telefono in v0.1.0.
+- Niente mod (QuickJS), pubblicazione negli store o UX touch da telefono finché requisiti e backlog non li includono.
 
 ## 4. Stack and architecture
 

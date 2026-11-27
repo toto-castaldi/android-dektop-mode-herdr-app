@@ -1,6 +1,6 @@
 # Technical design — Herdr Desktop for Android
 
-**Target version:** v0.1.0
+**Target version:** none
 
 The *how* of the project, one file per topic (`docs/process/docs.md` §2). Requirements are in `docs/requirements/`. Items reference a topic as `design/<topic>` (the file `docs/design/<topic>.md`). Topics grow with the items that introduce or change design choices; relevant decisions with meaningful alternatives go into `docs/adr/`. List the topics with `python3 .agents/tools/backlog.py docs`; read only the files you need.
 
@@ -19,7 +19,7 @@ Add a topic by copying `_TEMPLATE.md` to `<topic>.md` (lowercase kebab-case); sp
 | Terminale | libghostty-vt via JNI nel modulo `terminal`, renderer proprio in Compose ridisegnato al vsync | Stesso emulatore dell'app desktop e di herdr-core, sequenze degli agenti comprese; dettagli e alternative in ADR-001 |
 | Segreti | Chiavi SSH nell'Android Keystore | Le chiavi private non lasciano il dispositivo (REQ-NFR-001) |
 | Quality gate | ktlint, detekt, compilazione Kotlin, test JUnit su JVM, build dell'APK | Controlli rapidi senza dispositivo; i test sul dispositivo sono separati |
-| Comandi degli agenti | Etichette `herdr-desktop-android.do`/`.re` sul terminale dell'agente, claim a compare-and-set sul documento `herdr-desktop-android.claims` (SPIKE-004) | Solo core e `hc` già presenti, esecuzione unica con più dispositivi, nessun server intermedio (REQ-AGT-003) |
+| Comandi degli agenti | Etichette `herdr-desktop-android.do`/`.re` sul terminale dell'agente, claim a compare-and-set sul documento `herdr-desktop-android.claims` | Solo core e `hc` già presenti, esecuzione unica con più dispositivi, nessun server intermedio (REQ-AGT-003) |
 | Licenza | Apache-2.0 | Stessa licenza di Herdr; esclude dipendenze GPL incluse nell'app |
 
 ## Open decisions
