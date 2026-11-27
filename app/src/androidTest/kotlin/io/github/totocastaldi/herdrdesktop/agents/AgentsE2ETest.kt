@@ -2,16 +2,15 @@ package io.github.totocastaldi.herdrdesktop.agents
 
 import android.app.ActivityOptions
 import android.content.Intent
-import androidx.compose.ui.input.key.Key
+import android.view.KeyCharacterMap
 import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performKeyInput
-import androidx.compose.ui.test.pressKey
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -177,12 +176,10 @@ class AgentsE2ETest {
         rule.onNodeWithTag("pane-${PaneLayout.leaves(tab.root).single().id}").assertExists()
         rule.waitForIdle()
         step()
-        // Keys to the peek's terminal itself, never to whatever window has the system focus.
-        rule.onNodeWithTag("peek-terminal").performKeyInput {
-            pressKey(Key.O)
-            pressKey(Key.K)
-            pressKey(Key.Enter)
-        }
+        // Keys to the app's window only (the peek has its focus), never to whatever window has the system focus.
+        rule.onNodeWithTag("peek-terminal").performClick()
+        rule.onNodeWithTag("peek-terminal").assertIsFocused()
+        typeInApp("ok\n")
         awaitRow(target, child, AgentState.WORKING)
         step()
 
@@ -280,6 +277,19 @@ class AgentsE2ETest {
     private fun desktopVersion(m: Machine): String {
         val params = buildJsonObject { put("name", WorkspaceCodec.DESKTOP_DOC_NAME) }
         return runBlocking { rpc(m).call("doc.get", params) }.jsonObject["version"].toString()
+    }
+
+    /**
+     * Sends ASCII [text] as key events of a virtual keyboard to the app's window, through the same pre-IME path
+     * a physical keyboard takes (the terminal reads keys there).
+     */
+    private fun typeInApp(text: String) {
+        val map = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD)
+        val events = checkNotNull(map.getEvents(text.toCharArray())) { "not typeable: $text" }
+        checkNotNull(scenario).onActivity { activity ->
+            val view = activity.window.decorView
+            events.forEach { if (!view.dispatchKeyEventPreIme(it)) view.dispatchKeyEvent(it) }
+        }
     }
 
     private fun labelsOf(m: Machine, terminal: String): Map<String, String> {
