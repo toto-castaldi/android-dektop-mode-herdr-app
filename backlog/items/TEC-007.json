@@ -1,0 +1,22 @@
+{
+  "id": "TEC-007",
+  "title": "TerminalViewDrawTest stabile anche dopo altre classi di test strumentali",
+  "version": "v0.1.0",
+  "epic": "EPIC-003",
+  "module": "MOD-001",
+  "type": "Task",
+  "priority": "P2",
+  "status": "Todo",
+  "dependencies": [
+    "US-009"
+  ],
+  "design_references": [
+    "design/terminal"
+  ],
+  "description": "Il worker di US-009 ha visto TerminalViewDrawTest fallire una volta eseguito dopo altre classi in connectedDebugAndroidTest, mentre da solo passa: probabile dipendenza da stato lasciato da altri test (attività, focus, tempi di disegno).",
+  "acceptance_criteria": [
+    "La causa dell'instabilità è individuata e descritta nell'outcome.",
+    "TerminalViewDrawTest passa in tre esecuzioni consecutive dell'intera suite strumentale dell'app sul Pixel 11 Pro, senza disinstallare l'app.",
+    "La correzione non indebolisce le asserzioni del test sul disegno dell'output."
+  ]
+}
