@@ -84,10 +84,10 @@ class WorkspaceManagerTest {
     }
 
     @Test
-    fun `a new session shows the old document's spaces moved into the shared one`() = runTest {
-        core.addTerminal("t1")
+    fun `a new session shows the app's spaces moved out of the desktop app's document`() = runTest {
+        core.addTerminal("t1", mapOf("app" to "herdr-android", "herdr.space" to "spold", "herdr.tab" to "tb1"))
         val old = Space("spold", tabs = listOf(WorkspaceEdits.singlePaneTab("tb1", "p1", "t1")))
-        core.write(WorkspaceCodec.LEGACY_DOC_NAME, WorkspaceCodec.encode(Workspace(listOf(old))))
+        core.write(WorkspaceCodec.DESKTOP_DOC_NAME, WorkspaceCodec.encode(Workspace(listOf(old))))
         val manager = WorkspaceManager(sessions, backgroundScope, CountingIds())
 
         sessions.value = mapOf("m1" to core)
@@ -95,11 +95,14 @@ class WorkspaceManagerTest {
 
         assertEquals(listOf("spold"), ready(manager).workspace.spaces.map { it.id })
         assertEquals(listOf("spold"), WorkspaceCodec.decode(core.docValue()).spaces.map { it.id })
+        assertTrue(WorkspaceCodec.decode(core.docValue(WorkspaceCodec.DESKTOP_DOC_NAME)).spaces.isEmpty())
     }
 
     @Test
     fun `a failed move still shows the shared document`() = runTest {
-        core.write(WorkspaceCodec.LEGACY_DOC_NAME, WorkspaceCodec.encode(Workspace(listOf(Space("spold")))))
+        core.addTerminal("t1", mapOf("app" to "herdr-android"))
+        val old = Space("spold", tabs = listOf(WorkspaceEdits.singlePaneTab("tb1", "p1", "t1")))
+        core.write(WorkspaceCodec.DESKTOP_DOC_NAME, WorkspaceCodec.encode(Workspace(listOf(old))))
         core.failDocSet = "unavailable"
         val manager = WorkspaceManager(sessions, backgroundScope, CountingIds())
 

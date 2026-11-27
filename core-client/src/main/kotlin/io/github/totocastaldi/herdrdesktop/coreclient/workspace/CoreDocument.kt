@@ -13,8 +13,8 @@ import kotlinx.serialization.json.put
 data class WorkspaceSnapshot(val workspace: Workspace, val version: Long)
 
 /**
- * A workspace document on a core, by default the one shared with the desktop app ([WorkspaceCodec.DOC_NAME]),
- * written with compare-and-set.
+ * A workspace document on a core, by default the app's own ([WorkspaceCodec.DOC_NAME]), written with
+ * compare-and-set.
  */
 class CoreDocument(private val rpc: CoreRpc, private val name: String = WorkspaceCodec.DOC_NAME) {
     suspend fun load(): WorkspaceSnapshot = read().first
@@ -53,7 +53,8 @@ class CoreDocument(private val rpc: CoreRpc, private val name: String = Workspac
         return write(load(), change)
     }
 
-    private suspend fun write(current: WorkspaceSnapshot, change: (Workspace) -> Workspace): WorkspaceSnapshot {
+    /** Writes [change] of [current] once, only if nobody wrote since it was read: a `conflict` is thrown. */
+    internal suspend fun write(current: WorkspaceSnapshot, change: (Workspace) -> Workspace): WorkspaceSnapshot {
         val changed = change(current.workspace)
         if (changed == current.workspace) return current
         val params = buildJsonObject {

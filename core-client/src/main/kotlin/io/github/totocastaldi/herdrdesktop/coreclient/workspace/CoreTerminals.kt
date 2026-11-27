@@ -12,20 +12,26 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
 /** A terminal of the core as far as spaces and tabs need it; [cwd] is its current folder. */
-data class TerminalInfo(val address: String, val cwd: String, val live: Boolean)
+data class TerminalInfo(
+    val address: String,
+    val cwd: String,
+    val live: Boolean,
+    val labels: Map<String, String> = emptyMap()
+)
 
 /** Starts, lists and ends terminals on a core. */
 class CoreTerminals(private val rpc: CoreRpc) {
-    /** Live terminals of the core, by address, with their current folder. */
-    suspend fun list(): Map<String, TerminalInfo> {
-        val result = rpc.call("terminal.list", null) as JsonObject
+    /** Live terminals of the core (also the finished ones with [all]), by address, with their current folder. */
+    suspend fun list(all: Boolean = false): Map<String, TerminalInfo> {
+        val result = rpc.call("terminal.list", if (all) buildJsonObject { put("all", true) } else null) as JsonObject
         return (result["terminals"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonObject)?.toTerminal() }
             .associateBy { it.address }
     }
 
     /**
      * Starts the core's shell in [folder] (the core's default when null) for tab [tabId] of space [spaceId]:
-     * labelled with their ids as the desktop app labels its own terminals, and as started by this app.
+     * labelled with their ids, with the app's own labels so that the desktop app does not adopt it, and as
+     * started by this app.
      */
     suspend fun runShell(folder: String?, spaceId: String, tabId: String): TerminalInfo {
         val params = buildJsonObject {
@@ -42,13 +48,19 @@ class CoreTerminals(private val rpc: CoreRpc) {
         return checkNotNull(result.toTerminal()) { "terminal.run returned no address" }
     }
 
-    /** Labels [address] as shown in tab [tabId] of space [spaceId]; a terminal already gone is not an error. */
+    /**
+     * Labels [address] as shown in tab [tabId] of space [spaceId] of the app and removes the desktop app's
+     * space and tab labels; a terminal already gone is not an error.
+     */
     suspend fun place(address: String, spaceId: String, tabId: String) {
         val params = buildJsonObject {
             put("terminal", address)
             putJsonObject("labels") {
                 put(SPACE_LABEL, spaceId)
                 put(TAB_LABEL, tabId)
+                // `key=` removes a label.
+                put(DESKTOP_SPACE_LABEL, "")
+                put(DESKTOP_TAB_LABEL, "")
             }
         }
         ignoreGone { rpc.call("terminal.label", params) }
@@ -77,9 +89,18 @@ class CoreTerminals(private val rpc: CoreRpc) {
         const val APP_LABEL = "app"
         const val APP_LABEL_VALUE = "herdr-android"
 
-        /** Space and tab of a terminal, by their ids in the shared document (the desktop app's labels). */
-        const val SPACE_LABEL = "herdr.space"
-        const val TAB_LABEL = "herdr.tab"
+        /** Space and tab of a terminal, by their ids in the app's document. */
+        const val SPACE_LABEL = AgentRecord.APP_SPACE_LABEL
+        const val TAB_LABEL = "herdr-desktop-android.tab"
+
+        /** The desktop app's space and tab labels: never put on the app's terminals (REQ-WS-001). */
+        const val DESKTOP_SPACE_LABEL = "herdr.space"
+        const val DESKTOP_TAB_LABEL = "herdr.tab"
+
+        /** True when [labels] say the app's own space and tab are [spaceId] and [tabId], and nothing else. */
+        fun placedIn(labels: Map<String, String>, spaceId: String, tabId: String): Boolean =
+            labels[SPACE_LABEL] == spaceId && labels[TAB_LABEL] == tabId &&
+                DESKTOP_SPACE_LABEL !in labels && DESKTOP_TAB_LABEL !in labels
     }
 }
 
@@ -88,5 +109,7 @@ private fun JsonObject.toTerminal(): TerminalInfo? {
     val foreground = this["foreground"] as? JsonObject
     val cwd = (foreground?.get("cwd") as? JsonPrimitive)?.content ?: (this["cwd"] as? JsonPrimitive)?.content.orEmpty()
     val state = (this["state"] as? JsonPrimitive)?.content
-    return TerminalInfo(address, cwd, state == null || state == "live")
+    val labels = (this["labels"] as? JsonObject).orEmpty()
+        .mapNotNull { (k, v) -> (v as? JsonPrimitive)?.let { k to it.content } }.toMap()
+    return TerminalInfo(address, cwd, state == null || state == "live", labels)
 }

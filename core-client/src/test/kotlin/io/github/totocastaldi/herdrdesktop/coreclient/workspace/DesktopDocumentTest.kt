@@ -12,8 +12,9 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * The desktop app's own documents (`herdr-app`) survive the app's writes: what the app does not use (mod
- * panes, stacks, pixel sizes, floating blocks, fields of a newer desktop app) is written back unchanged.
+ * Spaces in the desktop app's format (`herdr-app`, the shape of the app's document too, where the app's
+ * spaces move from it) survive the app's writes: what the app does not use (mod panes, stacks, pixel sizes,
+ * floating blocks, fields of a newer desktop app) is written back unchanged.
  * `two-tabs.json` is a document read from a real core used by the desktop app (folder anonymised);
  * `mods-and-stacks.json` adds the nodes the desktop app's layout allows in a tab.
  */

@@ -36,26 +36,12 @@ class FakeCore : CoreRpc {
         calls += method
         return when (method) {
             "doc.get" -> docGet(params!!.str("name"))
-
             "doc.set" -> docSet(params!!)
-
-            "terminal.list" -> buildJsonObject {
-                put("terminals", JsonArray(terminals.values.filter { it.live }.map { it.json() }))
-            }
-
+            "terminal.list" -> list(params)
             "terminal.run" -> run(params!!)
-
             "terminal.kill" -> term(params!!).also { it.live = false }.json()
-
             "terminal.rm" -> rm(params!!)
-
-            "terminal.label" -> term(params!!).also { t ->
-                params.getValue("labels").let { it as JsonObject }.forEach { (k, v) ->
-                    t.labels[k] =
-                        v.jsonPrimitive.content
-                }
-            }.json()
-
+            "terminal.label" -> label(params!!)
             else -> throw RpcException(RpcError(-32601, "no method $method", "not_found"))
         }
     }
@@ -67,9 +53,9 @@ class FakeCore : CoreRpc {
         docs[name] = value to (docs[name]?.second ?: 0L) + 1
     }
 
-    /** A live terminal started elsewhere (by the desktop app or before this app shared its document). */
-    fun addTerminal(address: String, labels: Map<String, String> = emptyMap()) {
-        terminals[address] = Term(address, HOME, labels = labels.toMutableMap())
+    /** A terminal started elsewhere (by the desktop app or by an earlier version of this app). */
+    fun addTerminal(address: String, labels: Map<String, String> = emptyMap(), live: Boolean = true) {
+        terminals[address] = Term(address, HOME, live, labels.toMutableMap())
     }
 
     private fun docGet(name: String) = buildJsonObject {
@@ -97,6 +83,19 @@ class FakeCore : CoreRpc {
         return buildJsonObject { put("version", current + 1) }
     }
 
+    private fun list(params: JsonObject?) = buildJsonObject {
+        val all = (params?.get("all") as? JsonPrimitive)?.content == "true"
+        put("terminals", JsonArray(terminals.values.filter { all || it.live }.map { it.json() }))
+    }
+
+    private fun label(params: JsonObject): JsonElement = term(params).also { t ->
+        params.getValue("labels").let { it as JsonObject }.forEach { (k, v) ->
+            // `key=` removes the label, as in herdr-core.
+            val value = v.jsonPrimitive.content
+            if (value.isEmpty()) t.labels.remove(k) else t.labels[k] = value
+        }
+    }.json()
+
     private fun run(params: JsonObject): JsonElement {
         val address = "t${next++}"
         val labels = (params["labels"] as? JsonObject).orEmpty().mapValues {
@@ -122,6 +121,7 @@ class FakeCore : CoreRpc {
         put("cwd", HOME)
         put("state", if (live) "live" else "finished")
         if (live) putJsonObject("foreground") { put("cwd", cwd) }
+        putJsonObject("labels") { labels.forEach { (k, v) -> put(k, v) } }
     }
 
     private fun JsonObject.str(key: String) = getValue(key).jsonPrimitive.content

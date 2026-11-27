@@ -24,8 +24,8 @@ class WorkspaceClient(internal val rpc: CoreRpc, internal val ids: IdGenerator =
 
     /**
      * New space with one tab running the core's shell; its terminal is ended if the document write fails.
-     * The desktop app may place the labelled terminal itself before the write (`Workspace.shows`): then the
-     * document is left as it is.
+     * Another client of the app may place the labelled terminal itself before the write (`Workspace.shows`):
+     * then the document is left as it is.
      */
     suspend fun createSpace(folder: String? = null): WorkspaceSnapshot {
         val spaceId = ids.next(SPACE_PREFIX)
