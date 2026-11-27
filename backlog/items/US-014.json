@@ -6,7 +6,7 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P0",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-014-spazi-app-separati-da-desktop",
   "dependencies": [
     "US-012"
@@ -31,5 +31,8 @@
   ],
   "remarks": [
     "Cambio di direzione rispetto a US-012 deciso dall'utente il 2026-11-27: con l'app sul Pixel aperta sul core di un PC mentre l'app desktop Herdr era in uso, l'app ha migrato e scritto il documento herdr-app condiviso e ridimensionato i terminali mostrati dalla desktop; nello stesso momento una sessione nell'app desktop è terminata."
-  ]
+  ],
+  "outcome": "Spazi, tab e pane dell'app nel documento herdr-desktop-android (WorkspaceCodec.DOC_NAME), con compare-and-set; herdr-app letto solo dalla migrazione. I terminali avviati dall'app portano app=herdr-android, herdr.seen=0, herdr-desktop-android.space/.tab e mai herdr.space/herdr.tab (SharedLabelsTest). Migrazione a ogni sessione (WorkspaceMigration.kt, migrate): spazi di herdr-app con almeno un terminale e tutti app=herdr-android (anche finiti) aggiunti se l'id manca e tolti da herdr-app con CAS; su conflitto o errore gli spazi aggiunti vengono tolti di nuovo; poi i terminali degli spazi dell'app ricevono le etichette dell'app e perdono herdr.space/herdr.tab (anche a completamento di una migrazione interrotta); il vecchio herdr-android ora confluisce in herdr-desktop-android. Nessun terminale avviato o terminato. Sidebar e herdr.seen solo per gli agenti dell'app (AgentSnapshot.isOwn: etichetta herdr-desktop-android.space o worker, anche indiretti, di questi); verificato su un core isolato che l'evento labels porta tutte le etichette. Attach e resize riguardano solo i pane del documento dell'app. Test JVM: WorkspaceMigrationTest (spazio solo dell'app spostato, spazio misto lasciato, vuoto o sconosciuto lasciato, terminale finito, id già presente, conflitto in scrittura con documenti invariati, etichette completate, documento herdr-android), WorkspaceCodecTest, WorkspaceManagerTest, AgentSnapshotTest e AgentsManagerTest (filtro degli agenti propri, nessun herdr.seen sugli agenti dell'app desktop). Gate completo verde. Verificato sul Pixel 11 Pro in Desktop Mode (display esterno, -e swDisplay) con l'herdr-core di walle in uso dall'app desktop Herdr: SeparateWorkspaceE2ETest passato due volte (uno spazio scritto in herdr-app come prima di US-014 torna nell'app, sparisce da herdr-app e viene rietichettato; spazio creato, rinominato, tab e pane nuovi, chiusure: nulla in herdr-app, nessuna etichetta where dell'app desktop sui terminali dell'app; un terminale fuori dagli spazi che riporta lo stato e gli agenti dell'app desktop non sono nella sidebar); dimensioni dei terminali dell'app desktop (168x44) invariate prima e dopo il test; a schermo l'app su walle mostra 'Nessuno spazio' e nessun agente mentre l'app desktop ha il suo spazio con due agenti claude-code. Non osservata direttamente la finestra dell'app desktop: verifica attraverso il core (documento herdr-app, etichette where, dimensioni). AgentsE2ETest non rieseguito (richiede la chiave di test autorizzata). Logcat dell'app: solo nomi di stato, nessuna chiave, password né contenuto dei terminali. Nessuna nuova dipendenza.",
+  "changelog": "Changed: spazi, tab e pane dell'app sono separati da quelli dell'app desktop Herdr sullo stesso core; gli spazi dell'app tornano nell'app",
+  "closed_at": "2026-11-27"
 }

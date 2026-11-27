@@ -109,7 +109,6 @@ class SeparateWorkspaceE2ETest {
         val suffix = System.currentTimeMillis() % 100_000
 
         val oldSpace = moveBack(target, suffix)
-        launch(target, oldSpace)
         step()
 
         // A new space: only in the app's document, with the app's labels; the desktop app does not adopt it.
@@ -121,11 +120,12 @@ class SeparateWorkspaceE2ETest {
         assertEquals(space.id, firstLabels[SPACE])
         assertEquals(APP_VALUE, firstLabels[APP])
         assertFalse(firstLabels.containsKey(DESK_SPACE) || firstLabels.containsKey(DESK_TAB))
+        launch(target, space.id)
         step()
 
         // Renamed, a new tab and a split pane: nothing of it reaches the desktop app.
         rename("space-${index(target, space.id)}-menu", "e2e-separato-$suffix")
-        rule.onNodeWithText(text(R.string.workspace_new_tab)).performClick()
+        container.workspaces.perform(target.id) { createTab(space.id, null) }
         val second = awaitUntil { ownSpace(target, space.id).tabs.getOrNull(1) }
         val pane = PaneLayout.leaves(second.root).single()
         container.workspaces.perform(target.id) { splitPane(space.id, second.id, pane.id, Axis.ROW, null) }
