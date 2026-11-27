@@ -151,6 +151,49 @@ class AdoptionE2ETest {
         step()
     }
 
+    /**
+     * `-e adClaude true`: Claude Code (`claude -p`, allowed to run only `hc`) in the pane of a tab is the agent: it
+     * reads its labels, starts a worker in a new tab of its space and coordinates it with `hc send` and `hc wait`.
+     * Needs `claude` signed in on the host; it uses the host's Claude Code account.
+     */
+    @Test
+    fun claudeCodeInAPaneStartsAWorkerInANewTabAndCoordinatesIt() {
+        assumeTrue(
+            "adHost, adUser and adClaude not given",
+            host != null && user != null && args.getString("adClaude") == "true"
+        )
+        val target = connect()
+        rule.onNodeWithText(text(R.string.workspace_new_space)).performClick()
+        awaitWorkspace(target) { it.spaces.size == 1 }
+        val space = workspaceOf(target).spaces.single()
+        val shell = space.tabs.single().terminals.single()
+        spaces.own(space.id)
+
+        // Inside single quotes for the shell: no single quotes in the task, `$` stays for Claude Code's own shell.
+        val task = "Sei in un terminale di herdr-core: esegui solo comandi hc, uno alla volta, senza pipe. " +
+            "1) Leggi le etichette del tuo terminale con hc get \$HC_TERMINAL_ID --json e prendi il valore di " +
+            "herdr-desktop-android.space. " +
+            "2) Avvia un worker in quello spazio: hc run --bg --no-notify --name $WORKER --label " +
+            "herdr-desktop-android.space=VALORE sh -c seguito, tra apici singoli, dallo script: " +
+            "read x; sleep 2; echo ricevuto \$x; sleep 600 " +
+            "3) Mandagli il testo ciao con hc send $WORKER ciao " +
+            "4) Aspettalo con hc wait $WORKER --output seguito, tra apici, da ricevuto ciao " +
+            "5) Rispondi solo con la riga CLAUDE-OK SPACE=VALORE."
+        send(target, shell, "claude -p --allowedTools 'Bash(hc:*)' -- '$task'")
+        val worker = try {
+            awaitTerminal(target, WORKER, CLAUDE_TIMEOUT_MILLIS).also { workers += it }
+        } catch (e: ComposeTimeoutException) {
+            throw AssertionError("no worker; agent's screen:\n${screenOf(target, shell).takeLast(SCREEN_TAIL)}", e)
+        }
+        awaitWorkspace(target) { ws -> ws.space(space.id)?.tabs?.lastOrNull()?.terminals == listOf(worker) }
+        rule.waitForIdle()
+        step()
+        awaitScreen(target, worker, "ricevuto ciao", CLAUDE_TIMEOUT_MILLIS)
+        awaitScreen(target, shell, "CLAUDE-OK SPACE=${space.id}", CLAUDE_TIMEOUT_MILLIS)
+        assertEquals(space.id, labelsOf(target, worker)[CoreTerminals.SPACE_LABEL])
+        step()
+    }
+
     private fun connect(): Machine {
         container.machines.machines.value.filter { it.name == NAME }.forEach {
             container.connections.forget(it.id)
@@ -202,18 +245,18 @@ class AdoptionE2ETest {
         return runBlocking { rpc(m).call("terminal.read", params) }.jsonObject["text"]?.jsonPrimitive?.content.orEmpty()
     }
 
-    private fun awaitScreen(m: Machine, terminal: String, text: String) {
+    private fun awaitScreen(m: Machine, terminal: String, text: String, timeout: Long = TIMEOUT_MILLIS) {
         try {
-            rule.waitUntil(TIMEOUT_MILLIS) { screenOf(m, terminal).contains(text) }
+            rule.waitUntil(timeout) { screenOf(m, terminal).contains(text) }
         } catch (e: ComposeTimeoutException) {
             throw AssertionError("\"$text\" not on $terminal:\n${screenOf(m, terminal).takeLast(SCREEN_TAIL)}", e)
         }
     }
 
     /** The address of the live terminal named [name]. */
-    private fun awaitTerminal(m: Machine, name: String): String {
+    private fun awaitTerminal(m: Machine, name: String, timeout: Long = TIMEOUT_MILLIS): String {
         var address: String? = null
-        rule.waitUntil(TIMEOUT_MILLIS) {
+        rule.waitUntil(timeout) {
             val list = runBlocking { rpc(m).call("terminal.list", null) }.jsonObject["terminals"] as JsonArray
             address = list.map { it.jsonObject }.firstOrNull { it["name"]?.jsonPrimitive?.content == name }
                 ?.get("address")?.jsonPrimitive?.content
@@ -260,6 +303,7 @@ class AdoptionE2ETest {
         const val WORKER = "e2e-adopt-worker"
         const val HELPER = "e2e-adopt-helper"
         const val TIMEOUT_MILLIS = 40_000L
+        const val CLAUDE_TIMEOUT_MILLIS = 180_000L
         const val SCREEN_HISTORY = 200
         const val SCREEN_TAIL = 2000
     }
