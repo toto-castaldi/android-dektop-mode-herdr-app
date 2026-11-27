@@ -1,0 +1,22 @@
+{
+  "id": "TEC-008",
+  "title": "Build dogfood firmata accanto alla build di sviluppo",
+  "version": "v0.1.0",
+  "epic": "EPIC-001",
+  "module": "MOD-001",
+  "type": "Task",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [],
+  "design_references": [
+    "design/configuration"
+  ],
+  "description": "L'utente vuole usare l'app sul Pixel per lavorare con gli agenti (anche su questo progetto) mentre i worker installano la build debug ed eseguono test sullo stesso dispositivo. Oggi c'è un solo application id: install -r di un worker chiude l'app in uso e connectedDebugAndroidTest la disinstalla, cancellando chiavi del Keystore e macchine. Serve una variante firmata, ottimizzata per la velocità, con application id separato. La build dogfood si aggiorna solo su decisione dell'utente; durante i test sul Pixel l'utente non usa il dispositivo (turni dell'orchestratore).",
+  "acceptance_criteria": [
+    "Un task Gradle documentato produce l'APK della variante dogfood: build non debuggabile e ottimizzata, firmata con una chiave letta da un file o da proprietà locali fuori dal repository; senza la chiave configurata il quality gate e le build debug passano invariati.",
+    "La variante dogfood ha un application id diverso dalla build debug e nel launcher un nome e un'icona distinguibili; le due app sono installate insieme sul Pixel 11 Pro.",
+    "Sul Pixel 11 Pro, dopo adb install -r della build debug e un'esecuzione dei test strumentali, la app dogfood resta installata con macchine, chiavi e host key confermate intatte e si ricollega al core: l'outcome dice come è stato verificato.",
+    "README e design/configuration descrivono come creare la chiave di firma, compilare, installare e aggiornare la build dogfood; keystore, password e file di proprietà della firma sono esclusi da .gitignore e assenti da file, commit e log.",
+    "Il logcat della variante dogfood non contiene chiavi, password, passphrase né contenuto dei terminali."
+  ]
+}

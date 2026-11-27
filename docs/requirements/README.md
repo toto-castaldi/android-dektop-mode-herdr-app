@@ -40,13 +40,14 @@ La v0.1.0 ha successo quando, su un Pixel 11 Pro in Desktop Mode con monitor est
 - Agenti che chiedono all'app, attraverso il core, di aprire spazi, tab e pane o di mostrare un agente.
 - Sidebar degli agenti con stati Working, Blocked, Done e Idle, e peek.
 - Esperienza Desktop Mode: finestre ridimensionabili e multiple su display esterno, tastiera fisica con scorciatoie, mouse.
+- Build per uso personale (dogfood) firmata con una chiave locale dello sviluppatore, installabile accanto alla build di sviluppo.
 
 ### Out of scope for v0.1.0
 
 Do not introduce these without first updating the requirements and the backlog:
 
 - Mod e pannelli delle mod dell'app desktop (QuickJS).
-- Pubblicazione: Play Store, F-Droid, firma di release.
+- Pubblicazione: Play Store, F-Droid, firma di release per la distribuzione.
 - Uso touch sullo schermo del telefono senza Desktop Mode.
 - Esecuzione di herdr-core dentro l'app stessa, al di fuori del Linux Terminal.
 - Account, sincronizzazione o server intermedi.

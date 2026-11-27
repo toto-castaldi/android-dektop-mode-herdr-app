@@ -7,6 +7,7 @@
     "2026-11-26: Aggiunti su richiesta dell'utente: spazi e tab condivisi con l'app desktop (documento e etichette herdr.*), terminali avviati dagli agenti negli spazi e nelle tab dell'app, spike sul canale dei comandi degli agenti verso l'app.",
     "2026-11-27: Aggiunta US-014: spazi, tab e pane dell'app separati da quelli dell'app desktop Herdr sullo stesso core (documento ed etichette herdr-desktop-android), al posto della condivisione di US-012; US-013 riscritta sulle nuove etichette.",
     "2026-11-27: Aggiunto il task del LocalNetworkPermissionTest ripetibile: il test del dialogo falliva sul Pixel condiviso dopo la prima esecuzione perché il permesso restava concesso con install -r. Concordato con l'utente il 2026-11-27.",
-    "2026-11-27: Aggiunti in v0.1.0, d'accordo con l'utente: US-015 Comandi degli agenti verso l'app (REQ-AGT-003, raccomandata da SPIKE-004) e TEC-007 TerminalViewDrawTest stabile dopo altre classi di test strumentali."
+    "2026-11-27: Aggiunti in v0.1.0, d'accordo con l'utente: US-015 Comandi degli agenti verso l'app (REQ-AGT-003, raccomandata da SPIKE-004) e TEC-007 TerminalViewDrawTest stabile dopo altre classi di test strumentali.",
+    "2026-11-27: Aggiunta, d'accordo con l'utente, la build dogfood firmata con chiave locale accanto alla build di sviluppo, per usare l'app sul Pixel mentre i worker installano e testano; esclusa solo la firma di release per la distribuzione."
   ]
 }
