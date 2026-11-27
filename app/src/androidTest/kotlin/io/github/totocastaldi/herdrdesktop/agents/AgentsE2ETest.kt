@@ -51,7 +51,8 @@ import org.junit.runner.RunWith
  * `-e agHost <host> -e agUser <user> [-e agPort <port>]`; skipped without them. The test key `e2e-agents`
  * (public part written to `agents-e2e.pub` in the app's external files directory) must be authorized on the
  * host, ideally with a forced command that reaches a separate core session (`HC_SESSION`). Programs report
- * their status with OSC 7501 (`printf` in the shell of a tab, and a worker started by it); the test ends the terminals it started.
+ * their status with OSC 7501 (`printf` in the shell of a tab, and a worker started by it); the test ends the
+ * terminals it started.
  * `-e agHostKey SHA256:…` checks the presented host key before confirming it.
  * `-e agDisplay <id>` opens the app on that display (Desktop Mode); `-e agPauseMillis <ms>` holds each step on
  * screen; `-e agDeleteKey true` deletes the test key at the end; `-e agKey write` only creates a new test key
