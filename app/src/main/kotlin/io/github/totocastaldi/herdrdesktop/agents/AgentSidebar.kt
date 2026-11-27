@@ -1,6 +1,7 @@
 package io.github.totocastaldi.herdrdesktop.agents
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -49,7 +50,12 @@ class AgentRow(val agent: AgentView, val machineName: String, val pane: PaneLoca
  * front, selecting one without a pane opens it in peek (REQ-AGT-002).
  */
 @Composable
-fun AgentSidebar(container: AppContainer, onOpen: (PaneFocus) -> Unit, onPeek: (PeekRequest) -> Unit) {
+fun AgentSidebar(
+    container: AppContainer,
+    onOpen: (PaneFocus) -> Unit,
+    onPeek: (PeekRequest) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val agents by container.agents.agents.collectAsState()
     val machines by container.machines.machines.collectAsState()
     val rows = machines.flatMap { machine ->
@@ -57,7 +63,7 @@ fun AgentSidebar(container: AppContainer, onOpen: (PaneFocus) -> Unit, onPeek: (
         val workspace = (state as? WorkspaceState.Ready)?.workspace
         agents[machine.id].orEmpty().map { AgentRow(it, machine.name, workspace?.paneOf(it.address)) }
     }
-    AgentSidebarContent(rows) { row ->
+    AgentSidebarContent(rows, modifier) { row ->
         val agent = row.agent
         val pane = row.pane
         if (pane != null) {
@@ -69,9 +75,13 @@ fun AgentSidebar(container: AppContainer, onOpen: (PaneFocus) -> Unit, onPeek: (
 }
 
 @Composable
-fun AgentSidebarContent(rows: List<AgentRow>, onSelect: (AgentRow) -> Unit) {
-    Surface(Modifier.width(260.dp).fillMaxHeight()) {
-        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(8.dp), Arrangement.spacedBy(4.dp)) {
+fun AgentSidebarContent(rows: List<AgentRow>, modifier: Modifier = Modifier, onSelect: (AgentRow) -> Unit) {
+    Surface(Modifier.width(260.dp).fillMaxHeight().testTag("agent-sidebar")) {
+        // A focus group: focusing the sidebar from the keyboard enters its first agent.
+        Column(
+            modifier.focusGroup().fillMaxSize().safeDrawingPadding().padding(8.dp),
+            Arrangement.spacedBy(4.dp)
+        ) {
             Text(stringResource(R.string.agents_title), style = MaterialTheme.typography.titleMedium)
             if (rows.isEmpty()) {
                 Text(stringResource(R.string.agents_none), style = MaterialTheme.typography.bodySmall)

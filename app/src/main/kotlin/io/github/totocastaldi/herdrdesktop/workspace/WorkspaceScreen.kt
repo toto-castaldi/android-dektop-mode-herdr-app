@@ -21,12 +21,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -47,7 +49,11 @@ import io.github.totocastaldi.herdrdesktop.coreclient.workspace.closePane
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.keepAsTab
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.resizeSplit
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.splitPane
+import io.github.totocastaldi.herdrdesktop.keyboard.KeyboardLink
+import io.github.totocastaldi.herdrdesktop.keyboard.Shortcut
+import io.github.totocastaldi.herdrdesktop.keyboard.cycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 
 /** How often the shown folders and the document are read again from the core while the screen is open. */
 private const val REFRESH_MILLIS = 5_000L
@@ -204,8 +210,12 @@ private class ManagerPaneActions(private val m: WorkspaceManager, private val id
     }
 }
 
-/** The space a window opens on and how it opens another window (none when null). */
-class WindowOptions(val initialSpace: String? = null, val onNewWindow: ((spaceId: String?) -> Unit)? = null)
+/** The space a window opens on, how it opens another window (none when null) and its keyboard shortcuts. */
+class WindowOptions(
+    val initialSpace: String? = null,
+    val onNewWindow: ((spaceId: String?) -> Unit)? = null,
+    val keyboard: KeyboardLink = KeyboardLink()
+)
 
 /**
  * What the screen shares with the rest of its window: the agents sidebar, the window itself and how its panes
@@ -236,6 +246,11 @@ fun WorkspaceContent(
             Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onBack) { Text(stringResource(R.string.workspace_back)) }
                 Text(machineName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                links.window.keyboard.onHelp?.let { onHelp ->
+                    TextButton(onClick = onHelp, Modifier.testTag("shortcut-help-button")) {
+                        Text(stringResource(R.string.shortcut_help_button))
+                    }
+                }
                 if (onNewWindow != null) {
                     TextButton(onClick = {
                         val ids = (state as? WorkspaceState.Ready)?.workspace?.spaces.orEmpty().map { it.id }
@@ -303,6 +318,9 @@ private fun ReadyContent(
     LaunchedEffect(onScreen) { agents.onShown(onScreen) }
     val controls = Controls(actions) { prompt = it }
     val spaceLabel = { index: Int, s: Space -> WorkspaceNames.displayName(s, state::cwdOf) ?: "${index + 1}" }
+    val current = SpaceRef(space, tab, state)
+    val keys = KeyTarget(current, controls, spaceLabel, onSelectSpace) { s, t -> selectedTabs[s] = t }
+    WorkspaceShortcuts(links.window.keyboard.shortcuts, keys)
 
     Column(Modifier.fillMaxSize()) {
         state.error?.let {
@@ -316,7 +334,7 @@ private fun ReadyContent(
             SpaceList(spaces, space?.id, spaceLabel, controls, onSelectSpace)
             VerticalDivider()
             Box(Modifier.fillMaxSize()) {
-                SpaceContent(SpaceRef(space, tab, state), controls, links, peek == null) {
+                SpaceContent(current, controls, links, peek == null) {
                     selectedTabs[it.first] = it.second
                 }
                 PeekOver(SpaceRef(space, tab, state), actions, links)
@@ -325,6 +343,64 @@ private fun ReadyContent(
     }
 
     prompt?.let { PromptDialog(it, actions) { prompt = null } }
+}
+
+/** What the space and tab shortcuts act on: the current selection and how it changes. */
+private class KeyTarget(
+    val ref: SpaceRef,
+    val controls: Controls,
+    val spaceLabel: (Int, Space) -> String,
+    val onSelectSpace: (String) -> Unit,
+    val onSelectTab: (String, String) -> Unit
+)
+
+/** Carries out the space and tab shortcuts on the current selection; pane shortcuts are the tab's. */
+@Composable
+private fun WorkspaceShortcuts(shortcuts: Flow<Shortcut>, target: KeyTarget) {
+    val current by rememberUpdatedState(target)
+    LaunchedEffect(shortcuts) {
+        shortcuts.collect { shortcut ->
+            spaceShortcut(shortcut, current)
+            tabShortcut(shortcut, current)
+        }
+    }
+}
+
+private fun spaceShortcut(shortcut: Shortcut, t: KeyTarget) {
+    val spaces = t.ref.state.workspace.spaces
+    val space = t.ref.space
+    when (shortcut) {
+        Shortcut.NEW_SPACE -> t.controls.actions.createSpace()
+
+        Shortcut.CLOSE_SPACE -> space?.let {
+            t.controls.prompt(Prompt.CloseSpace(it, t.spaceLabel(spaces.indexOf(it), it)))
+        }
+
+        Shortcut.NEXT_SPACE -> cycle(spaces.map { it.id }, space?.id, 1)?.let(t.onSelectSpace)
+
+        Shortcut.PREVIOUS_SPACE -> cycle(spaces.map { it.id }, space?.id, -1)?.let(t.onSelectSpace)
+
+        else -> Unit
+    }
+}
+
+private fun tabShortcut(shortcut: Shortcut, t: KeyTarget) {
+    val space = t.ref.space ?: return
+    val tab = t.ref.tab
+    val step = when (shortcut) {
+        Shortcut.NEXT_TAB -> 1
+        Shortcut.PREVIOUS_TAB -> -1
+        else -> 0
+    }
+    when {
+        shortcut == Shortcut.NEW_TAB ->
+            t.controls.actions.createTab(space.id, WorkspaceNames.newTabFolder(space, tab, t.ref.state::cwdOf))
+
+        shortcut == Shortcut.CLOSE_TAB && tab != null ->
+            t.controls.prompt(Prompt.CloseTab(space.id, tab, WorkspaceNames.tabLabel(tab, space.tabs.indexOf(tab))))
+
+        step != 0 -> cycle(space.tabs.map { it.id }, tab?.id, step)?.let { t.onSelectTab(space.id, it) }
+    }
 }
 
 /** The selected space and tab (none when null), with the core state they show. */
@@ -355,7 +431,8 @@ private fun SpaceContent(
             Message(stringResource(R.string.workspace_no_tabs))
         } else {
             val focusPane = links.agents.focus?.location?.takeIf { it.tabId == tab.id }?.paneId
-            TabPanes(space.id, tab, state, controls, links.host, PaneFocusRequest(focusPane, active))
+            val request = PaneFocusRequest(focusPane, active, links.agents.focus, links.window.keyboard.shortcuts)
+            TabPanes(space.id, tab, state, controls, links.host, request)
         }
     }
 }

@@ -91,6 +91,33 @@ class GhosttyTerminalEmulatorTest {
         assertEquals("ESCOA", terminal.encodeKey(KeyInput(TerminalKey.ARROW_UP)).visible())
     }
 
+    /** The sequences a physical keyboard's special keys send in the default (legacy) mode (REQ-DM-002). */
+    @Test
+    fun encodesSpecialKeysAndModifiers() {
+        fun key(key: TerminalKey, mods: KeyModifiers = KeyModifiers.NONE, text: String = "") = terminal.encodeKey(
+            KeyInput(key, modifiers = mods, text = text, unshiftedCodepoint = text.firstOrNull()?.code ?: 0)
+        ).visible()
+        val ctrl = KeyModifiers.CTRL
+        val alt = KeyModifiers.ALT
+        val shift = KeyModifiers.SHIFT
+
+        assertEquals("ESC", key(TerminalKey.ESCAPE))
+        assertEquals("\t", key(TerminalKey.TAB))
+        assertEquals("ESC[Z", key(TerminalKey.TAB, shift))
+        assertEquals("\u0004", key(TerminalKey.D, ctrl, "d"))
+        assertEquals("\u001a", key(TerminalKey.Z, ctrl, "z"))
+        assertEquals("\u0012", key(TerminalKey.R, ctrl, "r"))
+        assertEquals("ESCb", key(TerminalKey.B, alt, "b"))
+        assertEquals("ESCOP", key(TerminalKey.F1))
+        assertEquals("ESC[15~", key(TerminalKey.F5))
+        assertEquals("ESC[24~", key(TerminalKey.F12))
+        assertEquals("ESC[15;5~", key(TerminalKey.F5, ctrl))
+        assertEquals("ESC[1;5A", key(TerminalKey.ARROW_UP, ctrl))
+        assertEquals("ESC[1;3D", key(TerminalKey.ARROW_LEFT, alt))
+        assertEquals("ESC[1;2B", key(TerminalKey.ARROW_DOWN, shift))
+        assertEquals("ESC[1;8C", key(TerminalKey.ARROW_RIGHT, ctrl + alt + shift))
+    }
+
     @Test
     fun resizeChangesTheGrid() {
         terminal.resize(TerminalSize(columns = 10, rows = 3), cellWidthPx = 9, cellHeightPx = 18)

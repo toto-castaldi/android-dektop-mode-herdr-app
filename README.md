@@ -11,7 +11,7 @@ Progetto indipendente e open source, rilasciato sotto licenza Apache-2.0 (vedi [
 
 ## Stato
 
-In sviluppo verso la v0.1.0. L'app si apre come finestra ridimensionabile in Desktop Mode e gestisce le macchine con herdr-core: aggiunta, modifica e rimozione, chiave SSH Ed25519 generata nell'Android Keystore (con copia della chiave pubblica) o password, conferma dell'impronta della host key, stato del collegamento e riconnessione automatica. La macchina predefinita "Questo dispositivo" usa il herdr-core nel Linux Terminal del telefono: l'app mostra il comando da incollare nel Terminal (sshd sulla porta 2222 e chiave dell'app), lo apre e spiega cosa fare se non è attivo o non è configurato. Il Linux Terminal va lasciato aperto, anche minimizzato: chiuderlo spegne la sua VM. Lo stato aggiornato si vede con:
+In sviluppo verso la v0.1.0. L'app si apre come finestra ridimensionabile in Desktop Mode e gestisce le macchine con herdr-core: aggiunta, modifica e rimozione, chiave SSH Ed25519 generata nell'Android Keystore (con copia della chiave pubblica) o password, conferma dell'impronta della host key, stato del collegamento e riconnessione automatica. La macchina predefinita "Questo dispositivo" usa il herdr-core nel Linux Terminal del telefono: l'app mostra il comando da incollare nel Terminal (sshd sulla porta 2222 e chiave dell'app), lo apre e spiega cosa fare se non è attivo o non è configurato. Il Linux Terminal va lasciato aperto, anche minimizzato: chiuderlo spegne la sua VM. Con la tastiera fisica tutti i tasti vanno al terminale; le scorciatoie dell'app sono Ctrl+Shift con una lettera e Ctrl+Shift+/ le elenca. Lo stato aggiornato si vede con:
 
 ```bash
 python3 .agents/tools/backlog.py status

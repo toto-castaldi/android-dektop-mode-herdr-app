@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P1",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "us/US-009-tastiera-fisica-e-scorciatoie",
   "dependencies": [
     "US-005"
   ],
@@ -21,5 +22,8 @@
     "Ctrl, Alt, Esc, Tab, tasti funzione e frecce con modificatori arrivano al terminale con le sequenze attese (test unitari sulla codifica dei tasti).",
     "Le scorciatoie creano e chiudono spazi, tab e pane, spostano il focus e aprono la sidebar; un pannello di aiuto le elenca.",
     "Nessuna scorciatoia dell'app intercetta Ctrl+C, Ctrl+D, Ctrl+Z, Ctrl+R o Esc diretti al terminale."
-  ]
+  ],
+  "outcome": "Tastiera fisica: test JVM su AndroidKeys (Ctrl, Alt, Esc, Tab/Shift+Tab, F1-F12, frecce con tutti i modificatori, Ctrl+C/D/Z/R) e test strumentali sulle sequenze di libghostty (GhosttyTerminalEmulatorTest.encodesSpecialKeysAndModifiers). Scorciatoie dell'app solo Ctrl+Shift+lettera/punteggiatura (Shortcuts, ShortcutsTest: mai Ctrl+lettera, Esc, Tab, F, frecce): nuovo/chiudi/scorri spazi, tab e pane, focus tra i pane, sidebar degli agenti mostra/nascondi con focus, pannello di aiuto (Ctrl+Shift+/ e pulsante Scorciatoie); prese prima del terminale (onPreInterceptKeyBeforeSoftKeyboard) e in MainActivity.dispatchKeyEvent quando nulla ha il focus. Test strumentali sul Pixel 11 Pro: ShortcutKeysTest (tasti iniettati nella finestra fino al TerminalView reale), WorkspaceContentTest (scorciatoie su spazi, tab, pane e conferme), MainActivityTest, WindowsTest, GhosttyTerminalEmulatorTest: tutti verdi. Verifica manuale in Desktop Mode sul monitor esterno con herdr-core remoto reale: aiuto aperto da tastiera anche nella schermata macchine, nuovo spazio, divisione, focus tra pane con eco nel pane giusto, nuova tab e tab precedente, sidebar nascosta e riaperta con la tastiera che torna al pane, Ctrl+C interrompe sleep, chiusura dello spazio confermata da tastiera; logcat senza contenuto dei terminali. TerminalViewDrawTest è risultato instabile una volta se eseguito dopo altre classi (verde da solo, codice non toccato).",
+  "changelog": "Added: uso completo da tastiera fisica, con scorciatoie Ctrl+Shift per spazi, tab, pane, sidebar e un pannello di aiuto",
+  "closed_at": "2026-11-27"
 }
