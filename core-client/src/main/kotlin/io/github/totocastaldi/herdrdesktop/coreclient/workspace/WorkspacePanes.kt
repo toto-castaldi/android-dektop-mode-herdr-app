@@ -16,9 +16,13 @@ suspend fun WorkspaceClient.splitPane(
     paneId: String,
     axis: Axis,
     folder: String?
-): WorkspaceSnapshot {
-    val terminal = terminals.runShell(folder, spaceId, tabId)
-    return endOnFailure(terminal) {
+): WorkspaceSnapshot = splitPane(PaneLocation(spaceId, tabId, paneId), axis, NewTerminal(folder)).snapshot
+
+/** Splits the pane at [at] along [axis] with a new pane running [start]; see the other [splitPane]. */
+suspend fun WorkspaceClient.splitPane(at: PaneLocation, axis: Axis, start: NewTerminal): Created {
+    val (spaceId, tabId, paneId) = at
+    val terminal = terminals.runShell(start.folder, spaceId, tabId, start.argv)
+    val snapshot = endOnFailure(terminal) {
         val leaf = PaneNode.Leaf(ids.next(WorkspaceClient.PANE_PREFIX), terminal.address)
         val splitId = ids.next(WorkspaceClient.PANE_PREFIX)
         document.update { ws ->
@@ -29,6 +33,7 @@ suspend fun WorkspaceClient.splitPane(
             ws.changePanes(spaceId, tabId) { PaneLayout.split(it, paneId, axis, leaf, splitId) }
         }
     }
+    return Created(snapshot, terminal.address)
 }
 
 /**

@@ -38,6 +38,7 @@ import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.WindowTarget
 import io.github.totocastaldi.herdrdesktop.agents.PaneFocus
 import io.github.totocastaldi.herdrdesktop.agents.PeekRequest
+import io.github.totocastaldi.herdrdesktop.agents.WindowSelect
 import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentsManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Axis
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Space
@@ -83,7 +84,10 @@ fun WorkspaceScreen(
     val agents = AgentLink(
         requests.focus?.takeIf { it.machineId == machineId },
         shown,
-        AgentPeek(requests.peek?.takeIf { it.machineId == machineId }, requests.onClosePeek)
+        AgentPeek(requests.peek?.takeIf { it.machineId == machineId }, requests.onClosePeek),
+        requests.select?.takeIf { it.machineId == machineId },
+        requests.onSelected,
+        requests.onSelectDone
     )
     WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack, WorkspaceLinks(agents, window, host))
 }
@@ -118,8 +122,18 @@ private fun rememberShownAgents(agents: AgentsManager, machineId: String): (Set<
     return { shown = it }
 }
 
-/** What the agents sidebar asks of a window: the pane to bring to the front, the agent to peek at. */
-class AgentRequests(val focus: PaneFocus?, val peek: PeekRequest?, val onClosePeek: () -> Unit)
+/**
+ * What the agents sidebar and the agents' commands ask of a window: the pane to bring to the front, the agent to
+ * peek at, the space and tab to select; [onSelected] is told the space the window shows.
+ */
+class AgentRequests(
+    val focus: PaneFocus?,
+    val peek: PeekRequest?,
+    val select: WindowSelect? = null,
+    val onSelected: (String?) -> Unit = {},
+    val onSelectDone: () -> Unit = {},
+    val onClosePeek: () -> Unit
+)
 
 /** The agent shown in peek over the current tab (none when [request] is null) and how the peek closes. */
 class AgentPeek(val request: PeekRequest? = null, val onClose: () -> Unit = {})
@@ -131,7 +145,10 @@ class AgentPeek(val request: PeekRequest? = null, val onClose: () -> Unit = {})
 class AgentLink(
     val focus: PaneFocus? = null,
     val onShown: (Set<String>) -> Unit = {},
-    val peek: AgentPeek = AgentPeek()
+    val peek: AgentPeek = AgentPeek(),
+    val select: WindowSelect? = null,
+    val onSelected: (String?) -> Unit = {},
+    val onSelectDone: () -> Unit = {}
 )
 
 /** What the user can do on spaces and tabs; each action is sent to the core. */
@@ -310,7 +327,18 @@ private fun ReadyContent(
         }
     }
 
+    // An agent's command (space.select, tab.select) brings a space and maybe a tab to the front.
+    LaunchedEffect(agents.select) {
+        agents.select?.let { request ->
+            onSelectSpace(request.spaceId)
+            request.tabId?.let { selectedTabs[request.spaceId] = it }
+            // Applied once: a screen composed again later (reconnection) does not select it again.
+            agents.onSelectDone()
+        }
+    }
+
     val space = spaces.firstOrNull { it.id == selectedSpace } ?: spaces.firstOrNull()
+    LaunchedEffect(space?.id) { agents.onSelected(space?.id) }
     val tab = space?.let { s -> s.tabs.firstOrNull { it.id == selectedTabs[s.id] } ?: s.tabs.firstOrNull() }
     val peek = agents.peek.request
     // A terminal in peek is on screen too: looking at it there marks it as seen.

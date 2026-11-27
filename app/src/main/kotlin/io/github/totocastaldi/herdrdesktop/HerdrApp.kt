@@ -2,6 +2,9 @@ package io.github.totocastaldi.herdrdesktop
 
 import android.app.Application
 import android.util.Log
+import io.github.totocastaldi.herdrdesktop.agents.AgentWindowRegistry
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentCommandLog
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentCommands
 import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentsManager
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.ConnectionLog
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.ConnectionManager
@@ -60,6 +63,20 @@ class AppContainer(app: Application) {
     /** Agents of the connected machines and their states, from the cores' events. */
     val agents = AgentsManager(connections.sessions, scope).also { workspaces.follow(it.placements) }
 
+    /** The app's windows, for the agents' commands that select or show something. */
+    val agentWindows = AgentWindowRegistry()
+
+    /** Commands of the agents to the app, through the cores (REQ-AGT-003). */
+    val agentCommands = AgentCommands(
+        connections.sessions,
+        agents.snapshots,
+        workspaces,
+        agentWindows,
+        scope,
+        // Action name and outcome only, never the arguments (AGENTS.md §7).
+        AgentCommandLog { machine, action, outcome -> Log.i(COMMANDS_TAG, "machine $machine: $action $outcome") }
+    )
+
     /**
      * Told about every frame drawn by a terminal pane; set only by the measurements of REQ-NFR-003
      * (instrumented tests), null otherwise.
@@ -74,5 +91,6 @@ class AppContainer(app: Application) {
 
     private companion object {
         const val TAG = "HerdrConnection"
+        const val COMMANDS_TAG = "HerdrAgentCommands"
     }
 }

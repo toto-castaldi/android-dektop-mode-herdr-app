@@ -22,6 +22,9 @@ class FakeCore : CoreRpc {
     val terminals = linkedMapOf<String, Term>()
     val calls = mutableListOf<String>()
 
+    /** Params of every `terminal.run`. */
+    val runs = mutableListOf<JsonObject>()
+
     /** Writes another client makes right before the next `doc.set`s, to provoke conflicts. */
     var interleavedWrites = 0
 
@@ -97,6 +100,7 @@ class FakeCore : CoreRpc {
     }.json()
 
     private fun run(params: JsonObject): JsonElement {
+        runs += params
         val address = "t${next++}"
         val labels = (params["labels"] as? JsonObject).orEmpty().mapValues {
             it.value.jsonPrimitive.content

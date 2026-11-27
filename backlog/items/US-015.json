@@ -6,7 +6,8 @@
   "module": "MOD-002",
   "type": "User Story",
   "priority": "P1",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "us/US-015-comandi-agenti-verso-app",
   "dependencies": [
     "SPIKE-004",
     "US-013"
@@ -25,5 +26,8 @@
     "Le azioni passano dal documento del core come i comandi dell'utente: nessun terminale terminato, documento herdr-app invariato; il logcat non contiene gli argomenti delle richieste.",
     "La ricetta del README funziona anche su macchine senza timeout di coreutils (ripiego documentato).",
     "Test unitari del parsing, del claim e dell'esecuzione; verifica sul Pixel 11 Pro in Desktop Mode con un herdr-core reale, remoto e nel Linux Terminal."
-  ]
+  ],
+  "outcome": "Comandi degli agenti verso l'app attraverso il core (REQ-AGT-003), canale di SPIKE-004: richiesta nell'etichetta herdr-desktop-android.do del terminale dell'agente, risposta in herdr-desktop-android.re (id per primo, ok/result oppure error/message con tipi stabili), claim a compare-and-set sul documento herdr-desktop-android.claims. AgentCommands (core-client/agents) osserva gli snapshot di AgentsManager, prende anche le richieste senza risposta trovate al collegamento, esegue space.new, tab.new e pane.split con le operazioni dei comandi dell'utente (WorkspaceManager.act, nuovi startSpace/startTab/splitPane con name e argv) e space.select, tab.select e agent.focus nella finestra della macchina in primo piano per ultima (AgentWindowRegistry nell'app; senza finestra sul dispositivo la richiesta non viene presa); le altre azioni rispondono unsupported, nessuna chiude o termina qualcosa. Log (tag HerdrAgentCommands) solo macchina, nome dell'azione ed esito. Ricetta hda per bash nel README, con ripiego senza timeout di coreutils (controllo con hc get ogni 0,2 s), provata con una sessione hc isolata con e senza timeout, compresa la scadenza che toglie la richiesta. Test unitari: AgentCommandCodecTest (parsing, errori, risposte), AgentClaimsTest (claim unico, conflitti, pulizia), AgentCommandsTest (esecuzione, due dispositivi, richieste trovate al collegamento, attesa della finestra, selezioni, errori e log senza argomenti), AgentWindowRegistryTest. Verifica sul Pixel 11 Pro in Desktop Mode (monitor esterno) con AgentCommandsE2ETest: l'agente è la shell di una tab che carica la ricetta del README (asset hda.sh, stesso testo) ed esegue tutte le azioni supportate, una non supportata e una fatta ad app scollegata, eseguita al ricollegamento; un secondo AgentCommands nello stesso processo fa da secondo dispositivo sul compare-and-set reale del core e ogni richiesta è eseguita una sola volta (limite: non è un secondo dispositivo fisico). Superato 4 volte su herdr-core remoto via Tailscale e 2 volte sul core nella VM del Linux Terminal; selezione di spazio e tab e split visti sullo schermo esterno; documento herdr-app invariato, nessun terminale terminato; logcat senza argomenti, etichette o chiavi. Nessuna nuova dipendenza.",
+  "changelog": "Added: gli agenti sul core possono chiedere all'app di aprire spazi, tab e pane o di mostrare un agente, come herdr-app do",
+  "closed_at": "2026-11-27"
 }
