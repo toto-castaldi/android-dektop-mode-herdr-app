@@ -6,7 +6,7 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P2",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-007-peek-di-un-agente",
   "dependencies": [
     "US-005",
@@ -22,5 +22,8 @@
   "acceptance_criteria": [
     "Selezionare un agente senza pane lo apre in peek sopra la tab corrente, con terminale interattivo.",
     "Chiuso il peek, la tab corrente è come prima; l'azione \"tieni come tab\" apre l'agente in una nuova tab dello spazio."
-  ]
+  ],
+  "outcome": "Selezionare nella sidebar un agente senza pane lo apre in peek sopra la tab corrente (Peek.kt): terminale interattivo con un secondo visore terminal.attach; Chiudi stacca solo il visore, la tab resta com'era e la tastiera torna al suo pane; il terminale in peek conta come guardato (setLooking per finestra, dopo BUG-002). 'Tieni come tab' (WorkspaceClient.keepAsTab) aggiunge una tab con quel terminale allo spazio selezionato nel documento herdr-desktop-android e gli scrive le etichette dell'app, senza avviare né terminare terminali e senza toccare herdr-app. Verifiche: KeepAsTabTest (JVM), WorkspaceContentTest 10/10 sul Pixel 11 Pro (am instrument), AgentsE2ETest 3/3 per due volte su herdr-core reale (worker Blocked aperto in peek sul monitor esterno in Desktop Mode, risposta digitata nel peek -> Working, chiusura, tieni come tab, etichette e versione di herdr-app invariata) con screenshot del display esterno; chiave di test cancellata a fine prova; logcat senza chiavi né contenuto dei terminali.",
+  "changelog": "Added: peek degli agenti senza pane sopra la tab corrente, con risposta interattiva e azione \"Tieni come tab\"",
+  "closed_at": "2026-11-27"
 }
