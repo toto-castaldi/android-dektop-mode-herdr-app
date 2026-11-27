@@ -2,6 +2,7 @@
 
 package io.github.totocastaldi.herdrdesktop.keyboard
 
+import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -39,6 +40,16 @@ class WindowKeyboard(sidebarState: MutableState<Boolean>, helpState: MutableStat
 
     val link = KeyboardLink(bus.shortcuts) { help = true }
 
+    /**
+     * Carries out the shortcut of [event], if it has one, and tells whether the key is the app's. Called before
+     * the focused node sees the key and, when nothing has the focus, by the activity.
+     */
+    fun handle(event: KeyEvent, down: Boolean = event.action == KeyEvent.ACTION_DOWN): Boolean {
+        val owned = Shortcuts.owns(event.keyCode, event.metaState)
+        if (owned && down) Shortcuts.match(event.keyCode, event.metaState, event.repeatCount)?.let(::onShortcut)
+        return owned
+    }
+
     fun onShortcut(shortcut: Shortcut) {
         when (shortcut) {
             Shortcut.HELP -> help = true
@@ -74,10 +85,5 @@ fun rememberWindowKeyboard(): WindowKeyboard {
 
 /** Shortcuts are taken before the focused terminal sees the key; every other key reaches the terminal. */
 fun Modifier.shortcuts(keyboard: WindowKeyboard) = onPreInterceptKeyBeforeSoftKeyboard { event ->
-    val native = event.nativeKeyEvent
-    val owned = Shortcuts.owns(native.keyCode, native.metaState)
-    if (owned && event.type == KeyEventType.KeyDown) {
-        Shortcuts.match(native.keyCode, native.metaState, native.repeatCount)?.let(keyboard::onShortcut)
-    }
-    owned
+    keyboard.handle(event.nativeKeyEvent, event.type == KeyEventType.KeyDown)
 }
