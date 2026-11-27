@@ -6,7 +6,7 @@
   "module": "MOD-003",
   "type": "User Story",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "us/US-010-mouse-selezione-copia-incolla",
   "dependencies": [
     "US-005"
@@ -22,5 +22,8 @@
     "L'utente seleziona testo con il mouse, lo copia negli appunti e incolla dagli appunti nel terminale.",
     "La rotella scorre lo scrollback; un clic sposta il focus tra pane; il tasto destro apre un menu contestuale con copia, incolla e azioni del pane.",
     "Con un programma che attiva il mouse reporting, clic e rotella sono inoltrati al programma (test unitari sulla codifica degli eventi)."
-  ]
+  ],
+  "outcome": "Mouse nel terminale (REQ-DM-003). Selezione col gesto di libghostty-vt (trascinamento, doppio clic parola, triplo riga), tenuta dal terminale anche con output e scrollback, disegnata a colori invertiti; testo copiato col formatter di libghostty. Menu contestuale col tasto destro (TerminalContextMenu): Copia negli appunti di Android, Incolla (bracketed paste se attivo, byte di controllo neutralizzati), dividi a destra/in basso e chiudi pane (con conferma); nel peek solo copia e incolla; alla chiusura il focus torna al terminale. La rotella scorre lo scrollback, ogni clic dà il focus al pane. Con mouse reporting attivo clic, movimento e rotella vanno al programma con l'encoder del mouse di libghostty (Shift li tiene all'app). Verifiche: test JVM MouseRouterTest (codifica degli eventi: pulsanti, rotella 4/5, modificatori, Shift, destinazione della sequenza), TerminalSessionTest, TerminalSizeTest, SnapshotDecoderTest; strumentali GhosttyTerminalEmulatorTest 16/16 sul Pixel 11 Pro (byte SGR e X10, any-event, selezione e testo, doppio clic, paste); e2e PaneE2ETest#mouseSelectsCopiesPastesAndReportsToPrograms con herdr-core reale remoto, in Desktop Mode sul display esterno del Pixel: trascinamento seleziona e Copia va negli appunti, Incolla esegue il testo nella shell, il menu divide e chiude il pane, un clic sposta il focus, con cat -v il programma riceve clic e rotella in SGR. Nessuna nuova dipendenza. Logcat senza contenuto dei terminali né chiavi. Non legati all'item: LocalNetworkPermissionTest fallisce perché sul Pixel il permesso di rete locale è già concesso (serve un'installazione pulita); splitResizeFocusAndClosePanesWithLiveTerminals passa da solo ma è instabile dopo un altro test nella stessa classe (ridimensionamento della finestra). E2e col core nel Linux Terminal non eseguito.",
+  "changelog": "Added: mouse nel terminale: selezione, copia e incolla, menu contestuale con le azioni del pane e inoltro del mouse ai programmi",
+  "closed_at": "2026-11-27"
 }

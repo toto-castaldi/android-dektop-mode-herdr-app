@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
@@ -151,8 +152,10 @@ class PaneE2ETest {
     @OptIn(ExperimentalTestApi::class)
     private fun selectAndCopy(tag: String, session: TerminalSession) {
         val (column, row) = session.snapshot().findLine("us010-copia")!!
-        val start = cellCenter(tag, session, column, row)
-        val end = cellCenter(tag, session, column + "us010-copia".length - 1, row)
+        // As in Ghostty, a drag takes a cell at either end only past its middle: from the left edge of the first
+        // cell to the right edge of the last.
+        val start = cellCenter(tag, session, column, row, CELL_LEFT_EDGE)
+        val end = cellCenter(tag, session, column + "us010-copia".length - 1, row, CELL_RIGHT_EDGE)
         rule.onNodeWithTag(tag).performMouseInput {
             moveTo(start)
             press()
@@ -180,6 +183,8 @@ class PaneE2ETest {
         rule.onNodeWithTag(tag).performMouseInput { rightClick(center) }
         rule.onNodeWithTag("terminal-menu-paste").performClick()
         rule.waitUntil(TIMEOUT_MILLIS) { session.screenText().contains("echo us010-incol\"\"la") }
+        // Until its closing animation ends the menu's window has the keyboard: Enter would paste again.
+        awaitMenuClosed()
         type("\n")
         awaitScreen(target, address, "us010-incolla")
         rule.waitUntil(TIMEOUT_MILLIS) { session.snapshot().findLine("us010-incolla") != null }
@@ -196,6 +201,7 @@ class PaneE2ETest {
         val s2 = awaitSession { it !== s1 && it.screenText().isNotBlank() }
         step()
 
+        awaitMenuClosed()
         rule.onNodeWithTag("terminal-${first.id}").performMouseInput { click(center) }
         type("echo us010-fuoco\n")
         awaitScreen(target, first.terminal!!, "us010-fuoco")
@@ -229,13 +235,21 @@ class PaneE2ETest {
         rule.waitUntil(TIMEOUT_MILLIS) { !session.mouseTracking }
     }
 
-    /** Center of the cell at [column], [row] of [session]'s grid, in pixels of the node [tag]. */
-    private fun cellCenter(tag: String, session: TerminalSession, column: Int, row: Int): Offset {
+    /**
+     * A point of the cell at [column], [row] of [session]'s grid, in pixels of the node [tag]: at [across] of its
+     * width (0.5 the center) and half its height.
+     */
+    private fun cellCenter(tag: String, session: TerminalSession, column: Int, row: Int, across: Float = 0.5f): Offset {
         val bounds = rule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
         // The grid is the whole cells that fit: a cell is at most a fraction of a pixel narrower than this.
         val cellWidth = (bounds.width / session.size.columns).toInt()
         val cellHeight = (bounds.height / session.size.rows).toInt()
-        return Offset((column + 0.5f) * cellWidth, (row + 0.5f) * cellHeight)
+        return Offset((column + across) * cellWidth, (row + 0.5f) * cellHeight)
+    }
+
+    private fun awaitMenuClosed() {
+        rule.waitUntil(TIMEOUT_MILLIS) { rule.onAllNodesWithTag("terminal-menu-paste").fetchSemanticsNodes().isEmpty() }
+        rule.waitForIdle()
     }
 
     private fun clipboardText(): String? {
@@ -543,6 +557,10 @@ class PaneE2ETest {
         const val AGENT_TIMEOUT_MILLIS = 60_000L
         const val SHORT_PAUSE_MILLIS = 500L
         const val DRAG_PX = 300f
+
+        /** Points near the left and right edge of a cell, as fractions of its width. */
+        const val CELL_LEFT_EDGE = 0.1f
+        const val CELL_RIGHT_EDGE = 0.9f
 
         /** Window bounds set by the test, in pixels of the display: smaller than the whole monitor. */
         const val WINDOW_LEFT = 200

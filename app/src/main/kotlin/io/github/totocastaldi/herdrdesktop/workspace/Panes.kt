@@ -280,7 +280,11 @@ private class PaneScope(
                 onContextMenu = { menu = it },
                 frameObserver = host?.frameObserver
             )
-            TerminalContextMenu(terminal.session, menu, { menu = null }, paneMenuActions(leaf))
+            // Closing the menu gives the keyboard back to the terminal, for example to run what was pasted.
+            TerminalContextMenu(terminal.session, menu, {
+                menu = null
+                runCatching { requester.requestFocus() }
+            }, paneMenuActions(leaf))
             terminalMessage(status)?.let {
                 Text(
                     it,

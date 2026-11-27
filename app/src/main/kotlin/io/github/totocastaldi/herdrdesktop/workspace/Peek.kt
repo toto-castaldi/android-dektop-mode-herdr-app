@@ -105,7 +105,10 @@ private fun PeekTerminal(request: PeekRequest, host: PaneHost, modifier: Modifie
             onContextMenu = { menu = it },
             frameObserver = host.frameObserver
         )
-        TerminalContextMenu(terminal.session, menu, { menu = null })
+        TerminalContextMenu(terminal.session, menu, {
+            menu = null
+            runCatching { requester.requestFocus() }
+        })
         terminalMessage(status)?.let {
             Text(
                 it,

@@ -151,7 +151,8 @@ class GhosttyTerminalEmulatorTest {
         cells()
         write("\u001b[?1003h")
 
-        assertEquals("ESC[M !!", mouse(MouseAction.PRESS, MouseButton.LEFT))
+        // X10: button 0 + 32, then column and row from 1, + 32.
+        assertEquals("ESC[M \"\"", mouse(MouseAction.PRESS, MouseButton.LEFT))
         write("\u001b[?1006h")
         assertEquals("ESC[<35;2;2M", mouse(MouseAction.MOTION, null))
         write("\u001b[?1003l")
