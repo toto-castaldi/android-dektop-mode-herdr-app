@@ -207,7 +207,7 @@ class WorkspaceContentTest {
 
     @Test
     fun peekOpensOverTheCurrentTabAndClosingLeavesItAsItWas() {
-        var peek by mutableStateOf<PeekRequest?>(PeekRequest("m1", "t9", "worker"))
+        var peek by mutableStateOf<PeekRequest?>(null)
         rule.setContent {
             MaterialTheme {
                 val links = WorkspaceLinks(AgentLink(peek = AgentPeek(peek) { peek = null }))
@@ -215,6 +215,8 @@ class WorkspaceContentTest {
             }
         }
         rule.onNodeWithTag("tab-1").performClick()
+        // The peek covers the tab, which stays under it.
+        peek = PeekRequest("m1", "t9", "worker")
         rule.onNodeWithTag("peek").assertIsDisplayed()
         rule.onNodeWithText(text(R.string.peek_title, "worker", "t9")).assertIsDisplayed()
 
