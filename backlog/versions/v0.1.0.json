@@ -5,6 +5,7 @@
   "scope_changes": [
     "2026-11-26: Aggiunta la segnalazione degli aggiornamenti disponibili di herdr-core compatibile (REQ-CONN-004), su richiesta dell'utente.",
     "2026-11-26: Aggiunti su richiesta dell'utente: spazi e tab condivisi con l'app desktop (documento e etichette herdr.*), terminali avviati dagli agenti negli spazi e nelle tab dell'app, spike sul canale dei comandi degli agenti verso l'app.",
-    "2026-11-27: Aggiunta US-014: spazi, tab e pane dell'app separati da quelli dell'app desktop Herdr sullo stesso core (documento ed etichette herdr-desktop-android), al posto della condivisione di US-012; US-013 riscritta sulle nuove etichette."
+    "2026-11-27: Aggiunta US-014: spazi, tab e pane dell'app separati da quelli dell'app desktop Herdr sullo stesso core (documento ed etichette herdr-desktop-android), al posto della condivisione di US-012; US-013 riscritta sulle nuove etichette.",
+    "2026-11-27: Aggiunto il task del LocalNetworkPermissionTest ripetibile: il test del dialogo falliva sul Pixel condiviso dopo la prima esecuzione perché il permesso restava concesso con install -r. Concordato con l'utente il 2026-11-27."
   ]
 }

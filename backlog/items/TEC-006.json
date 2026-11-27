@@ -1,0 +1,23 @@
+{
+  "id": "TEC-006",
+  "title": "LocalNetworkPermissionTest ripetibile senza installazione pulita",
+  "version": "v0.1.0",
+  "epic": "EPIC-002",
+  "module": "MOD-001",
+  "type": "Task",
+  "priority": "P2",
+  "status": "Todo",
+  "dependencies": [
+    "BUG-001"
+  ],
+  "design_references": [
+    "design/security"
+  ],
+  "description": "Il test a_deniedPermissionShowsLocalNetworkNotAllowedWithInstructions richiede ACCESS_LOCAL_NETWORK non concesso all'avvio, ma b_grantedPermissionLetsTheConnectionProceed lo concede e install -r lo conserva: ogni esecuzione dopo la prima fallisce su a_ finché non si revoca il permesso a mano (adb shell pm revoke). Le esecuzioni sul Pixel condiviso non disinstallano mai l'app.",
+  "acceptance_criteria": [
+    "Con ACCESS_LOCAL_NETWORK già concesso, LocalNetworkPermissionTest non fallisce: il test del dialogo viene saltato con un messaggio che spiega come rieseguirlo (permesso revocato), oppure parte da permesso non concesso senza terminare il processo del test.",
+    "Con il permesso non concesso il test del dialogo gira e passa come oggi, verificato sul Pixel 11 Pro con install -r e permesso revocato.",
+    "Due esecuzioni consecutive di LocalNetworkPermissionTest con install -r, senza disinstallare e senza pm clear, non danno fallimenti.",
+    "Il commento del test e il README (sezione dei test strumentali) dicono come eseguire il test del dialogo."
+  ]
+}
