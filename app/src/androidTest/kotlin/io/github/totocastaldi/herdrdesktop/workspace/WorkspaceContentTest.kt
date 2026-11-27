@@ -21,6 +21,9 @@ import io.github.totocastaldi.herdrdesktop.coreclient.workspace.TerminalInfo
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Workspace
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceEdits
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
+import io.github.totocastaldi.herdrdesktop.keyboard.KeyboardLink
+import io.github.totocastaldi.herdrdesktop.keyboard.Shortcut
+import kotlinx.coroutines.flow.MutableSharedFlow
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -154,6 +157,67 @@ class WorkspaceContentTest {
         rule.onNodeWithText(text(R.string.workspace_close)).performClick()
         rule.onNodeWithText(text(R.string.workspace_close)).performClick()
         assertEquals(listOf("closeTab sp1 tb2"), calls)
+    }
+
+    /** Shortcuts act on the selected space, tab and focused pane, like the buttons do (REQ-DM-002). */
+    @Test
+    fun shortcutsActOnTheSelection() {
+        val keys = MutableSharedFlow<Shortcut>(extraBufferCapacity = 8)
+        rule.setContent {
+            MaterialTheme {
+                val window = WindowOptions(keyboard = KeyboardLink(keys))
+                WorkspaceContent("walle", state, actions, onBack = {}, links = WorkspaceLinks(window = window))
+            }
+        }
+        fun press(shortcut: Shortcut) {
+            rule.waitForIdle()
+            rule.runOnIdle { keys.tryEmit(shortcut) }
+            rule.waitForIdle()
+        }
+
+        press(Shortcut.NEW_SPACE)
+        press(Shortcut.SPLIT_RIGHT)
+        press(Shortcut.SPLIT_DOWN)
+        press(Shortcut.NEXT_TAB)
+        rule.onNodeWithText(text(R.string.workspace_terminal, "t2", "/var/log")).assertIsDisplayed()
+        press(Shortcut.NEW_TAB)
+        press(Shortcut.PREVIOUS_TAB)
+        press(Shortcut.PREVIOUS_TAB)
+        rule.onNodeWithText(text(R.string.workspace_terminal, "t2", "/var/log")).assertIsDisplayed()
+        press(Shortcut.NEXT_SPACE)
+        rule.onNodeWithText(text(R.string.workspace_terminal, "t3", "/srv")).assertIsDisplayed()
+        assertEquals(
+            listOf(
+                "createSpace",
+                "splitPane sp1 tb1 p1 ROW /home/toto/herdr",
+                "splitPane sp1 tb1 p1 COLUMN /home/toto/herdr",
+                "createTab sp1 /var/log"
+            ),
+            calls
+        )
+    }
+
+    /** Closing from the keyboard asks first, as the buttons do. */
+    @Test
+    fun closeShortcutsAskFirst() {
+        val keys = MutableSharedFlow<Shortcut>(extraBufferCapacity = 8)
+        rule.setContent {
+            MaterialTheme {
+                val window = WindowOptions(keyboard = KeyboardLink(keys))
+                WorkspaceContent("walle", state, actions, onBack = {}, links = WorkspaceLinks(window = window))
+            }
+        }
+        rule.waitForIdle()
+        rule.runOnIdle { keys.tryEmit(Shortcut.CLOSE_PANE) }
+        rule.onNodeWithText(text(R.string.pane_close_title, "t1")).assertIsDisplayed()
+        rule.onNodeWithText(text(R.string.workspace_close)).performClick()
+        rule.runOnIdle { keys.tryEmit(Shortcut.CLOSE_TAB) }
+        rule.onNodeWithText(text(R.string.workspace_close_tab_title, "1")).assertIsDisplayed()
+        rule.onNodeWithText(text(R.string.workspace_close)).performClick()
+        rule.runOnIdle { keys.tryEmit(Shortcut.CLOSE_SPACE) }
+        rule.onNodeWithText(text(R.string.workspace_close_space_title, "herdr")).assertIsDisplayed()
+        rule.onNodeWithText(text(R.string.workspace_close)).performClick()
+        assertEquals(listOf("closePane sp1 tb1 p1", "closeTab sp1 tb1", "closeSpace sp1"), calls)
     }
 
     @Test

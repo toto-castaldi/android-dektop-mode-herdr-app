@@ -44,7 +44,11 @@ import io.github.totocastaldi.herdrdesktop.coreclient.workspace.PaneLayout
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.PaneNode
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Tab
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
+import io.github.totocastaldi.herdrdesktop.keyboard.Shortcut
+import io.github.totocastaldi.herdrdesktop.keyboard.cycle
 import io.github.totocastaldi.herdrdesktop.terminal.TerminalView
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
 /** Thickness of the draggable divider between panes. */
@@ -92,11 +96,21 @@ internal fun TabPanes(
         (ids - known).firstOrNull()?.let { focused = it }
         known = ids
     }
-    // A pane chosen in the agents sidebar takes the focus.
-    LaunchedEffect(focusPane) { focusPane?.takeIf { id -> leaves.any { it.id == id } }?.let { focused = it } }
+    // A pane chosen in the agents sidebar takes the focus, and the keyboard with it.
+    LaunchedEffect(focusRequest.token) {
+        focusPane?.takeIf { id -> leaves.any { it.id == id } }?.let {
+            focused = it
+            if (focusRequest.active) requesters[it]?.let { r -> runCatching { r.requestFocus() } }
+        }
+    }
     // Also when a peek over the tab closes: the keyboard goes back to the focused pane.
     LaunchedEffect(focused, focusRequest.active) {
         if (focusRequest.active) focused?.let { requesters[it] }?.let { runCatching { it.requestFocus() } }
+    }
+
+    PaneShortcuts(focusRequest, PaneKeyTarget(spaceId, tab, state, controls, focused)) { id ->
+        focused = id
+        requesters[id]?.let { runCatching { it.requestFocus() } }
     }
 
     val focus = PaneFocusState(focused, requesters) { focused = it }
@@ -105,10 +119,59 @@ internal fun TabPanes(
 }
 
 /**
- * The pane chosen in the agents sidebar ([pane], none when null) and whether the tab may take the keyboard
- * ([active] is false while a peek is open over it).
+ * The pane chosen in the agents sidebar ([pane], none when null; [token] changes at every choice) and whether
+ * the tab may take the keyboard ([active] is false while a peek is open over it), with the window's [shortcuts].
  */
-internal class PaneFocusRequest(val pane: String? = null, val active: Boolean = true)
+internal class PaneFocusRequest(
+    val pane: String? = null,
+    val active: Boolean = true,
+    val token: Any? = pane,
+    val shortcuts: Flow<Shortcut> = emptyFlow()
+)
+
+/** What the pane shortcuts act on: the tab and its focused pane. */
+private class PaneKeyTarget(
+    val spaceId: String,
+    val tab: Tab,
+    val state: WorkspaceState.Ready,
+    val controls: Controls,
+    val focused: String?
+)
+
+/** Carries out the pane shortcuts on the focused pane; [focus] gives the keyboard to a pane. */
+@Composable
+private fun PaneShortcuts(request: PaneFocusRequest, target: PaneKeyTarget, focus: (String) -> Unit) {
+    val current by rememberUpdatedState(target)
+    val active by rememberUpdatedState(request.active)
+    val onFocus by rememberUpdatedState(focus)
+    LaunchedEffect(request.shortcuts) {
+        request.shortcuts.collect { shortcut ->
+            val t = current
+            if (!active) return@collect
+            val leaves = PaneLayout.leaves(t.tab.root)
+            val leaf = leaves.firstOrNull { it.id == t.focused } ?: return@collect
+            val folder = leaf.terminal?.let(t.state::cwdOf)?.takeIf { it.isNotBlank() }
+            val actions = t.controls.actions
+            when (shortcut) {
+                Shortcut.SPLIT_RIGHT -> actions.splitPane(t.spaceId, t.tab.id, leaf.id, Axis.ROW, folder)
+
+                Shortcut.SPLIT_DOWN -> actions.splitPane(t.spaceId, t.tab.id, leaf.id, Axis.COLUMN, folder)
+
+                Shortcut.CLOSE_PANE ->
+                    t.controls.prompt(Prompt.ClosePane(t.spaceId, t.tab.id, leaf.id, leaf.terminal ?: leaf.id))
+
+                Shortcut.NEXT_PANE, Shortcut.PREVIOUS_PANE -> {
+                    val step = if (shortcut == Shortcut.NEXT_PANE) 1 else -1
+                    cycle(leaves.map { it.id }, leaf.id, step)?.let(onFocus)
+                }
+
+                Shortcut.REFOCUS -> onFocus(leaf.id)
+
+                else -> Unit
+            }
+        }
+    }
+}
 
 /** The message shown over a terminal whose program ended or that could not be attached; null while live. */
 @Composable

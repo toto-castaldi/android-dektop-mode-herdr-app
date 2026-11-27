@@ -20,11 +20,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import io.github.totocastaldi.herdrdesktop.agents.AgentSidebar
 import io.github.totocastaldi.herdrdesktop.agents.PaneFocus
 import io.github.totocastaldi.herdrdesktop.agents.PeekRequest
+import io.github.totocastaldi.herdrdesktop.keyboard.rememberWindowKeyboard
+import io.github.totocastaldi.herdrdesktop.keyboard.shortcuts
 import io.github.totocastaldi.herdrdesktop.machines.LocalNetworkPermissionRequest
 import io.github.totocastaldi.herdrdesktop.machines.MachinesScreen
 import io.github.totocastaldi.herdrdesktop.workspace.AgentRequests
@@ -57,8 +60,9 @@ class MainActivity : ComponentActivity() {
         var openMachine by rememberSaveable { mutableStateOf(target.machineId) }
         var focus by remember { mutableStateOf<PaneFocus?>(null) }
         var peek by remember { mutableStateOf<PeekRequest?>(null) }
+        val keyboard = rememberWindowKeyboard()
         val open = openMachine
-        Row(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxSize().shortcuts(keyboard)) {
             Box(Modifier.weight(1f)) {
                 if (open == null) {
                     MachinesScreen(container, onOpen = { openMachine = it })
@@ -67,26 +71,31 @@ class MainActivity : ComponentActivity() {
                         initialSpace = target.spaceId.takeIf { open == target.machineId },
                         onNewWindow = { space ->
                             startActivity(windowIntent(this@MainActivity, WindowTarget(open, space)))
-                        }
+                        },
+                        keyboard = keyboard.link
                     )
                     val agents = AgentRequests(focus, peek) { peek = null }
                     WorkspaceScreen(container, open, agents, window, onBack = { openMachine = null })
                 }
             }
-            VerticalDivider()
-            AgentSidebar(
-                container,
-                onOpen = {
-                    openMachine = it.machineId
-                    peek = null
-                    focus = it
-                },
-                onPeek = {
-                    openMachine = it.machineId
-                    peek = it
-                }
-            )
+            if (keyboard.sidebar) {
+                VerticalDivider()
+                AgentSidebar(
+                    container,
+                    onOpen = {
+                        openMachine = it.machineId
+                        peek = null
+                        focus = it
+                    },
+                    onPeek = {
+                        openMachine = it.machineId
+                        peek = it
+                    },
+                    Modifier.focusRequester(keyboard.sidebarRequester)
+                )
+            }
         }
+        keyboard.Overlays()
         // Runtime permissions need an activity: asked here for the machines waiting for it.
         val statuses by container.connections.statuses.collectAsState()
         LocalNetworkPermissionRequest(statuses, container.connections)

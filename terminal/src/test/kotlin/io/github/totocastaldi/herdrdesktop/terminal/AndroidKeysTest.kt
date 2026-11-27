@@ -89,4 +89,71 @@ class AndroidKeysTest {
     fun `the action is passed through`() {
         assertEquals(KeyAction.RELEASE, input(KeyEvent.KEYCODE_A, action = KeyAction.RELEASE)!!.action)
     }
+
+    private val ctrl = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+    private val alt = KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON
+    private val shift = KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON
+
+    @Test
+    fun `alt keeps the plain text so that the encoder prefixes it with escape`() {
+        val altB = input(KeyEvent.KEYCODE_B, alt)!!
+
+        assertEquals(TerminalKey.B, altB.key)
+        assertEquals("b", altB.text)
+        assertEquals(KeyModifiers.ALT, altB.modifiers)
+        assertEquals(KeyModifiers.NONE, altB.consumedModifiers)
+    }
+
+    @Test
+    fun `escape and tab are keys of their own, shift tab keeps shift`() {
+        assertEquals(TerminalKey.ESCAPE, input(KeyEvent.KEYCODE_ESCAPE)!!.key)
+        assertEquals(TerminalKey.TAB, input(KeyEvent.KEYCODE_TAB)!!.key)
+        val shiftTab = input(KeyEvent.KEYCODE_TAB, shift)!!
+
+        assertEquals(KeyModifiers.SHIFT, shiftTab.modifiers)
+        assertEquals("", shiftTab.text)
+        assertEquals(KeyModifiers.NONE, shiftTab.consumedModifiers)
+    }
+
+    @Test
+    fun `every function key has its key`() {
+        for (n in 1..12) {
+            assertEquals(TerminalKey.valueOf("F$n"), input(KeyEvent.KEYCODE_F1 + n - 1)!!.key)
+        }
+    }
+
+    @Test
+    fun `arrows keep every modifier for the encoder`() {
+        val arrows = mapOf(
+            KeyEvent.KEYCODE_DPAD_UP to TerminalKey.ARROW_UP,
+            KeyEvent.KEYCODE_DPAD_DOWN to TerminalKey.ARROW_DOWN,
+            KeyEvent.KEYCODE_DPAD_LEFT to TerminalKey.ARROW_LEFT,
+            KeyEvent.KEYCODE_DPAD_RIGHT to TerminalKey.ARROW_RIGHT
+        )
+        for ((code, key) in arrows) {
+            val all = input(code, ctrl or alt or shift)!!
+            assertEquals(key, all.key)
+            assertEquals(KeyModifiers.CTRL + KeyModifiers.ALT + KeyModifiers.SHIFT, all.modifiers)
+            assertEquals("", all.text)
+            assertEquals(KeyModifiers.NONE, all.consumedModifiers)
+        }
+    }
+
+    @Test
+    fun `ctrl and alt reach the encoder on function keys too`() {
+        val ctrlF5 = input(KeyEvent.KEYCODE_F5, ctrl)!!
+        val altF12 = input(KeyEvent.KEYCODE_F12, alt)!!
+
+        assertEquals(KeyModifiers.CTRL, ctrlF5.modifiers)
+        assertEquals(KeyModifiers.ALT, altF12.modifiers)
+    }
+
+    @Test
+    fun `ctrl with the letters used by shells keeps the plain text`() {
+        for (code in listOf(KeyEvent.KEYCODE_C, KeyEvent.KEYCODE_D, KeyEvent.KEYCODE_Z, KeyEvent.KEYCODE_R)) {
+            val event = input(code, ctrl)!!
+            assertEquals(('a'.code + code - KeyEvent.KEYCODE_A).toChar().toString(), event.text)
+            assertEquals(KeyModifiers.CTRL, event.modifiers)
+        }
+    }
 }

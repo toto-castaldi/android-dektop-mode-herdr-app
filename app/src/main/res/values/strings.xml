@@ -165,4 +165,22 @@
     <string name="agent_blocked">Blocked</string>
     <string name="agent_done">Done</string>
     <string name="agent_idle">Idle</string>
+    <string name="shortcut_help_title">Scorciatoie da tastiera</string>
+    <string name="shortcut_help_button">Scorciatoie</string>
+    <string name="shortcut_help_terminal">Tutti gli altri tasti vanno al terminale: Ctrl+lettera (Ctrl+C, Ctrl+D, Ctrl+Z, Ctrl+R…), Alt, Esc, Tab, tasti funzione e frecce con qualsiasi modificatore.</string>
+    <string name="shortcut_new_space">Nuovo spazio</string>
+    <string name="shortcut_close_space">Chiudi lo spazio</string>
+    <string name="shortcut_next_space">Spazio successivo</string>
+    <string name="shortcut_previous_space">Spazio precedente</string>
+    <string name="shortcut_new_tab">Nuova tab</string>
+    <string name="shortcut_close_tab">Chiudi la tab</string>
+    <string name="shortcut_next_tab">Tab successiva</string>
+    <string name="shortcut_previous_tab">Tab precedente</string>
+    <string name="shortcut_split_right">Dividi il pane a destra</string>
+    <string name="shortcut_split_down">Dividi il pane in basso</string>
+    <string name="shortcut_close_pane">Chiudi il pane</string>
+    <string name="shortcut_next_pane">Pane successivo</string>
+    <string name="shortcut_previous_pane">Pane precedente</string>
+    <string name="shortcut_toggle_sidebar">Mostra o nascondi la sidebar degli agenti</string>
+    <string name="shortcut_help">Questo pannello</string>
 </resources>
