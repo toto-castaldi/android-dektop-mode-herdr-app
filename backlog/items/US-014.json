@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P0",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "us/US-014-spazi-app-separati-da-desktop",
   "dependencies": [
     "US-012"
   ],
