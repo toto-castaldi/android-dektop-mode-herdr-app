@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -266,6 +267,7 @@ private class PaneScope(
     private fun PaneBody(leaf: PaneNode.Leaf, terminal: PaneTerminal, modifier: Modifier) {
         val status by terminal.state.collectAsState()
         val requester = requesters.getOrPut(leaf.id) { FocusRequester() }
+        var menu by remember(leaf.id) { mutableStateOf<Offset?>(null) }
         Box(modifier) {
             TerminalView(
                 terminal.session,
@@ -275,8 +277,14 @@ private class PaneScope(
                     if (gained) onFocus(leaf.id)
                     terminal.focus(gained)
                 },
+                onContextMenu = { menu = it },
                 frameObserver = host?.frameObserver
             )
+            // Closing the menu gives the keyboard back to the terminal, for example to run what was pasted.
+            TerminalContextMenu(terminal.session, menu, {
+                menu = null
+                runCatching { requester.requestFocus() }
+            }, paneMenuActions(leaf))
             terminalMessage(status)?.let {
                 Text(
                     it,
@@ -287,6 +295,24 @@ private class PaneScope(
                 )
             }
         }
+    }
+
+    /** The actions of [leaf] in its terminal's context menu, the same as the buttons of its header. */
+    @Composable
+    private fun paneMenuActions(leaf: PaneNode.Leaf): List<TerminalMenuAction> {
+        val folder = leaf.terminal?.let(state::cwdOf)?.takeIf { it.isNotBlank() }
+        val actions = controls.actions
+        return listOf(
+            TerminalMenuAction(stringResource(R.string.terminal_menu_split_right), "terminal-menu-split-right") {
+                actions.splitPane(spaceId, tab.id, leaf.id, Axis.ROW, folder)
+            },
+            TerminalMenuAction(stringResource(R.string.terminal_menu_split_down), "terminal-menu-split-down") {
+                actions.splitPane(spaceId, tab.id, leaf.id, Axis.COLUMN, folder)
+            },
+            TerminalMenuAction(stringResource(R.string.terminal_menu_close), "terminal-menu-close") {
+                controls.prompt(Prompt.ClosePane(spaceId, tab.id, leaf.id, leaf.terminal ?: leaf.id))
+            }
+        )
     }
 
     private companion object {

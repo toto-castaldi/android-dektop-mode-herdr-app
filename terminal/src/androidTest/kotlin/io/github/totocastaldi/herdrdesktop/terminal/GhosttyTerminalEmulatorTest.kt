@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -115,7 +116,108 @@ class GhosttyTerminalEmulatorTest {
         assertEquals("line 20", active.rowText(3).trim())
     }
 
+    /** Cells of 10 x 20 pixels: pixel 15, 25 is in column 1, row 1. */
+    private fun cells() = terminal.resize(TerminalSize(columns = 20, rows = 4), cellWidthPx = 10, cellHeightPx = 20)
+
+    private fun mouse(action: MouseAction, button: MouseButton?, mods: KeyModifiers = KeyModifiers.NONE): String =
+        terminal.encodeMouse(MouseInput(action, button, 15f, 25f, mods, action == MouseAction.PRESS), 200, 80).visible()
+
+    @Test
+    fun mouseIsNotReportedUntilTheProgramAsksForIt() {
+        cells()
+
+        assertFalse(terminal.mouseTracking)
+        assertEquals("", mouse(MouseAction.PRESS, MouseButton.LEFT))
+    }
+
+    @Test
+    fun encodesMouseEventsInSgrFormat() {
+        cells()
+        write("\u001b[?1000h\u001b[?1006h")
+
+        assertTrue(terminal.mouseTracking)
+        assertEquals("ESC[<0;2;2M", mouse(MouseAction.PRESS, MouseButton.LEFT))
+        assertEquals("ESC[<0;2;2m", mouse(MouseAction.RELEASE, MouseButton.LEFT))
+        assertEquals("ESC[<2;2;2M", mouse(MouseAction.PRESS, MouseButton.RIGHT))
+        assertEquals("ESC[<16;2;2M", mouse(MouseAction.PRESS, MouseButton.LEFT, KeyModifiers.CTRL))
+        assertEquals("ESC[<64;2;2M", mouse(MouseAction.PRESS, MouseButton.WHEEL_UP))
+        assertEquals("ESC[<65;2;2M", mouse(MouseAction.PRESS, MouseButton.WHEEL_DOWN))
+        // Normal tracking reports no motion.
+        assertEquals("", mouse(MouseAction.MOTION, null))
+    }
+
+    @Test
+    fun encodesMouseEventsInX10FormatAndMotionInAnyEventMode() {
+        cells()
+        write("\u001b[?1003h")
+
+        // X10: button 0 + 32, then column and row from 1, + 32.
+        assertEquals("ESC[M \"\"", mouse(MouseAction.PRESS, MouseButton.LEFT))
+        write("\u001b[?1006h")
+        assertEquals("ESC[<35;2;2M", mouse(MouseAction.MOTION, null))
+        write("\u001b[?1003l")
+        assertFalse(terminal.mouseTracking)
+    }
+
+    @Test
+    fun selectsWithTheMouseAndCopiesTheText() {
+        cells()
+        write("hello world\r\nsecond line")
+
+        assertTrue(terminal.select(SelectionAction.PRESS, 2f, 5f, 0, 80))
+        assertTrue(terminal.select(SelectionAction.DRAG, 46f, 5f, 0, 80))
+        terminal.select(SelectionAction.RELEASE, 46f, 5f, 0, 80)
+
+        assertEquals("hello", terminal.selectionText())
+        val snapshot = terminal.snapshot()
+        assertTrue(snapshot.cell(0, 0).selected)
+        assertTrue(snapshot.cell(4, 0).attributes.inverse)
+        assertFalse(snapshot.cell(5, 0).selected)
+
+        // A single click clears the selection.
+        terminal.select(SelectionAction.PRESS, 2f, 25f, SECOND, 80)
+        terminal.select(SelectionAction.RELEASE, 2f, 25f, SECOND, 80)
+        assertNull(terminal.selectionText())
+    }
+
+    @Test
+    fun aSelectionAcrossRowsKeepsTheLineBreak() {
+        cells()
+        write("hello world\r\nsecond line")
+
+        terminal.select(SelectionAction.PRESS, 62f, 5f, 0, 80)
+        terminal.select(SelectionAction.DRAG, 56f, 25f, 0, 80)
+
+        assertEquals("world\nsecond", terminal.selectionText())
+    }
+
+    @Test
+    fun doubleClickSelectsAWordAndClearRemovesIt() {
+        cells()
+        write("hello world")
+
+        terminal.select(SelectionAction.PRESS, 72f, 5f, 0, 80)
+        terminal.select(SelectionAction.RELEASE, 72f, 5f, 0, 80)
+        terminal.select(SelectionAction.PRESS, 72f, 5f, DOUBLE_CLICK_GAP, 80)
+        terminal.select(SelectionAction.RELEASE, 72f, 5f, DOUBLE_CLICK_GAP, 80)
+
+        assertEquals("world", terminal.selectionText())
+        terminal.clearSelection()
+        assertNull(terminal.selectionText())
+    }
+
+    @Test
+    fun encodesPasteWithAndWithoutBracketedPaste() {
+        assertEquals("ls\rpwd", terminal.encodePaste("ls\npwd").decodeToString())
+
+        write("\u001b[?2004h")
+
+        assertEquals("ESC[200~ls\npwdESC[201~", terminal.encodePaste("ls\npwd").visible())
+    }
+
     private companion object {
+        const val SECOND = 1_000_000_000L
+        const val DOUBLE_CLICK_GAP = 100_000_000L
         const val PALETTE_RED = 0xCC6666
         const val PALETTE_21 = 0x0000FF
     }

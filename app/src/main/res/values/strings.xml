@@ -149,6 +149,11 @@
     <string name="pane_ended">Il programma è terminato (%1$s).</string>
     <string name="pane_ended_code">Il programma è terminato con codice %1$d.</string>
     <string name="pane_failed">Impossibile collegarsi al terminale: %1$s</string>
+    <string name="terminal_menu_copy">Copia</string>
+    <string name="terminal_menu_paste">Incolla</string>
+    <string name="terminal_menu_split_right">Dividi a destra</string>
+    <string name="terminal_menu_split_down">Dividi in basso</string>
+    <string name="terminal_menu_close">Chiudi il pane</string>
     <string name="agents_title">Agenti</string>
     <string name="agents_none">Nessun agente sulle macchine collegate.</string>
     <string name="agents_where">%1$s · %2$s</string>

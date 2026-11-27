@@ -4,6 +4,8 @@ package io.github.totocastaldi.herdrdesktop.terminal
  * [TerminalEmulator] backed by libghostty-vt (ADR-001) through `libherdrterminal.so`, available
  * only on arm64-v8a Android devices.
  */
+// One function per operation of the terminal: keys, mouse, selection, paste, screen.
+@Suppress("TooManyFunctions")
 class GhosttyTerminalEmulator(initialSize: TerminalSize, scrollbackBytes: Long = DEFAULT_SCROLLBACK_BYTES) :
     TerminalEmulator {
     private val lock = Any()
@@ -15,6 +17,10 @@ class GhosttyTerminalEmulator(initialSize: TerminalSize, scrollbackBytes: Long =
 
     override var size: TerminalSize = initialSize
         private set
+
+    /** Cell size in pixels of the last resize, to map mouse positions to cells. */
+    private var cellWidth = 1
+    private var cellHeight = 1
 
     override fun write(data: ByteArray, offset: Int, length: Int): ByteArray {
         require(offset >= 0 && length >= 0 && offset + length <= data.size) {
@@ -29,6 +35,8 @@ class GhosttyTerminalEmulator(initialSize: TerminalSize, scrollbackBytes: Long =
             val result = GhosttyNative.nativeResize(it, size.columns, size.rows, cellWidthPx, cellHeightPx)
             check(result == 0) { "resize failed with libghostty-vt result $result" }
             this.size = size
+            cellWidth = cellWidthPx
+            cellHeight = cellHeightPx
         }
     }
 
@@ -71,6 +79,49 @@ class GhosttyTerminalEmulator(initialSize: TerminalSize, scrollbackBytes: Long =
             input.unshiftedCodepoint,
             input.text.takeIf { text -> text.isNotEmpty() }?.encodeToByteArray()
         )
+    }
+
+    override val mouseTracking: Boolean get() = withHandle { GhosttyNative.nativeMouseTracking(it) }
+
+    override fun encodeMouse(input: MouseInput, widthPx: Int, heightPx: Int): ByteArray = withHandle {
+        GhosttyNative.nativeEncodeMouse(
+            it,
+            input.action.code,
+            input.button?.code ?: 0,
+            input.modifiers.bits,
+            input.x,
+            input.y,
+            widthPx,
+            heightPx,
+            cellWidth,
+            cellHeight,
+            input.anyPressed
+        )
+    }
+
+    override fun select(action: SelectionAction, x: Float, y: Float, timeNanos: Long, heightPx: Int): Boolean =
+        withHandle {
+            val (column, row) = size.cellAt(x, y, cellWidth, cellHeight)
+            GhosttyNative.nativeSelect(
+                it,
+                action.code,
+                column,
+                row,
+                x.toDouble(),
+                y.toDouble(),
+                timeNanos,
+                size.columns,
+                cellWidth,
+                heightPx
+            ) == 1
+        }
+
+    override fun selectionText(): String? = withHandle { GhosttyNative.nativeSelectionText(it)?.decodeToString() }
+
+    override fun clearSelection() = withHandle { GhosttyNative.nativeClearSelection(it) }
+
+    override fun encodePaste(text: String): ByteArray = withHandle {
+        GhosttyNative.nativeEncodePaste(it, text.encodeToByteArray())
     }
 
     override fun close() {
