@@ -25,4 +25,4 @@ Add a topic by copying `_TEMPLATE.md` to `<topic>.md` (lowercase kebab-case); sp
 
 Decisions still to be closed and the backlog items that will close them:
 
-- Canale e forma dei comandi degli agenti verso l'app (equivalente di `herdr-app do` per agenti su core remoti): SPIKE-004.
+- Canale e forma dei comandi degli agenti verso l'app (equivalente di `herdr-app do` per agenti su core remoti): SPIKE-004 raccomanda etichette `herdr-desktop-android.do`/`.re` sul terminale dell'agente con claim a compare-and-set su un documento del core (`docs/spikes/SPIKE-004-comandi-agenti.md`); il design viene registrato con la US che implementa i comandi.
