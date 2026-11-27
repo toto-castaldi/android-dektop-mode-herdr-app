@@ -7,7 +7,8 @@ package io.github.totocastaldi.herdrdesktop.terminal
  *   visible (0/1), cursor column and row (-1 if the cursor is not on the visible screen), cursor
  *   style;
  * - then, for each cell row by row: foreground, background (-1 for the default), style flags
- *   with the cell width in bits 16..17, number of codepoints `n`, then `n` codepoints.
+ *   with the cell width in bits 16..17 and bit 18 set for a selected cell (whose inverse flag is already
+ *   swapped), number of codepoints `n`, then `n` codepoints.
  */
 internal object SnapshotDecoder {
     const val HEADER_INTS = 8
@@ -30,6 +31,7 @@ internal object SnapshotDecoder {
     private const val WIDTH_SHIFT = 16
     private const val FLAGS_MASK = 0xFFFF
     private const val WIDTH_MASK = 0x3
+    private const val SELECTED_BIT = 1 shl 18
 
     fun decode(data: IntArray): ScreenSnapshot {
         require(data.size >= HEADER_INTS) { "snapshot too short: ${data.size}" }
@@ -70,7 +72,8 @@ internal object SnapshotDecoder {
             foreground = data[start + CELL_FOREGROUND].takeUnless { it == NO_COLOR },
             background = data[start + CELL_BACKGROUND].takeUnless { it == NO_COLOR },
             attributes = CellAttributes(flags and FLAGS_MASK),
-            width = CellWidth.entries[(flags shr WIDTH_SHIFT) and WIDTH_MASK]
+            width = CellWidth.entries[(flags shr WIDTH_SHIFT) and WIDTH_MASK],
+            selected = flags and SELECTED_BIT != 0
         )
     }
 }

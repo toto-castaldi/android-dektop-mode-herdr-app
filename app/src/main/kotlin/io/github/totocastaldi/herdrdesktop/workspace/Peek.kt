@@ -18,10 +18,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -92,14 +95,17 @@ private fun PeekTerminal(request: PeekRequest, host: PaneHost, modifier: Modifie
     val status by terminal.state.collectAsState()
     val requester = remember { FocusRequester() }
     LaunchedEffect(terminal) { runCatching { requester.requestFocus() } }
+    var menu by remember(terminal) { mutableStateOf<Offset?>(null) }
     Box(modifier) {
         TerminalView(
             terminal.session,
             Modifier.fillMaxSize().testTag("peek-terminal"),
             focusRequester = requester,
             onFocusChanged = { terminal.focus(it) },
+            onContextMenu = { menu = it },
             frameObserver = host.frameObserver
         )
+        TerminalContextMenu(terminal.session, menu, { menu = null })
         terminalMessage(status)?.let {
             Text(
                 it,

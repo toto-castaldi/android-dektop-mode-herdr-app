@@ -1,6 +1,8 @@
 package io.github.totocastaldi.herdrdesktop.terminal
 
 /** JNI entry points of `libherdrterminal.so` (`src/main/cpp/ghostty_jni.c`). */
+// One function per operation of the terminal: keys, mouse, selection, paste, screen.
+@Suppress("TooManyFunctions")
 internal object GhosttyNative {
     init {
         System.loadLibrary("herdrterminal")
@@ -39,4 +41,49 @@ internal object GhosttyNative {
         unshiftedCodepoint: Int,
         utf8: ByteArray?
     ): ByteArray
+
+    @JvmStatic
+    external fun nativeMouseTracking(handle: Long): Boolean
+
+    @Suppress("LongParameterList")
+    @JvmStatic
+    external fun nativeEncodeMouse(
+        handle: Long,
+        action: Int,
+        button: Int,
+        modifiers: Int,
+        x: Float,
+        y: Float,
+        width: Int,
+        height: Int,
+        cellWidth: Int,
+        cellHeight: Int,
+        anyPressed: Boolean
+    ): ByteArray
+
+    /** Returns 1 when the selection changed. */
+    @Suppress("LongParameterList")
+    @JvmStatic
+    external fun nativeSelect(
+        handle: Long,
+        type: Int,
+        column: Int,
+        row: Int,
+        x: Double,
+        y: Double,
+        timeNanos: Long,
+        columns: Int,
+        cellWidth: Int,
+        screenHeight: Int
+    ): Int
+
+    @JvmStatic
+    external fun nativeClearSelection(handle: Long)
+
+    /** UTF-8 of the selected text, null if nothing is selected. */
+    @JvmStatic
+    external fun nativeSelectionText(handle: Long): ByteArray?
+
+    @JvmStatic
+    external fun nativeEncodePaste(handle: Long, utf8: ByteArray): ByteArray
 }

@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -19,18 +20,30 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.isAltPressed
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.isTertiaryPressed
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
-import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
 
 /**
@@ -51,22 +64,27 @@ data class CellMetrics(val widthPx: Int, val heightPx: Int)
 /** Size of the terminal font. */
 private val FONT_SIZE = 14.sp
 
-/** Rows scrolled by one notch of the mouse wheel. */
-private const val WHEEL_ROWS = 3
+/** Nanoseconds in a millisecond, for the time of pointer events. */
+private const val NANOS_PER_MILLI = 1_000_000L
 
 /**
- * Pane showing [session]: draws its screen once per vsync when it changed, sizes the grid to the pane,
- * sends the physical keyboard's keys to the program while focused and scrolls the scrollback with the
- * mouse wheel.
+ * Pane showing [session]: draws its screen once per vsync when it changed, sizes the grid to the pane and
+ * sends the physical keyboard's keys to the program while focused. With the mouse (REQ-DM-003, [MouseRouter])
+ * a click takes the focus, the left button selects text, the wheel scrolls the scrollback and the right button
+ * calls [onContextMenu] with the position in the pane; when the program turned mouse reporting on, clicks,
+ * motion and the wheel are reported to it instead, unless Shift is held.
  */
 @Composable
+@Suppress("LongParameterList")
 fun TerminalView(
     session: TerminalSession,
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
     onFocusChanged: (Boolean) -> Unit = {},
+    onContextMenu: (Offset) -> Unit = {},
     frameObserver: FrameObserver? = null
 ) {
+    val contextMenu by rememberUpdatedState(onContextMenu)
     val density = LocalDensity.current
     val assets = LocalContext.current.assets
     val painter = remember(session, density) {
@@ -105,21 +123,17 @@ fun TerminalView(
             sendKey(session, event.nativeKeyEvent, event.type)
         }
         .focusable()
+        .pointerHoverIcon(PointerIcon.Text)
         .pointerInput(session) {
+            val router = MouseRouter()
             awaitPointerEventScope {
                 while (true) {
                     val event = awaitPointerEvent()
-                    when (event.type) {
-                        PointerEventType.Press -> focusRequester.requestFocus()
-
-                        PointerEventType.Scroll -> {
-                            val delta = event.changes.sumOf { it.scrollDelta.y.toDouble() }
-                            session.scroll((delta * WHEEL_ROWS).roundToInt())
-                            event.changes.forEach { it.consume() }
-                        }
-
-                        else -> Unit
-                    }
+                    if (event.type == PointerEventType.Press) focusRequester.requestFocus()
+                    val sample = event.sample() ?: continue
+                    val commands = router.route(sample, session.mouseTracking)
+                    commands.forEach { session.run(it, size) { at -> contextMenu(at) } }
+                    if (commands.isNotEmpty()) event.changes.forEach { it.consume() }
                 }
             }
         }
@@ -133,6 +147,48 @@ fun TerminalView(
             frameObserver?.onFrame(session, vsync, version)
         }
     Box(content)
+}
+
+/** Carries out [command] in a pane of [size]; [contextMenu] opens the menu at a position of the pane. */
+private fun TerminalSession.run(command: MouseCommand, size: IntSize, contextMenu: (Offset) -> Unit) {
+    when (command) {
+        is MouseCommand.Report -> mouse(command.input, size.width, size.height)
+        is MouseCommand.Select -> select(command.action, command.x, command.y, command.timeNanos, size.height)
+        is MouseCommand.Scroll -> scroll(command.rows)
+        is MouseCommand.ContextMenu -> contextMenu(Offset(command.x, command.y))
+    }
+}
+
+private val POINTER_KINDS = mapOf(
+    PointerEventType.Press to PointerKind.PRESS,
+    PointerEventType.Release to PointerKind.RELEASE,
+    PointerEventType.Move to PointerKind.MOVE,
+    PointerEventType.Scroll to PointerKind.SCROLL
+)
+
+/** The event as [MouseRouter] reads it; null for touch and stylus, which only take the focus. */
+private fun PointerEvent.sample(): PointerSample? {
+    val change = changes.firstOrNull()?.takeIf { it.type == PointerType.Mouse }
+    val kind = POINTER_KINDS[type]
+    if (change == null || kind == null) return null
+    var held = 0
+    if (buttons.isPrimaryPressed) held = held or HeldButtons.PRIMARY
+    if (buttons.isSecondaryPressed) held = held or HeldButtons.SECONDARY
+    if (buttons.isTertiaryPressed) held = held or HeldButtons.TERTIARY
+    var modifiers = KeyModifiers.NONE
+    if (keyboardModifiers.isShiftPressed) modifiers += KeyModifiers.SHIFT
+    if (keyboardModifiers.isCtrlPressed) modifiers += KeyModifiers.CTRL
+    if (keyboardModifiers.isAltPressed) modifiers += KeyModifiers.ALT
+    if (keyboardModifiers.isMetaPressed) modifiers += KeyModifiers.SUPER
+    return PointerSample(
+        kind,
+        change.position.x,
+        change.position.y,
+        held,
+        modifiers,
+        change.scrollDelta.y,
+        change.uptimeMillis * NANOS_PER_MILLI
+    )
 }
 
 private fun sendKey(session: TerminalSession, event: AndroidKeyEvent, type: KeyEventType): Boolean {

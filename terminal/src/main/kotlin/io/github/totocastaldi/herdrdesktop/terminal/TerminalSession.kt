@@ -24,6 +24,8 @@ interface TerminalIo {
  * One pane's terminal: feeds the program's output into [emulator], sends keys and sizes to [io] and counts
  * changes in [version], so that the renderer draws a frame only when something changed.
  */
+// One function per operation of the terminal: keys, mouse, selection, paste, screen.
+@Suppress("TooManyFunctions")
 class TerminalSession(private val emulator: TerminalEmulator, private val io: TerminalIo) : AutoCloseable {
     private val changeCount = MutableStateFlow(0L)
 
@@ -52,11 +54,7 @@ class TerminalSession(private val emulator: TerminalEmulator, private val io: Te
     fun key(input: KeyInput): Boolean {
         val bytes = emulator.encodeKey(input)
         if (bytes.isEmpty()) return false
-        if (scrolled) {
-            emulator.scroll(0)
-            scrolled = false
-            changed()
-        }
+        toActiveArea()
         io.input(bytes)
         return true
     }
@@ -79,6 +77,48 @@ class TerminalSession(private val emulator: TerminalEmulator, private val io: Te
         emulator.scroll(rows)
         scrolled = true
         changed()
+    }
+
+    /** Whether the program turned on mouse reporting: then clicks and the wheel are reported to it. */
+    val mouseTracking: Boolean get() = emulator.mouseTracking
+
+    /** Reports a mouse event to the program, in a pane of [widthPx] x [heightPx]; false if it sends nothing. */
+    fun mouse(input: MouseInput, widthPx: Int, heightPx: Int): Boolean {
+        val bytes = emulator.encodeMouse(input, widthPx, heightPx)
+        if (bytes.isEmpty()) return false
+        io.input(bytes)
+        return true
+    }
+
+    /** Applies a step of a mouse selection in a pane [heightPx] high and redraws if it changed. */
+    fun select(action: SelectionAction, x: Float, y: Float, timeNanos: Long, heightPx: Int) {
+        if (emulator.select(action, x, y, timeNanos, heightPx)) changed()
+    }
+
+    /** The selected text, null if nothing is selected. */
+    fun selectionText(): String? = emulator.selectionText()
+
+    /** Removes the selection. */
+    fun clearSelection() {
+        emulator.clearSelection()
+        changed()
+    }
+
+    /** Pastes [text] into the program and brings the screen back to the active area; false if nothing is sent. */
+    fun paste(text: String): Boolean {
+        val bytes = emulator.encodePaste(text)
+        if (bytes.isEmpty()) return false
+        toActiveArea()
+        io.input(bytes)
+        return true
+    }
+
+    private fun toActiveArea() {
+        if (scrolled) {
+            emulator.scroll(0)
+            scrolled = false
+            changed()
+        }
     }
 
     private fun changed() = changeCount.update { it + 1 }

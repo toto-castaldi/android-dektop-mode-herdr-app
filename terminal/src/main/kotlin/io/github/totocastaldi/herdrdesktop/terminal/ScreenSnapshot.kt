@@ -60,13 +60,16 @@ enum class CursorStyle {
  * @property text the grapheme cluster of the cell, empty if the cell is blank.
  * @property foreground the cell's own text color, `null` for the default foreground.
  * @property background the cell's own background color, `null` for the default background.
+ * @property selected whether the cell is in the mouse selection; its [attributes] then have inverse swapped,
+ *   so that the renderer draws the selection without knowing about it.
  */
 data class Cell(
     val text: String,
     val foreground: Int?,
     val background: Int?,
     val attributes: CellAttributes,
-    val width: CellWidth
+    val width: CellWidth,
+    val selected: Boolean = false
 )
 
 /** How many columns a cell takes, with the codes of `GhosttyCellWide`. */

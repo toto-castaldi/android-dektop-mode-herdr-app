@@ -67,6 +67,22 @@ class SnapshotDecoderTest {
         assertFalse(attributes.bold)
     }
 
+    @Test
+    fun decodesTheSelectedBit() {
+        val selected = 1 shl 18
+        val inverse = 1 shl 4
+        val data = intArrayOf(2, 1, defaultFg, defaultBg, 0, 0, 0, 0) +
+            cell(-1, -1, selected or inverse, 'a'.code) +
+            cell(-1, -1, 0, 'b'.code)
+
+        val snapshot = SnapshotDecoder.decode(data)
+
+        assertTrue(snapshot.cell(0, 0).selected)
+        assertTrue(snapshot.cell(0, 0).attributes.inverse)
+        assertEquals(CellWidth.NARROW, snapshot.cell(0, 0).width)
+        assertFalse(snapshot.cell(1, 0).selected)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsAMissingCell() {
         SnapshotDecoder.decode(intArrayOf(2, 1, defaultFg, defaultBg, 0, 0, 0, 0) + cell(-1, -1, 0))

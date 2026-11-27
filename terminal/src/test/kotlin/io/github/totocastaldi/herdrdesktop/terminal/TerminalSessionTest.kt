@@ -2,6 +2,7 @@ package io.github.totocastaldi.herdrdesktop.terminal
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,6 +36,26 @@ class TerminalSessionTest {
         )
 
         override fun encodeKey(input: KeyInput): ByteArray = input.text.toByteArray()
+
+        override var mouseTracking = false
+        val selections = mutableListOf<SelectionAction>()
+        var selected: String? = null
+
+        override fun encodeMouse(input: MouseInput, widthPx: Int, heightPx: Int): ByteArray =
+            if (mouseTracking) "m${input.button?.code}".toByteArray() else ByteArray(0)
+
+        override fun select(action: SelectionAction, x: Float, y: Float, timeNanos: Long, heightPx: Int): Boolean {
+            selections += action
+            return action != SelectionAction.RELEASE
+        }
+
+        override fun selectionText(): String? = selected
+
+        override fun clearSelection() {
+            selected = null
+        }
+
+        override fun encodePaste(text: String): ByteArray = "[$text]".toByteArray()
 
         override fun close() {
             closed = true
@@ -106,6 +127,48 @@ class TerminalSessionTest {
 
         assertEquals(listOf(TerminalSize(80, 24), TerminalSize(100, 30)), io.sizes)
         assertEquals(TerminalSize(100, 30), session.size)
+    }
+
+    @Test
+    fun `a mouse event is sent only when the emulator reports it`() {
+        val click = MouseInput(MouseAction.PRESS, MouseButton.LEFT, 1f, 1f)
+
+        assertFalse(session.mouse(click, 100, 100))
+        emulator.mouseTracking = true
+        assertTrue(session.mouseTracking)
+        assertTrue(session.mouse(click, 100, 100))
+
+        assertEquals(listOf("m1"), io.inputs)
+    }
+
+    @Test
+    fun `a selection step redraws only when the selection changed`() {
+        session.select(SelectionAction.PRESS, 0f, 0f, 0, 100)
+        session.select(SelectionAction.RELEASE, 0f, 0f, 0, 100)
+
+        assertEquals(listOf(SelectionAction.PRESS, SelectionAction.RELEASE), emulator.selections)
+        assertEquals(1L, session.version)
+    }
+
+    @Test
+    fun `the selected text comes from the emulator and clearing it redraws`() {
+        emulator.selected = "hello"
+        assertEquals("hello", session.selectionText())
+
+        session.clearSelection()
+
+        assertNull(session.selectionText())
+        assertEquals(1L, session.version)
+    }
+
+    @Test
+    fun `pasting sends the encoded text and returns to the active area`() {
+        session.scroll(-3)
+
+        assertTrue(session.paste("ls"))
+
+        assertEquals(listOf("[ls]"), io.inputs)
+        assertEquals(listOf(-3, 0), emulator.scrolls)
     }
 
     @Test
