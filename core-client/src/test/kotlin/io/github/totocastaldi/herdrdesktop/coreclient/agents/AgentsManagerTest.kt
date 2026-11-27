@@ -174,4 +174,29 @@ class AgentsManagerTest {
         assertEquals(listOf("t1"), manager.agents.value.getValue("m1").map { it.address })
         assertEquals(listOf("t1" to "2"), mixed.labelWrites)
     }
+
+    @Test
+    fun `with two windows on the same machine an agent shown by either one is marked as seen`() = runTest {
+        val manager = AgentsManager(sessions, backgroundScope)
+        sessions.value = mapOf("m1" to core)
+        runCurrent()
+        val first = Any()
+        val second = Any()
+        // The second window reports its own terminals after the first: it must not hide the first window's.
+        manager.setLooking("m1", setOf("t1"), first)
+        manager.setLooking("m1", setOf("t2"), second)
+        core.emit(status(101, "t1", "done"))
+        core.emit(turn(102, "t1", 2))
+        runCurrent()
+        assertEquals(listOf("2"), core.labelWrites.filter { it.first == "t1" }.map { it.second })
+        assertEquals(AgentState.IDLE, manager.stateOf("t1"))
+
+        // The first window stops showing it (background or closed): the second window's view does not keep it.
+        manager.setLooking("m1", emptySet(), first)
+        core.emit(turn(2000, "t1", 3))
+        runCurrent()
+
+        assertEquals(listOf("2"), core.labelWrites.filter { it.first == "t1" }.map { it.second })
+        assertEquals(AgentState.DONE, manager.stateOf("t1"))
+    }
 }
