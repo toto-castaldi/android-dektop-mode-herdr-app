@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "Task",
   "priority": "P2",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "task/TEC-007-terminal-view-draw-test-stabile",
   "dependencies": [
     "US-009"
   ],
@@ -18,5 +19,7 @@
     "La causa dell'instabilità è individuata e descritta nell'outcome.",
     "TerminalViewDrawTest passa in tre esecuzioni consecutive dell'intera suite strumentale dell'app sul Pixel 11 Pro, senza disinstallare l'app.",
     "La correzione non indebolisce le asserzioni del test sul disegno dell'output."
-  ]
+  ],
+  "outcome": "Causa: TerminalViewDrawTest catturava il pane con captureToImage subito dopo waitForIdle, ma waitForIdle aspetta clock di test, ricomposizione e layout, non il frame che disegna l'output scritto da un altro thread (StateFlow, withFrameNanos, invalidazione, disegno al vsync). Il fallimento visto in US-009 ('top rows not blank' alla prima verifica, dopo MainActivityTest e WindowsTest e subito dopo adb install -r) mostra proprio lo schermo prima del primo output: in alto poteva esserci solo il cursore ancora in (0,0). Il fallimento non si è ripresentato in 7 esecuzioni dell'intera suite, 30 della classe da sola, 12 della combinazione di US-009 con install -r e 6 della sequenza esatta di US-009: la causa è ricostruita dal messaggio di errore e dai log dei frame, non riprodotta. Correzione: il test riceve i frame dal frameObserver di TerminalView e dopo ogni output aspetta (waitUntil, 5 s) un frame disegnato con la versione dello schermo appena scritta, poi cattura; le quattro asserzioni sull'inchiostro sono invariate. Verifiche sul Pixel 11 Pro (Desktop Mode, monitor esterno): con il controllo hasDisplayList di BUG-003 tolto in CellPainter il test fallisce 3 volte su 3 con 'prompt drawn again not shown', quindi resta un test di regressione; con il codice ripristinato l'intera suite strumentale di :app passa 3 volte consecutive (adb install -r più am instrument -w, senza disinstallare: OK, 38 test ogni volta). Nel logcat nessuna chiave, password né contenuto dei terminali (solo nomi dei tipi di tastiera dell'IME di sistema). Gate: ktlintCheck, detekt, compileDebugKotlin, testDebugUnitTest, assembleDebug verdi. Design: docs/design/terminal.md (Misure) aggiornato.",
+  "closed_at": "2026-11-27"
 }
