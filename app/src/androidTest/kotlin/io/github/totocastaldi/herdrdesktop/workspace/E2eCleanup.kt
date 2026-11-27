@@ -11,9 +11,10 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /**
- * How the end-to-end tests leave a real core as they found it. The spaces document is shared with the
- * desktop app (`herdr-app`): a test closes only the spaces it created (which ends their terminals), never
- * the others, and removes the document only if there was none before. Nothing else of the core is changed.
+ * How the end-to-end tests leave a real core as they found it. The app's spaces document
+ * (`herdr-desktop-android`) may hold the user's spaces: a test closes only the spaces it created (which ends
+ * their terminals), never the others, and removes the document only if there was none before. Nothing else
+ * of the core is changed.
  */
 internal object E2eCleanup {
     /**

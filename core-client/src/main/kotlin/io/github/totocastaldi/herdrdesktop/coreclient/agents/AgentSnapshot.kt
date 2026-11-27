@@ -10,8 +10,22 @@ import kotlinx.serialization.json.JsonObject
  * too, addressed as `machine/t7`.
  */
 data class AgentSnapshot(val seq: Long, val records: Map<String, AgentRecord>) {
-    /** The agents, in the core's order. */
-    val agents: List<AgentRecord> get() = records.values.filter { it.isAgent }
+    /** The app's agents (see [isOwn]), in the core's order; the desktop app's are left out (REQ-AGT-001). */
+    val agents: List<AgentRecord> get() = records.values.filter { it.isAgent && isOwn(it) }
+
+    /**
+     * True when [record] belongs to a space of the app (it carries the app's space label) or is a worker
+     * started, directly or through other workers, by such a terminal.
+     */
+    fun isOwn(record: AgentRecord): Boolean {
+        val visited = mutableSetOf<String>()
+        var current: AgentRecord? = record
+        while (current != null && visited.add(current.address)) {
+            if (current.inAppSpace) return true
+            current = current.parent?.let { records[it] }
+        }
+        return false
+    }
 
     /** Applies one notification of the subscription channel; anything unknown leaves the snapshot as it is. */
     fun apply(notification: JsonObject): AgentSnapshot {

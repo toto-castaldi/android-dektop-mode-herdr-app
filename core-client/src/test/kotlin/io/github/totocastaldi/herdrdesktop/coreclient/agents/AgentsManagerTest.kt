@@ -154,4 +154,24 @@ class AgentsManagerTest {
         assertEquals(listOf("events.subscribe"), again.calls)
         assertEquals(AgentState.DONE, manager.stateOf("t1"))
     }
+
+    @Test
+    fun `the desktop app's agents are not shown and never marked as seen`() = runTest {
+        val mixed = EventsCore(
+            snapshot(
+                1,
+                terminal("t1", status = "done", turn = 2, seen = 1),
+                terminal("t5", status = "done", turn = 2, seen = 1, space = null)
+            )
+        )
+        val manager = AgentsManager(sessions, backgroundScope)
+        sessions.value = mapOf("m1" to mixed)
+        runCurrent()
+
+        manager.setLooking("m1", setOf("t1", "t5"))
+        runCurrent()
+
+        assertEquals(listOf("t1"), manager.agents.value.getValue("m1").map { it.address })
+        assertEquals(listOf("t1" to "2"), mixed.labelWrites)
+    }
 }

@@ -26,6 +26,9 @@ data class AgentRecord(
     /** A live program that reported its status, or a worker started by another terminal (`hc run`). */
     val isAgent: Boolean get() = live && (reported || parent != null)
 
+    /** Shown in a space of the app: it carries the app's space label (`herdr-desktop-android.space`). */
+    val inAppSpace: Boolean get() = labels.containsKey(APP_SPACE_LABEL)
+
     /** Last turn a person looked at, on any client; null when the label is missing (not 0). */
     val seen: Long? get() = labels[SEEN_LABEL]?.toLongOrNull()
 
@@ -48,6 +51,9 @@ data class AgentRecord(
     companion object {
         /** Label shared by the Herdr clients: the last turn a person looked at. */
         const val SEEN_LABEL = "herdr.seen"
+
+        /** The app's space label, the same as `CoreTerminals.SPACE_LABEL`. */
+        const val APP_SPACE_LABEL = "herdr-desktop-android.space"
 
         fun from(o: JsonObject): AgentRecord? {
             val address = o.string("address") ?: return null

@@ -7,8 +7,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
 
 /**
- * Spaces and tabs of one machine, as stored in the core document [WorkspaceCodec.DOC_NAME] shared with the
- * desktop app (docs/design/data-model.md). Fields the app does not know are kept in `extra` and written back.
+ * Spaces and tabs of one machine, as stored in the app's core document [WorkspaceCodec.DOC_NAME], separate
+ * from the desktop app's (docs/design/data-model.md). Fields the app does not know are kept in `extra` and
+ * written back.
  */
 data class Workspace(val spaces: List<Space> = emptyList(), val extra: JsonObject = EMPTY) {
     fun space(id: String): Space? = spaces.firstOrNull { it.id == id }
@@ -99,14 +100,20 @@ enum class Axis(val wire: String) {
 private val EMPTY = JsonObject(emptyMap())
 
 /**
- * JSON form of [Workspace]: the desktop app's document, shared with it. Everything the app does not read is
- * kept and written back as it was.
+ * JSON form of [Workspace], in the shape of the desktop app's document, so that spaces move between the two
+ * unchanged. Everything the app does not read is kept and written back as it was.
  */
 object WorkspaceCodec {
-    /** Name of the core document of spaces and tabs, the same one the desktop app (herdr-app) reads and writes. */
-    const val DOC_NAME = "herdr-app"
+    /** Name of the app's core document of spaces and tabs (REQ-WS-001). */
+    const val DOC_NAME = "herdr-desktop-android"
 
-    /** Document this app used before sharing [DOC_NAME]: read once to move its spaces, never written again. */
+    /**
+     * The desktop app's document: the app only moves out of it its own spaces, those whose terminals it
+     * started all ([migrateDesktop]), and never reads it otherwise.
+     */
+    const val DESKTOP_DOC_NAME = "herdr-app"
+
+    /** Document this app used before US-012: read once to move its spaces, never written again. */
     const val LEGACY_DOC_NAME = "herdr-android"
 
     internal const val LEAF_TYPE = "block"

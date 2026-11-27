@@ -10,10 +10,11 @@ object AgentEventsJson {
         seen: Long? = null,
         parent: String? = null,
         name: String? = null,
-        state: String = "live"
+        state: String = "live",
+        space: String? = SPACE
     ): String {
         val statusJson = status?.let { """{"app":"claude-code","msg":"msg of $address","state":"$it"}""" } ?: "null"
-        val labels = seen?.let { """{"herdr.seen":"$it"}""" } ?: "{}"
+        val labels = labelsJson(seen, space)
         val nameJson = name?.let { "\"$it\"" } ?: "null"
         val parentJson = parent?.let { "\"$it\"" } ?: "null"
         return """{"address":"$address","name":$nameJson,"parent":$parentJson,"state":"$state",""" +
@@ -37,6 +38,15 @@ object AgentEventsJson {
     fun turn(seq: Long, terminal: String, turn: Long) =
         event(seq, "turn", terminal, """{"turn":$turn,"state":"done"}""")
 
-    fun labels(seq: Long, terminal: String, seen: Long) =
-        event(seq, "labels", terminal, """{"labels":{"herdr.seen":"$seen"}}""")
+    /** A `labels` event: like herdr-core, it carries every label of the terminal. */
+    fun labels(seq: Long, terminal: String, seen: Long, space: String? = SPACE) =
+        event(seq, "labels", terminal, """{"labels":${labelsJson(seen, space)}}""")
+
+    /** Space of the app the terminals are in by default (`herdr-desktop-android.space`). */
+    const val SPACE = "sp1"
+
+    private fun labelsJson(seen: Long?, space: String?): String = listOfNotNull(
+        seen?.let { """"herdr.seen":"$it"""" },
+        space?.let { """"herdr-desktop-android.space":"$it"""" }
+    ).joinToString(",", "{", "}")
 }

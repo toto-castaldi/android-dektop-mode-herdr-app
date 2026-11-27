@@ -49,8 +49,9 @@ class WorkspaceCodecTest {
     }
 
     @Test
-    fun `the document is the one of the desktop app`() {
-        assertEquals("herdr-app", WorkspaceCodec.DOC_NAME)
+    fun `the app has its own document, separate from the desktop app's`() {
+        assertEquals("herdr-desktop-android", WorkspaceCodec.DOC_NAME)
+        assertEquals("herdr-app", WorkspaceCodec.DESKTOP_DOC_NAME)
         assertEquals("herdr-android", WorkspaceCodec.LEGACY_DOC_NAME)
     }
 }

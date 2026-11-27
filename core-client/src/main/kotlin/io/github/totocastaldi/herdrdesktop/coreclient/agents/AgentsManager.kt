@@ -26,9 +26,10 @@ data class AgentView(
 )
 
 /**
- * Agents of every connected machine (REQ-AGT-001): for each session it subscribes to the core's events, keeps
- * the snapshot up to date and takes a fresh one at every new session. The shown state is always the core's:
- * looking at an agent writes `herdr.seen` on the core, and the label coming back turns Done into Idle.
+ * Agents of the app's spaces on every connected machine (REQ-AGT-001): for each session it subscribes to
+ * the core's events, keeps the snapshot up to date and takes a fresh one at every new session. The shown
+ * state is always the core's: looking at an agent writes `herdr.seen` on the core, and the label coming back
+ * turns Done into Idle.
  */
 class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, private val scope: CoroutineScope) {
     private val snapshots = MutableStateFlow<Map<String, AgentSnapshot>>(emptyMap())
@@ -111,12 +112,14 @@ class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, priva
     /** Writes `herdr.seen=<turn>` for the agents on screen whose label is missing or lower, once per turn. */
     private fun markSeen(machineId: String) {
         val rpc = sessions.value[machineId] ?: return
-        val records = snapshots.value[machineId]?.records ?: return
+        val snapshot = snapshots.value[machineId] ?: return
         val due = synchronized(looking) {
             val done = written.getOrPut(machineId) { mutableMapOf() }
-            looking[machineId].orEmpty().mapNotNull { records[it] }.filter { record ->
+            looking[machineId].orEmpty().mapNotNull { snapshot.records[it] }.filter { record ->
                 val seen = record.seen
-                record.isAgent && (seen == null || record.turn > seen) && done[record.address] != record.turn
+                // Only the app's agents: the desktop app's are never marked as seen from here.
+                record.isAgent && snapshot.isOwn(record) && (seen == null || record.turn > seen) &&
+                    done[record.address] != record.turn
             }.onEach { done[it.address] = it.turn }
         }
         due.forEach { record -> scope.launch { writeSeen(machineId, rpc, record) } }

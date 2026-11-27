@@ -86,4 +86,34 @@ class AgentSnapshotTest {
         val s = start.on("""{"jsonrpc":"2.0","method":"heartbeat","params":{"seq":10}}""", "{}")
         assertTrue(s == start)
     }
+
+    @Test
+    fun `only the app's agents and their workers are shown, not the desktop app's`() {
+        val s = AgentSnapshot.from(
+            parse(
+                snapshot(
+                    1,
+                    terminal("t1", status = "working"),
+                    terminal("t2", parent = "t1", space = null),
+                    terminal("t3", parent = "t2", space = null),
+                    terminal("t4", status = "done", space = null),
+                    terminal("t5", parent = "t4", space = null),
+                    terminal("t6", parent = "t7", space = null),
+                    terminal("t7", parent = "t6", space = null)
+                )
+            )
+        )
+
+        // t2 and t3 are workers (directly or not) of the app's t1; t4 is the desktop app's, t5 its worker;
+        // t6 and t7 start each other, without looping.
+        assertEquals(listOf("t1", "t2", "t3"), s.agents.map { it.address })
+    }
+
+    @Test
+    fun `an agent leaves when its terminal loses the app's space label`() {
+        val s = start.on(event(11, "labels", "t1", """{"labels":{"herdr.seen":"2"}}"""))
+
+        // t3, a worker of t1, has its own space label.
+        assertEquals(listOf("t3", "walle/t7"), s.agents.map { it.address })
+    }
 }
