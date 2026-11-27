@@ -6,7 +6,8 @@
   "module": "MOD-002",
   "type": "Spike",
   "priority": "P1",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "spike/SPIKE-004-comandi-agenti",
   "dependencies": [],
   "design_references": [
     "design/integrations",
@@ -17,5 +18,7 @@
     "Il report docs/spikes/SPIKE-004-comandi-agenti.md risponde: quali meccanismi del core (documenti, etichette, eventi, terminali o altro di herdr-core) possono portare una richiesta da un agente all'app e la risposta all'agente, con latenza, ordine, autenticazione e cosa succede ad app chiusa o con più client collegati.",
     "Il report confronta almeno due meccanismi con una prova su un herdr-core reale dal Pixel 11 Pro e raccomanda il canale, la forma dei comandi (sottoinsieme di herdr-app do da supportare in v0.1.0) e la CLI o il modo con cui l'agente li invia sulla macchina.",
     "Il report dice come restano rispettati gli invarianti: stato da core, nessuna azione distruttiva (chiudere tab o pane) senza le regole dell'app desktop, nessun server intermedio; elenca i requisiti e il design da aggiornare e propone la US che implementa i comandi."
-  ]
+  ],
+  "outcome": "Report docs/spikes/SPIKE-004-comandi-agenti.md: confrontati etichette sul terminale dell'agente, documento opaco di richieste, I/O del terminale e adozione; prova su un herdr-core remoto (0.1.20) dal Pixel 11 Pro via Tailscale con AgentCommandsProbeE2ETest (codice nel commit 6c0ee62, poi tolto): etichette mediana 33 ms, ricetta shell 64 ms, documento 74 ms, due client senza coordinamento eseguono due volte, con claim a compare-and-set una volta (85 ms), richieste ad app chiusa trovate al collegamento. Raccomandati etichette herdr-desktop-android.do/.re con claim su herdr-desktop-android.claims, sottoinsieme space.new, tab.new, pane.split, space.select, tab.select, agent.focus senza azioni distruttive, ricetta con hc label e hc events; elencati requisiti e design da aggiornare e proposta la US. Logcat della prova senza chiavi né contenuti. Gate passato.",
+  "closed_at": "2026-11-27"
 }
