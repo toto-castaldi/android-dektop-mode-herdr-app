@@ -1,7 +1,8 @@
 {
   "id": "v0.1.0",
   "goal": "Su un Pixel 11 Pro in Desktop Mode con monitor, tastiera e mouse, lavorare con gli agenti di herdr-core remoti e del core locale nel Linux Terminal come con l'app desktop Herdr: collegamento, installazione del core, spazi, tab, pane, sidebar degli agenti e peek.",
-  "state": "Open",
+  "state": "Closed",
+  "closed_at": "2026-11-27",
   "scope_changes": [
     "2026-11-26: Aggiunta la segnalazione degli aggiornamenti disponibili di herdr-core compatibile (REQ-CONN-004), su richiesta dell'utente.",
     "2026-11-26: Aggiunti su richiesta dell'utente: spazi e tab condivisi con l'app desktop (documento e etichette herdr.*), terminali avviati dagli agenti negli spazi e nelle tab dell'app, spike sul canale dei comandi degli agenti verso l'app.",

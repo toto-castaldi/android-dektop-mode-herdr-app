@@ -1,6 +1,6 @@
 # Requirements — Herdr Desktop for Android
 
-**Target version:** v0.1.0
+**Target version:** none
 
 **State:** baseline
 
@@ -19,8 +19,6 @@ Il *cosa* del progetto, un file per requisito (`docs/process/docs.md` §1). Il *
 
 Herdr Desktop for Android porta l'esperienza dell'app desktop su Android in Desktop Mode: un telefono collegato a monitor, tastiera e mouse diventa una postazione completa per lavorare con gli agenti, su core remoti via SSH o sul core locale nel Linux Terminal di Android. È un'app nativa indipendente, open source (Apache-2.0).
 
-La v0.1.0 ha successo quando, su un Pixel 11 Pro in Desktop Mode con monitor esterno, tastiera e mouse, si può lavorare con gli agenti di un core remoto e del core locale come con l'app desktop: collegarsi, installare il core se serve, organizzare spazi, tab e pane, seguire lo stato degli agenti e rispondere a chi è bloccato.
-
 ## Actors
 
 - **Utente:** sviluppatore che usa agenti di coding con Herdr. Configura le macchine e le chiavi, lavora nei terminali e risponde agli agenti dall'app.
@@ -29,28 +27,7 @@ La v0.1.0 ha successo quando, su un Pixel 11 Pro in Desktop Mode con monitor est
 
 ## Scope
 
-### In scope for v0.1.0
-
-- Macchine remote con herdr-core raggiunte via SSH, con chiavi nell'Android Keystore e verifica della host key.
-- Collegamento al herdr-core locale nel Linux Terminal di Android.
-- Installazione e aggiornamento di herdr-core quando manca o è incompatibile, previa conferma.
-- Segnalazione di una versione più recente di un herdr-core compatibile, con aggiornamento previa conferma.
-- Spazi, tab e pane con terminali interattivi, separati da quelli dell'app desktop Herdr sullo stesso core.
-- Agenti che aprono terminali negli spazi e nelle tab dell'app e comunicano tra loro tramite il core.
-- Agenti che chiedono all'app, attraverso il core, di aprire spazi, tab e pane o di mostrare un agente.
-- Sidebar degli agenti con stati Working, Blocked, Done e Idle, e peek.
-- Esperienza Desktop Mode: finestre ridimensionabili e multiple su display esterno, tastiera fisica con scorciatoie, mouse.
-- Build per uso personale (dogfood) firmata con una chiave locale dello sviluppatore, installabile accanto alla build di sviluppo.
-
-### Out of scope for v0.1.0
-
-Do not introduce these without first updating the requirements and the backlog:
-
-- Mod e pannelli delle mod dell'app desktop (QuickJS).
-- Pubblicazione: Play Store, F-Droid, firma di release per la distribuzione.
-- Uso touch sullo schermo del telefono senza Desktop Mode.
-- Esecuzione di herdr-core dentro l'app stessa, al di fuori del Linux Terminal.
-- Account, sincronizzazione o server intermedi.
+Nessuna versione aperta. Scope dentro e fuori della prossima versione si scrivono qui quando viene aperta; le capacità già rilasciate sono descritte dai requisiti.
 
 ## Areas
 
