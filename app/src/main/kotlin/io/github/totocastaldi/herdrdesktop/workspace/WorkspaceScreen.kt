@@ -86,7 +86,8 @@ fun WorkspaceScreen(
         shown,
         AgentPeek(requests.peek?.takeIf { it.machineId == machineId }, requests.onClosePeek),
         requests.select?.takeIf { it.machineId == machineId },
-        requests.onSelected
+        requests.onSelected,
+        requests.onSelectDone
     )
     WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack, WorkspaceLinks(agents, window, host))
 }
@@ -130,6 +131,7 @@ class AgentRequests(
     val peek: PeekRequest?,
     val select: WindowSelect? = null,
     val onSelected: (String?) -> Unit = {},
+    val onSelectDone: () -> Unit = {},
     val onClosePeek: () -> Unit
 )
 
@@ -145,7 +147,8 @@ class AgentLink(
     val onShown: (Set<String>) -> Unit = {},
     val peek: AgentPeek = AgentPeek(),
     val select: WindowSelect? = null,
-    val onSelected: (String?) -> Unit = {}
+    val onSelected: (String?) -> Unit = {},
+    val onSelectDone: () -> Unit = {}
 )
 
 /** What the user can do on spaces and tabs; each action is sent to the core. */
@@ -329,6 +332,8 @@ private fun ReadyContent(
         agents.select?.let { request ->
             onSelectSpace(request.spaceId)
             request.tabId?.let { selectedTabs[request.spaceId] = it }
+            // Applied once: a screen composed again later (reconnection) does not select it again.
+            agents.onSelectDone()
         }
     }
 

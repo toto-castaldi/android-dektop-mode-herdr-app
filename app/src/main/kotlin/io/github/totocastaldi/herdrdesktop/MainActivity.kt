@@ -112,7 +112,13 @@ class MainActivity : ComponentActivity() {
                         },
                         keyboard = keyboard.link
                     )
-                    val agents = AgentRequests(focus, peek, select, { agentWindow.selectedSpace = it }) { peek = null }
+                    val agents = AgentRequests(
+                        focus,
+                        peek,
+                        select,
+                        onSelected = { agentWindow.selectedSpace = it },
+                        onSelectDone = { select = null }
+                    ) { peek = null }
                     WorkspaceScreen(container, open, agents, window, onBack = { openMachine = null })
                 }
             }
