@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P1",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "us/US-013-terminali-avviati-dagli-agenti",
   "dependencies": [
     "US-012",
     "US-006",
