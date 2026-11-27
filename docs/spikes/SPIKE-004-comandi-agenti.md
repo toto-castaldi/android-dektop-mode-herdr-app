@@ -35,7 +35,7 @@ Proprietà dei meccanismi A e B, verificate sul core isolato (`HC_SESSION` dedic
 
 ### 2. Prova dal Pixel 11 Pro e raccomandazione
 
-Prova del 2026-11-27 su walle (herdr-core 0.1.20) dal Pixel 11 Pro via Tailscale, con una chiave di test del Keystore autorizzata con un comando forzato verso una sessione del core isolata (`HC_SESSION` dedicata). Il codice di prova (vedi Sources) ha due parti:
+Prova del 2026-11-27 su un herdr-core remoto (0.1.20) dal Pixel 11 Pro via Tailscale, con una chiave di test del Keystore autorizzata con un comando forzato verso una sessione del core isolata (`HC_SESSION` dedicata). Il codice di prova (vedi Sources) ha due parti:
 
 - lato app, `AgentCommandsProbeE2ETest` sul Pixel: si collega con `ConnectionManager` come l'app, si iscrive con `events.subscribe` e risponde a ogni richiesta (meccanismo A: etichetta di risposta con `terminal.label`; meccanismo B: compare-and-set sul documento);
 - lato agente, `spike004_agent.py`, scritto sulla macchina con `file.write` e lanciato in un terminale del core con `terminal.run`: manda le richieste e misura sul proprio orologio il tempo dall'invio alla risposta (quindi senza errori di sincronizzazione degli orologi). Ogni caso con il Pixel come unico client che risponde, salvo dove indicato.
@@ -56,7 +56,7 @@ Prova del 2026-11-27 su walle (herdr-core 0.1.20) dal Pixel 11 Pro via Tailscale
 
 Osservazioni:
 
-- La latenza è dominata dalla rete (un giro Pixel ↔ walle) e dal numero di chiamate: A costa un evento e una scrittura, B un evento, una lettura e una scrittura lato app e tre chiamate lato agente. I massimi isolati (0,6–1 s) sono ritardi della rete, non del core.
+- La latenza è dominata dalla rete (un giro Pixel ↔ macchina remota) e dal numero di chiamate: A costa un evento e una scrittura, B un evento, una lettura e una scrittura lato app e tre chiamate lato agente. I massimi isolati (0,6–1 s) sono ritardi della rete, non del core.
 - Il claim con compare-and-set aggiunge una lettura e una scrittura (circa 50 ms) e rende l'esecuzione unica anche con due client, come B.
 - In raffica le richieste arrivano tutte e in ordine perché l'app è collegata e vede ogni evento; ad app chiusa con A resterebbe solo l'ultima. Un agente usa comunque un comando alla volta (aspetta la risposta), come con `herdr-app do`.
 - La ricetta shell funziona così com'è con `hc` 0.1.20 e `bash`: `hc label …` e poi `grep -m1 -q -F '<risposta con il mio id>' <(timeout 10 hc events --terminal "$HC_TERMINAL_ID" --json)`. La sostituzione di processo serve perché con una pipe normale la shell aspetterebbe la fine di `hc events` (fino all'heartbeat successivo, 15 s). La risposta già scritta è nello snapshot iniziale di `hc events`, quindi non c'è corsa tra scrittura della risposta e inizio dell'attesa.
@@ -125,7 +125,7 @@ US proposta: **"Comandi degli agenti verso l'app"** (EPIC-004, MOD-002 e MOD-001
 
 ## Limits, costs and risks
 
-- Misure di una sola rete (Tailscale tra il Pixel e walle) e di un solo giorno; con reti più lente la latenza cresce con i giri di rete (A: circa uno per la risposta, più uno per il claim).
+- Misure di una sola rete (Tailscale tra il Pixel e la macchina remota) e di un solo giorno; con reti più lente la latenza cresce con i giri di rete (A: circa uno per la risposta, più uno per il claim).
 - Il core non autentica chi scrive etichette e documenti: qualunque processo dell'utente sulla macchina può chiedere azioni all'app a nome di un altro terminale. È accettabile perché lo stesso processo può già avviare, terminare e scrivere nei terminali con `hc`, e il sottoinsieme non è distruttivo.
 - Le etichette sono visibili a chi legge il terminale (`hc get`): non vanno messi segreti negli argomenti.
 - Il documento dei claim cresce di una voce per terminale: l'app toglie le voci dei terminali rimossi quando lo riscrive.
