@@ -35,7 +35,7 @@ La v0.1.0 ha successo quando, su un Pixel 11 Pro in Desktop Mode con monitor est
 - Collegamento al herdr-core locale nel Linux Terminal di Android.
 - Installazione e aggiornamento di herdr-core quando manca o è incompatibile, previa conferma.
 - Segnalazione di una versione più recente di un herdr-core compatibile, con aggiornamento previa conferma.
-- Spazi, tab e pane con terminali interattivi, condivisi con l'app desktop Herdr sullo stesso core.
+- Spazi, tab e pane con terminali interattivi, separati da quelli dell'app desktop Herdr sullo stesso core.
 - Agenti che aprono terminali negli spazi e nelle tab dell'app e comunicano tra loro tramite il core.
 - Sidebar degli agenti con stati Working, Blocked, Done e Idle, e peek.
 - Esperienza Desktop Mode: finestre ridimensionabili e multiple su display esterno, tastiera fisica con scorciatoie, mouse.

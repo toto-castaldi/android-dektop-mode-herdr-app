@@ -1,0 +1,34 @@
+{
+  "id": "US-014",
+  "title": "Spazi dell'app separati da quelli dell'app desktop",
+  "version": "v0.1.0",
+  "epic": "EPIC-003",
+  "module": "MOD-001",
+  "type": "User Story",
+  "priority": "P0",
+  "status": "Todo",
+  "dependencies": [
+    "US-012"
+  ],
+  "requirements": [
+    "REQ-WS-001",
+    "REQ-WS-003",
+    "REQ-AGT-001"
+  ],
+  "design_references": [
+    "design/integrations",
+    "design/data-model"
+  ],
+  "description": "Come utente voglio che l'app e l'app desktop Herdr collegate allo stesso core abbiano ognuna il proprio spazio di lavoro, per usarle insieme senza che l'una cambi spazi, tab, pane o terminali dell'altra.",
+  "acceptance_criteria": [
+    "Spazi, tab e pane dell'app stanno nel documento herdr-desktop-android di ogni core (doc.get/doc.set con compare-and-set); l'app non legge né scrive più il documento herdr-app.",
+    "I terminali che l'app avvia portano app=herdr-android, herdr.seen=0, herdr-desktop-android.space e herdr-desktop-android.tab, e non herdr.space né herdr.tab: l'app desktop non li adotta.",
+    "Migrazione alla prima lettura di ogni sessione: gli spazi di herdr-app i cui terminali sono tutti app=herdr-android vengono aggiunti a herdr-desktop-android (se il loro id manca) e tolti da herdr-app con compare-and-set; i loro terminali ricevono le etichette herdr-desktop-android.space/.tab e perdono herdr.space/herdr.tab. Gli spazi con terminali dell'app desktop restano in herdr-app. Nessun terminale viene avviato o terminato; un conflitto o un errore lascia i documenti com'erano per la sessione successiva.",
+    "L'app apre (terminal.attach), ridimensiona e segna come visti (herdr.seen) solo terminali dei propri spazi o worker avviati da quei terminali; la sidebar degli agenti mostra solo questi.",
+    "Test unitari JVM del codec e della migrazione: spazio solo dell'app spostato, spazio misto lasciato, id già presente, conflitto in scrittura; e del filtro degli agenti propri.",
+    "Verificato sul Pixel 11 Pro in Desktop Mode con un herdr-core reale usato nello stesso momento dall'app desktop Herdr: creare, rinominare e chiudere spazi, tab e pane nell'app non cambia l'app desktop né ne ridimensiona i terminali, e viceversa; uno spazio dell'app che era in herdr-app torna nell'app e sparisce dall'app desktop."
+  ],
+  "remarks": [
+    "Cambio di direzione rispetto a US-012 deciso dall'utente il 2026-11-27: con l'app sul Pixel aperta sul core di un PC mentre l'app desktop Herdr era in uso, l'app ha migrato e scritto il documento herdr-app condiviso e ridimensionato i terminali mostrati dalla desktop; nello stesso momento una sessione nell'app desktop è terminata."
+  ]
+}

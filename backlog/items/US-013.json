@@ -9,7 +9,8 @@
   "status": "Todo",
   "dependencies": [
     "US-012",
-    "US-006"
+    "US-006",
+    "US-014"
   ],
   "requirements": [
     "REQ-WS-003"
@@ -20,10 +21,13 @@
   ],
   "description": "Come utente voglio che gli agenti possano aprire terminali e worker negli spazi e nelle tab dell'app e coordinarsi tra loro tramite il core, come nell'app desktop Herdr.",
   "acceptance_criteria": [
-    "Un terminale avviato sul core con herdr.space=<id> di uno spazio esistente (e herdr.tab=<id>) compare in quella tab come nuovo pane; senza herdr.tab compare in una nuova tab di quello spazio; vale anche per terminali avviati mentre l'app era chiusa.",
-    "Togliere le etichette (herdr.space vuota) toglie il pane dall'app senza terminare il terminale; un worker senza etichette e senza pane resta solo nella sidebar degli agenti.",
+    "Un terminale avviato sul core con herdr-desktop-android.space=<id> di uno spazio dell'app (e herdr-desktop-android.tab=<id>) compare in quella tab come nuovo pane; senza herdr-desktop-android.tab compare in una nuova tab di quello spazio; vale anche per terminali avviati mentre l'app era chiusa. Le etichette herdr.space e herdr.tab dell'app desktop sono ignorate.",
+    "Togliere le etichette (herdr-desktop-android.space vuota) toglie il pane dall'app senza terminare il terminale; un worker senza etichette e senza pane resta solo nella sidebar degli agenti.",
     "In un pane dell'app un agente legge il proprio indirizzo (HC_TERMINAL_ID) e le etichette di spazio e tab del proprio terminale, e hc run, hc send e hc wait verso un worker funzionano.",
-    "Test unitari della logica di adozione (etichette, spazio o tab sconosciuti, rimozione) con eventi del core simulati nei test.",
-    "Verificato end-to-end sul Pixel 11 Pro in Desktop Mode con un herdr-core reale: Claude Code in un pane avvia un worker con hc run --label herdr.space=<id>, che compare in una nuova tab, e lo coordina con hc send e hc wait."
+    "Test unitari della logica di adozione (etichette, spazio o tab sconosciuti, rimozione, etichette dell'app desktop ignorate) con eventi del core simulati nei test.",
+    "Verificato end-to-end sul Pixel 11 Pro in Desktop Mode con un herdr-core reale: Claude Code in un pane avvia un worker con hc run --label herdr-desktop-android.space=<id>, che compare in una nuova tab, e lo coordina con hc send e hc wait."
+  ],
+  "remarks": [
+    "Criteri riscritti sulle etichette herdr-desktop-android.space/.tab dopo la separazione dall'app desktop (US-014)."
   ]
 }
