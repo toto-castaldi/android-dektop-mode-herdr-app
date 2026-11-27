@@ -50,6 +50,22 @@ class GhosttyTerminalEmulatorTest {
         assertEquals(Cursor(column = 9, row = 1, visible = true, style = CursorStyle.BLOCK), snapshot.cursor)
     }
 
+    /** Each write is in the next screen read, including the last one with nothing after it (BUG-003). */
+    @Test
+    fun everyWriteIsInTheNextScreen() {
+        write("$ ")
+        val first = terminal.snapshot()
+        assertEquals("$ ".padEnd(20), first.rowText(0))
+        write("l")
+        assertEquals("$ l".padEnd(20), terminal.snapshot().rowText(0))
+        write("s")
+        val screen = terminal.screen()
+        assertEquals("s", screen.textAt(3, 0))
+        write("\r\nout\r\n$ ")
+        val after = terminal.screen()
+        assertEquals("$", after.textAt(0, 2))
+    }
+
     @Test
     fun writeReturnsAutomaticReplies() {
         write("\u001b[2;5H")
