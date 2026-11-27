@@ -6,7 +6,8 @@
   "module": "MOD-003",
   "type": "Bug",
   "priority": "P1",
-  "status": "Todo",
+  "status": "In Progress",
+  "branch": "fix/BUG-003-ultimo-output-terminale-non-disegnato",
   "dependencies": [],
   "requirements": [
     "REQ-WS-002",
