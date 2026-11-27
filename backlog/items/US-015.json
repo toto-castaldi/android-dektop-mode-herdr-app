@@ -1,0 +1,29 @@
+{
+  "id": "US-015",
+  "title": "Comandi degli agenti verso l'app",
+  "version": "v0.1.0",
+  "epic": "EPIC-004",
+  "module": "MOD-002",
+  "type": "User Story",
+  "priority": "P1",
+  "status": "Todo",
+  "dependencies": [
+    "SPIKE-004",
+    "US-013"
+  ],
+  "requirements": [
+    "REQ-AGT-003"
+  ],
+  "design_references": [
+    "design/integrations",
+    "design/security"
+  ],
+  "description": "Come utente voglio che un agente su un core collegato possa chiedere all'app di aprire spazi, tab e pane o di mostrare un agente, come fa con herdr-app do sull'app desktop. Canale, forma e ricetta raccomandati in docs/spikes/SPIKE-004-comandi-agenti.md (etichette herdr-desktop-android.do/.re sul terminale dell'agente, claim a compare-and-set su herdr-desktop-android.claims); tocca anche MOD-001.",
+  "acceptance_criteria": [
+    "Un agente in un terminale di un core collegato esegue space.new, tab.new, pane.split, space.select, tab.select e agent.focus con la ricetta del README e riceve la risposta in stile herdr-app do; le altre azioni rispondono unsupported.",
+    "Con due dispositivi collegati allo stesso core ogni richiesta è eseguita una sola volta (claim su herdr-desktop-android.claims); una richiesta fatta mentre nessun dispositivo è collegato viene eseguita al collegamento se l'agente aspetta ancora, altrimenti l'agente scade e la toglie.",
+    "Le azioni passano dal documento del core come i comandi dell'utente: nessun terminale terminato, documento herdr-app invariato; il logcat non contiene gli argomenti delle richieste.",
+    "La ricetta del README funziona anche su macchine senza timeout di coreutils (ripiego documentato).",
+    "Test unitari del parsing, del claim e dell'esecuzione; verifica sul Pixel 11 Pro in Desktop Mode con un herdr-core reale, remoto e nel Linux Terminal."
+  ]
+}

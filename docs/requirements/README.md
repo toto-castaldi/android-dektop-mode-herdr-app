@@ -37,6 +37,7 @@ La v0.1.0 ha successo quando, su un Pixel 11 Pro in Desktop Mode con monitor est
 - Segnalazione di una versione più recente di un herdr-core compatibile, con aggiornamento previa conferma.
 - Spazi, tab e pane con terminali interattivi, separati da quelli dell'app desktop Herdr sullo stesso core.
 - Agenti che aprono terminali negli spazi e nelle tab dell'app e comunicano tra loro tramite il core.
+- Agenti che chiedono all'app, attraverso il core, di aprire spazi, tab e pane o di mostrare un agente.
 - Sidebar degli agenti con stati Working, Blocked, Done e Idle, e peek.
 - Esperienza Desktop Mode: finestre ridimensionabili e multiple su display esterno, tastiera fisica con scorciatoie, mouse.
 
@@ -58,6 +59,6 @@ Functional requirement IDs: `REQ-<AREA>-NNN`; non-functional: `REQ-NFR-NNN`. Are
 | ---- | ------- |
 | `CONN` | macchine, collegamento ai core, installazione e aggiornamento del core |
 | `WS` | spazi, tab, pane e terminali |
-| `AGT` | agenti: sidebar, stati, peek |
+| `AGT` | agenti: sidebar, stati, peek, comandi all'app |
 | `DM` | Desktop Mode: finestre, display, tastiera, mouse |
 | `NFR` | non-functional requirements |
