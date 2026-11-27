@@ -95,7 +95,9 @@ internal class CellPainter(textSizePx: Float, private val fonts: TerminalFonts) 
 
     private fun rowNode(screen: RawScreen, row: Int): RenderNode {
         val key = screen.rowHash(row)
-        rows[key]?.takeIf { screen.rowEquals(row, it.ints) }?.let { return it.node }
+        // A node left out of a frame loses its display list once the render thread sees it removed from the
+        // tree (BUG-003): reusing it would draw nothing, so it is recorded again, as View does.
+        rows[key]?.takeIf { it.node.hasDisplayList() && screen.rowEquals(row, it.ints) }?.let { return it.node }
         val node = RenderNode("terminal-row")
         val width = screen.size.columns * metrics.widthPx
         node.setPosition(0, 0, width, metrics.heightPx)

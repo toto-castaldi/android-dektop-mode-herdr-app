@@ -6,7 +6,7 @@
   "module": "MOD-003",
   "type": "Bug",
   "priority": "P1",
-  "status": "In Progress",
+  "status": "Done",
   "branch": "fix/BUG-003-ultimo-output-terminale-non-disegnato",
   "dependencies": [],
   "requirements": [
@@ -26,5 +26,8 @@
     "I caratteri digitati e il nuovo prompt dopo l'output di un comando compaiono subito, senza aspettare altro output.",
     "Un test di regressione riproduce un ultimo blocco di output senza aggiornamenti successivi e verifica che venga disegnato.",
     "Il comportamento è verificato sul Pixel 11 Pro in Desktop Mode con un herdr-core reale."
-  ]
+  ],
+  "outcome": "Causa: CellPainter riusava per contenuto il RenderNode di una riga già vista (prompt, eco ripetuta), ma il render thread libera la display list di un nodo rimasto fuori da un frame, quindi la riga tornata uguale veniva disegnata vuota mentre il cursore (disegnato a parte) era giusto. Correzione: il nodo in cache si riusa solo se hasDisplayList(), altrimenti la riga si registra di nuovo. Verifiche: libghostty-vt e JNI corretti (probe su host e arm64 sul Pixel con uno stream reale di herdr-core, nuovo GhosttyTerminalEmulatorTest.everyWriteIsInTheNextScreen); regressione TerminalViewDrawTest.rowShownAgainIsDrawn (app androidTest) fallisce senza correzione e passa con; sul Pixel 11 Pro in Desktop Mode collegato all'herdr-core reale di walle, prima della correzione il nuovo prompt dopo ls mancava, dopo la correzione all'apertura del pane compaiono prompt e history, l'eco di ls/l compare subito e ogni nuovo prompt dopo l'output (screenshot con screencap). Gate verde. Nessuna dipendenza nuova, nessun log aggiunto.",
+  "changelog": "Fixed: nel terminale prompt ed eco già visti compaiono subito invece di restare vuoti fino all'output successivo",
+  "closed_at": "2026-11-27"
 }
