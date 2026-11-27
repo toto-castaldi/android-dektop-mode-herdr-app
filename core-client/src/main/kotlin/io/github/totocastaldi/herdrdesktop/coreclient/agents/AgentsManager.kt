@@ -34,7 +34,9 @@ data class AgentView(
 class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, private val scope: CoroutineScope) {
     private val snapshots = MutableStateFlow<Map<String, AgentSnapshot>>(emptyMap())
     private val followers = mutableMapOf<String, Pair<CoreRpc, Job>>()
-    private val looking = mutableMapOf<String, Set<String>>()
+
+    /** Per machine and viewer (one per window), the terminals on screen. */
+    private val looking = mutableMapOf<String, MutableMap<Any, Set<String>>>()
 
     /** Per machine and address, the turn already written while the agent stays on screen. */
     private val written = mutableMapOf<String, MutableMap<String, Long>>()
@@ -48,13 +50,16 @@ class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, priva
     }
 
     /**
-     * The agents of [machineId] the user really has in front of them (app in the foreground, pane on screen);
-     * an empty set when nothing is. Each of them gets `herdr.seen` raised to its turn, once per turn.
+     * The agents of [machineId] that [viewer] (one window) really shows to the user (window in the foreground,
+     * pane on screen); an empty set when it shows nothing. A terminal is looked at while at least one viewer
+     * shows it, and each of them gets `herdr.seen` raised to its turn, once per turn.
      */
-    fun setLooking(machineId: String, addresses: Set<String>) {
+    fun setLooking(machineId: String, addresses: Set<String>, viewer: Any = Unit) {
         synchronized(looking) {
-            looking[machineId] = addresses
-            written[machineId]?.keys?.retainAll(addresses)
+            val viewers = looking.getOrPut(machineId) { mutableMapOf() }
+            if (addresses.isEmpty()) viewers.remove(viewer) else viewers[viewer] = addresses
+            if (viewers.isEmpty()) looking.remove(machineId)
+            written[machineId]?.keys?.retainAll(lookedAt(machineId))
         }
         markSeen(machineId)
     }
@@ -115,7 +120,7 @@ class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, priva
         val snapshot = snapshots.value[machineId] ?: return
         val due = synchronized(looking) {
             val done = written.getOrPut(machineId) { mutableMapOf() }
-            looking[machineId].orEmpty().mapNotNull { snapshot.records[it] }.filter { record ->
+            lookedAt(machineId).mapNotNull { snapshot.records[it] }.filter { record ->
                 val seen = record.seen
                 // Only the app's agents: the desktop app's are never marked as seen from here.
                 record.isAgent && snapshot.isOwn(record) && (seen == null || record.turn > seen) &&
@@ -124,6 +129,9 @@ class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, priva
         }
         due.forEach { record -> scope.launch { writeSeen(machineId, rpc, record) } }
     }
+
+    /** The terminals of [machineId] shown by at least one viewer; called holding the `looking` lock. */
+    private fun lookedAt(machineId: String): Set<String> = looking[machineId]?.values?.flatten()?.toSet().orEmpty()
 
     private suspend fun writeSeen(machineId: String, rpc: CoreRpc, record: AgentRecord) {
         val params = buildJsonObject {

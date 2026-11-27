@@ -95,15 +95,20 @@ interface PaneActions {
 
 /**
  * Tells [agents] which terminals of [machineId] are on screen while the app is in the foreground (resumed), so
- * that Done agents the user looks at become Idle; nothing is on screen once the screen leaves.
+ * that Done agents the user looks at become Idle; nothing is on screen once the screen leaves. Each window reports
+ * as its own viewer.
  */
 @Composable
 private fun rememberShownAgents(agents: AgentsManager, machineId: String): (Set<String>) -> Unit {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val resumed = lifecycle.currentStateFlow.collectAsState().value.isAtLeast(Lifecycle.State.RESUMED)
     var shown by remember(machineId) { mutableStateOf(emptySet<String>()) }
-    LaunchedEffect(machineId, shown, resumed) { agents.setLooking(machineId, if (resumed) shown else emptySet()) }
-    DisposableEffect(machineId) { onDispose { agents.setLooking(machineId, emptySet()) } }
+    // One viewer per window, so that two windows on the same machine do not overwrite each other (BUG-002).
+    val viewer = remember { Any() }
+    LaunchedEffect(machineId, shown, resumed) {
+        agents.setLooking(machineId, if (resumed) shown else emptySet(), viewer)
+    }
+    DisposableEffect(machineId) { onDispose { agents.setLooking(machineId, emptySet(), viewer) } }
     return { shown = it }
 }
 
