@@ -35,13 +35,16 @@ import io.github.totocastaldi.herdrdesktop.AppContainer
 import io.github.totocastaldi.herdrdesktop.R
 import io.github.totocastaldi.herdrdesktop.WindowTarget
 import io.github.totocastaldi.herdrdesktop.agents.PaneFocus
+import io.github.totocastaldi.herdrdesktop.agents.PeekRequest
 import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentsManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Axis
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Space
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Tab
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceManager
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceNames
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.closePane
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.keepAsTab
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.resizeSplit
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.splitPane
 import kotlinx.coroutines.delay
@@ -54,7 +57,7 @@ private const val REFRESH_MILLIS = 5_000L
 fun WorkspaceScreen(
     container: AppContainer,
     machineId: String,
-    focus: PaneFocus?,
+    requests: AgentRequests,
     window: WindowOptions,
     onBack: () -> Unit
 ) {
@@ -71,7 +74,11 @@ fun WorkspaceScreen(
     val rpc = container.connections.sessions.collectAsState().value[machineId]
     val host = remember(rpc) { rpc?.let { PaneHost(it, container.scope, container.frameObserver) } }
     val shown = rememberShownAgents(container.agents, machineId)
-    val agents = AgentLink(focus?.takeIf { it.machineId == machineId }, shown)
+    val agents = AgentLink(
+        requests.focus?.takeIf { it.machineId == machineId },
+        shown,
+        AgentPeek(requests.peek?.takeIf { it.machineId == machineId }, requests.onClosePeek)
+    )
     WorkspaceContent(machine?.name.orEmpty(), state, actions, onBack, WorkspaceLinks(agents, window, host))
 }
 
@@ -100,8 +107,21 @@ private fun rememberShownAgents(agents: AgentsManager, machineId: String): (Set<
     return { shown = it }
 }
 
-/** Link with the agents sidebar: the pane to bring to the front and where to report the terminals on screen. */
-class AgentLink(val focus: PaneFocus? = null, val onShown: (Set<String>) -> Unit = {})
+/** What the agents sidebar asks of a window: the pane to bring to the front, the agent to peek at. */
+class AgentRequests(val focus: PaneFocus?, val peek: PeekRequest?, val onClosePeek: () -> Unit)
+
+/** The agent shown in peek over the current tab (none when [request] is null) and how the peek closes. */
+class AgentPeek(val request: PeekRequest? = null, val onClose: () -> Unit = {})
+
+/**
+ * Link with the agents sidebar: the pane to bring to the front, where to report the terminals on screen and
+ * the agent in peek.
+ */
+class AgentLink(
+    val focus: PaneFocus? = null,
+    val onShown: (Set<String>) -> Unit = {},
+    val peek: AgentPeek = AgentPeek()
+)
 
 /** What the user can do on spaces and tabs; each action is sent to the core. */
 interface WorkspaceActions : PaneActions {
@@ -120,6 +140,9 @@ interface WorkspaceActions : PaneActions {
     fun moveTab(spaceId: String, tabId: String, toIndex: Int)
 
     fun closeTab(spaceId: String, tabId: String)
+
+    /** Keeps the running terminal [address] as a new tab at the end of [spaceId] (peek, REQ-AGT-002). */
+    fun keepAsTab(spaceId: String, address: String)
 }
 
 private class ManagerActions(private val m: WorkspaceManager, private val id: String) :
@@ -155,6 +178,10 @@ private class ManagerActions(private val m: WorkspaceManager, private val id: St
 
     override fun closeTab(spaceId: String, tabId: String) {
         m.perform(id) { closeTab(spaceId, tabId) }
+    }
+
+    override fun keepAsTab(spaceId: String, address: String) {
+        m.perform(id) { keepAsTab(spaceId, address) }
     }
 }
 
@@ -265,7 +292,9 @@ private fun ReadyContent(
 
     val space = spaces.firstOrNull { it.id == selectedSpace } ?: spaces.firstOrNull()
     val tab = space?.let { s -> s.tabs.firstOrNull { it.id == selectedTabs[s.id] } ?: s.tabs.firstOrNull() }
-    val onScreen = tab?.terminals.orEmpty().toSet()
+    val peek = agents.peek.request
+    // A terminal in peek is on screen too: looking at it there marks it as seen.
+    val onScreen = tab?.terminals.orEmpty().toSet() + listOfNotNull(peek?.address)
     LaunchedEffect(onScreen) { agents.onShown(onScreen) }
     val controls = Controls(actions) { prompt = it }
     val spaceLabel = { index: Int, s: Space -> WorkspaceNames.displayName(s, state::cwdOf) ?: "${index + 1}" }
@@ -281,26 +310,64 @@ private fun ReadyContent(
         Row(Modifier.fillMaxSize()) {
             SpaceList(spaces, space?.id, spaceLabel, controls, onSelectSpace)
             VerticalDivider()
-            if (space == null) {
-                Message(stringResource(R.string.workspace_no_spaces))
-            } else {
-                Column(Modifier.fillMaxSize()) {
-                    TabBar(space, tab?.id, controls, { selectedTabs[space.id] = it }) {
-                        actions.createTab(space.id, WorkspaceNames.newTabFolder(space, tab, state::cwdOf))
-                    }
-                    HorizontalDivider()
-                    if (tab == null) {
-                        Message(stringResource(R.string.workspace_no_tabs))
-                    } else {
-                        val focusPane = agents.focus?.location?.takeIf { it.tabId == tab.id }?.paneId
-                        TabPanes(space.id, tab, state, controls, links.host, focusPane)
-                    }
+            Box(Modifier.fillMaxSize()) {
+                SpaceContent(SpaceRef(space, tab, state), controls, links, peek == null) {
+                    selectedTabs[it.first] = it.second
                 }
+                PeekOver(SpaceRef(space, tab, state), actions, links)
             }
         }
     }
 
     prompt?.let { PromptDialog(it, actions) { prompt = null } }
+}
+
+/** The selected space and tab (none when null), with the core state they show. */
+private class SpaceRef(val space: Space?, val tab: Tab?, val state: WorkspaceState.Ready)
+
+/** Tabs and panes of the selected space; [active] is false while a peek over them has the keyboard. */
+@Composable
+private fun SpaceContent(
+    ref: SpaceRef,
+    controls: Controls,
+    links: WorkspaceLinks,
+    active: Boolean,
+    onSelectTab: (Pair<String, String>) -> Unit
+) {
+    val space = ref.space
+    val tab = ref.tab
+    val state = ref.state
+    if (space == null) {
+        Message(stringResource(R.string.workspace_no_spaces))
+        return
+    }
+    Column(Modifier.fillMaxSize()) {
+        TabBar(space, tab?.id, controls, { onSelectTab(space.id to it) }) {
+            controls.actions.createTab(space.id, WorkspaceNames.newTabFolder(space, tab, state::cwdOf))
+        }
+        HorizontalDivider()
+        if (tab == null) {
+            Message(stringResource(R.string.workspace_no_tabs))
+        } else {
+            val focusPane = links.agents.focus?.location?.takeIf { it.tabId == tab.id }?.paneId
+            TabPanes(space.id, tab, state, controls, links.host, PaneFocusRequest(focusPane, active))
+        }
+    }
+}
+
+/**
+ * The agent in peek over the selected tab, if any; once a pane shows its terminal (kept as tab, for one) the
+ * peek closes.
+ */
+@Composable
+private fun PeekOver(ref: SpaceRef, actions: WorkspaceActions, links: WorkspaceLinks) {
+    val link = links.agents.peek
+    val peek = link.request ?: return
+    val shown = ref.state.workspace.shows(peek.address)
+    LaunchedEffect(peek, shown) { if (shown) link.onClose() }
+    if (shown) return
+    val keep = ref.space?.let { s -> { actions.keepAsTab(s.id, peek.address) } }
+    Peek(peek, links.host, keep, link.onClose)
 }
 
 /** The selected tab of each space (space id to tab id), kept with the window's saved state. */

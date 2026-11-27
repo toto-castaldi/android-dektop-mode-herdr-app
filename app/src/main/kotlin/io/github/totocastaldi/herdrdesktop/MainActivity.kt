@@ -24,8 +24,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import io.github.totocastaldi.herdrdesktop.agents.AgentSidebar
 import io.github.totocastaldi.herdrdesktop.agents.PaneFocus
+import io.github.totocastaldi.herdrdesktop.agents.PeekRequest
 import io.github.totocastaldi.herdrdesktop.machines.LocalNetworkPermissionRequest
 import io.github.totocastaldi.herdrdesktop.machines.MachinesScreen
+import io.github.totocastaldi.herdrdesktop.workspace.AgentRequests
 import io.github.totocastaldi.herdrdesktop.workspace.WindowOptions
 import io.github.totocastaldi.herdrdesktop.workspace.WorkspaceScreen
 
@@ -54,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private fun Content(container: AppContainer, target: WindowTarget) {
         var openMachine by rememberSaveable { mutableStateOf(target.machineId) }
         var focus by remember { mutableStateOf<PaneFocus?>(null) }
+        var peek by remember { mutableStateOf<PeekRequest?>(null) }
         val open = openMachine
         Row(Modifier.fillMaxSize()) {
             Box(Modifier.weight(1f)) {
@@ -66,14 +69,23 @@ class MainActivity : ComponentActivity() {
                             startActivity(windowIntent(this@MainActivity, WindowTarget(open, space)))
                         }
                     )
-                    WorkspaceScreen(container, open, focus, window, onBack = { openMachine = null })
+                    val agents = AgentRequests(focus, peek) { peek = null }
+                    WorkspaceScreen(container, open, agents, window, onBack = { openMachine = null })
                 }
             }
             VerticalDivider()
-            AgentSidebar(container) {
-                openMachine = it.machineId
-                focus = it
-            }
+            AgentSidebar(
+                container,
+                onOpen = {
+                    openMachine = it.machineId
+                    peek = null
+                    focus = it
+                },
+                onPeek = {
+                    openMachine = it.machineId
+                    peek = it
+                }
+            )
         }
         // Runtime permissions need an activity: asked here for the machines waiting for it.
         val statuses by container.connections.statuses.collectAsState()

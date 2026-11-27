@@ -61,8 +61,9 @@ internal fun TabPanes(
     state: WorkspaceState.Ready,
     controls: Controls,
     host: PaneHost?,
-    focusPane: String? = null
+    focusRequest: PaneFocusRequest = PaneFocusRequest()
 ) {
+    val focusPane = focusRequest.pane
     val leaves = PaneLayout.leaves(tab.root)
     var focused by remember(tab.id) { mutableStateOf(leaves.firstOrNull()?.id) }
     if (leaves.none { it.id == focused }) focused = leaves.lastOrNull()?.id
@@ -92,11 +93,31 @@ internal fun TabPanes(
     }
     // A pane chosen in the agents sidebar takes the focus.
     LaunchedEffect(focusPane) { focusPane?.takeIf { id -> leaves.any { it.id == id } }?.let { focused = it } }
-    LaunchedEffect(focused) { focused?.let { requesters[it] }?.let { runCatching { it.requestFocus() } } }
+    // Also when a peek over the tab closes: the keyboard goes back to the focused pane.
+    LaunchedEffect(focused, focusRequest.active) {
+        if (focusRequest.active) focused?.let { requesters[it] }?.let { runCatching { it.requestFocus() } }
+    }
 
     val focus = PaneFocusState(focused, requesters) { focused = it }
     val scope = PaneScope(TabRef(spaceId, tab, state), controls, host, terminals, focus)
     Box(Modifier.fillMaxSize()) { scope.Node(tab.root, Modifier.fillMaxSize()) }
+}
+
+/**
+ * The pane chosen in the agents sidebar ([pane], none when null) and whether the tab may take the keyboard
+ * ([active] is false while a peek is open over it).
+ */
+internal class PaneFocusRequest(val pane: String? = null, val active: Boolean = true)
+
+/** The message shown over a terminal whose program ended or that could not be attached; null while live. */
+@Composable
+internal fun terminalMessage(status: PaneTerminalState): String? = when (status) {
+    PaneTerminalState.Attaching, PaneTerminalState.Live -> null
+
+    is PaneTerminalState.Ended -> status.exitCode?.let { stringResource(R.string.pane_ended_code, it) }
+        ?: stringResource(R.string.pane_ended, status.reason.orEmpty())
+
+    is PaneTerminalState.Failed -> stringResource(R.string.pane_failed, status.reason)
 }
 
 /** The tab being drawn, with the core state its panes show. */
@@ -256,15 +277,7 @@ private class PaneScope(
                 },
                 frameObserver = host?.frameObserver
             )
-            val message = when (val s = status) {
-                PaneTerminalState.Attaching, PaneTerminalState.Live -> null
-
-                is PaneTerminalState.Ended -> s.exitCode?.let { stringResource(R.string.pane_ended_code, it) }
-                    ?: stringResource(R.string.pane_ended, s.reason.orEmpty())
-
-                is PaneTerminalState.Failed -> stringResource(R.string.pane_failed, s.reason)
-            }
-            message?.let {
+            terminalMessage(status)?.let {
                 Text(
                     it,
                     color = MaterialTheme.colorScheme.onErrorContainer,

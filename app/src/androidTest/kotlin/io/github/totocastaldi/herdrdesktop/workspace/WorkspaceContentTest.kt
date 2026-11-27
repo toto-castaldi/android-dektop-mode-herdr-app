@@ -2,6 +2,9 @@ package io.github.totocastaldi.herdrdesktop.workspace
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -11,6 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.totocastaldi.herdrdesktop.R
+import io.github.totocastaldi.herdrdesktop.agents.PeekRequest
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Axis
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Space
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.TerminalInfo
@@ -61,6 +65,10 @@ class WorkspaceContentTest {
 
         override fun closeTab(spaceId: String, tabId: String) {
             calls += "closeTab $spaceId $tabId"
+        }
+
+        override fun keepAsTab(spaceId: String, address: String) {
+            calls += "keepAsTab $spaceId $address"
         }
 
         override fun splitPane(spaceId: String, tabId: String, paneId: String, axis: Axis, folder: String?) {
@@ -195,6 +203,49 @@ class WorkspaceContentTest {
         }
         rule.onNodeWithText(text(R.string.workspace_terminal, "t3", "/srv")).assertIsDisplayed()
         rule.onNodeWithText(text(R.string.workspace_new_window)).assertDoesNotExist()
+    }
+
+    @Test
+    fun peekOpensOverTheCurrentTabAndClosingLeavesItAsItWas() {
+        var peek by mutableStateOf<PeekRequest?>(PeekRequest("m1", "t9", "worker"))
+        rule.setContent {
+            MaterialTheme {
+                val links = WorkspaceLinks(AgentLink(peek = AgentPeek(peek) { peek = null }))
+                WorkspaceContent("walle", state, actions, {}, links)
+            }
+        }
+        rule.onNodeWithTag("tab-1").performClick()
+        rule.onNodeWithTag("peek").assertIsDisplayed()
+        rule.onNodeWithText(text(R.string.peek_title, "worker", "t9")).assertIsDisplayed()
+
+        rule.onNodeWithTag("peek-close").performClick()
+        rule.onNodeWithTag("peek").assertDoesNotExist()
+        rule.onNodeWithText(text(R.string.workspace_terminal, "t2", "/var/log")).assertIsDisplayed()
+        assertEquals(emptyList<String>(), calls)
+    }
+
+    @Test
+    fun keepAsTabAddsTheAgentToTheCurrentSpaceAndThePeekClosesOnceAPaneShowsIt() {
+        var current by mutableStateOf(state)
+        var peek by mutableStateOf<PeekRequest?>(PeekRequest("m1", "t9", "worker"))
+        rule.setContent {
+            MaterialTheme {
+                val links = WorkspaceLinks(AgentLink(peek = AgentPeek(peek) { peek = null }))
+                WorkspaceContent("walle", current, actions, {}, links)
+            }
+        }
+        rule.onNodeWithText("Server").performClick()
+        rule.onNodeWithTag("peek-keep").performClick()
+        assertEquals(listOf("keepAsTab sp2 t9"), calls)
+
+        // The core's answer: the new tab of the space shows the agent.
+        val kept = WorkspaceEdits.addTab(current.workspace, "sp2", WorkspaceEdits.singlePaneTab("tb9", "p9", "t9"))
+        current =
+            current.copy(workspace = kept, terminals = current.terminals + ("t9" to TerminalInfo("t9", "/srv", true)))
+        rule.waitForIdle()
+        assertEquals(null, peek)
+        rule.onNodeWithTag("peek").assertDoesNotExist()
+        rule.onNodeWithText(text(R.string.workspace_terminal, "t9", "/srv")).assertIsDisplayed()
     }
 
     @Test
