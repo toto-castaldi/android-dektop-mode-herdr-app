@@ -1,8 +1,11 @@
 package io.github.totocastaldi.herdrdesktop.coreclient.workspace
 
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.AgentsManager
+import io.github.totocastaldi.herdrdesktop.coreclient.agents.Placement
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.CoreRpc
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +34,8 @@ sealed interface WorkspaceState {
  * Keeps, for every connected machine, the spaces and tabs read from its core. Every session (also after
  * a reconnection) loads them again from the core; actions run one at a time per machine and the state
  * shown is the core's answer, never a local guess. The first read of a session first moves into the app's
- * document the app's spaces left in its old document or in the desktop app's one ([migrate]).
+ * document the app's spaces left in its old document or in the desktop app's one ([migrate]). After every action
+ * the document follows the labels of the live terminals ([adopt]).
  */
 class WorkspaceManager(
     private val sessions: StateFlow<Map<String, CoreRpc>>,
@@ -50,6 +54,19 @@ class WorkspaceManager(
 
     /** Reads the document and the terminals again, for example to show current folders. */
     fun refresh(machineId: String) = perform(machineId) { document.load() }
+
+    /**
+     * Reads a machine again whenever the app's space and tab labels of its live terminals change (the core's
+     * events, [AgentsManager.placements]), so that a terminal an agent places in a space, or takes out of it,
+     * shows up without waiting for the next [refresh].
+     */
+    fun follow(placements: Flow<Map<String, Map<String, Placement>>>) = scope.launch {
+        var previous = emptyMap<String, Map<String, Placement>>()
+        placements.collect { all ->
+            all.forEach { (machineId, labels) -> if (previous[machineId] != labels) refresh(machineId) }
+            previous = all
+        }
+    }
 
     private fun flow(machineId: String) =
         synchronized(states) { states.getOrPut(machineId) { MutableStateFlow(WorkspaceState.Unavailable) } }
@@ -88,8 +105,11 @@ class WorkspaceManager(
             // A session replaced or closed meanwhile no longer speaks for the machine.
             val current = { sessions.value[machineId] === rpc }
             try {
-                val snapshot = client.action()
-                val terminals = client.terminals.list()
+                val acted = client.action()
+                var terminals = client.terminals.list()
+                // Terminals that agents placed in the app's spaces, or took out of them (REQ-WS-003).
+                val (snapshot, labelled) = client.adopt(acted, terminals)
+                if (labelled) terminals = client.terminals.list()
                 if (current()) state.value = WorkspaceState.Ready(snapshot.workspace, terminals)
             } catch (e: CancellationException) {
                 throw e

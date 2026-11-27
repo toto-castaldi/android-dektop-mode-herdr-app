@@ -65,6 +65,28 @@ class AgentsManagerTest {
         agents.value.getValue(machine).first { it.address == address }.state
 
     @Test
+    fun `placements follow the app's space labels of the live terminals, also of terminals that are not agents`() =
+        runTest {
+            val manager = AgentsManager(sessions, backgroundScope)
+            sessions.value = mapOf("m1" to core)
+            runCurrent()
+            val placed = Placement(AgentEventsJson.SPACE, null)
+            assertEquals(mapOf("t1" to placed, "t2" to placed), manager.placements.value.getValue("m1"))
+
+            core.emit(AgentEventsJson.labels(101, "t2", 0, space = null))
+            core.emit(AgentEventsJson.event(102, "created", "t3", terminal("t3", space = "sp9")))
+            runCurrent()
+
+            assertEquals(
+                mapOf("t1" to placed, "t2" to Placement(null, null), "t3" to Placement("sp9", null)),
+                manager.placements.value.getValue("m1")
+            )
+            sessions.value = emptyMap()
+            runCurrent()
+            assertTrue(manager.placements.value.isEmpty())
+        }
+
+    @Test
     fun `agents come from the subscription and update without reloading`() = runTest {
         val manager = AgentsManager(sessions, backgroundScope)
         sessions.value = mapOf("m1" to core)

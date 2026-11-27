@@ -55,6 +55,9 @@ data class AgentRecord(
         /** The app's space label, the same as `CoreTerminals.SPACE_LABEL`. */
         const val APP_SPACE_LABEL = "herdr-desktop-android.space"
 
+        /** The app's tab label, the same as `CoreTerminals.TAB_LABEL`. */
+        const val APP_TAB_LABEL = "herdr-desktop-android.tab"
+
         fun from(o: JsonObject): AgentRecord? {
             val address = o.string("address") ?: return null
             val base = AgentRecord(
