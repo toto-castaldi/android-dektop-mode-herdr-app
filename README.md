@@ -17,6 +17,50 @@ In sviluppo verso la v0.1.0. L'app si apre come finestra ridimensionabile in Des
 python3 .agents/tools/backlog.py status
 ```
 
+## Comandi degli agenti all'app
+
+Un agente in un terminale di un core collegato può chiedere all'app di aprire spazi, tab e pane o di mostrare un agente, come con `herdr-app do` sull'app desktop. La richiesta passa dal core (un'etichetta sul terminale dell'agente), quindi funziona anche con core remoti; con più dispositivi collegati la esegue uno solo. Azioni: `space.new` (`name`, `folder`, `argv`), `tab.new` (`name`, `space`, `folder`, `argv`), `pane.split` (`direction` `right`/`down`, `pane`, `argv`), `space.select` e `tab.select` (`id` oppure `index` da 1), `agent.focus` (`terminal`); le altre rispondono `unsupported`. Dettagli in [`docs/design/integrations.md`](docs/design/integrations.md) (Comandi degli agenti).
+
+Ricetta per bash, da mettere per esempio nelle istruzioni o nel profilo della shell dell'agente; serve solo `hc`, già presente dove gira il core:
+
+```bash
+# hda <azione> ['<argomenti JSON>']: comando di un agente all'app Herdr Desktop for Android
+hda() {
+  local hc id args want re i
+  hc=$(command -v hc || echo "$HOME/.local/bin/hc")
+  id="$HC_TERMINAL_ID-$(date +%s)-$$-$RANDOM"
+  args=${2:-'{}'}
+  want="\"herdr-desktop-android.re\":\"{\\\"id\\\":\\\"$id\\\""
+  "$hc" label "$HC_TERMINAL_ID" "herdr-desktop-android.do={\"id\":\"$id\",\"action\":\"$1\",\"args\":$args}" >/dev/null || return 1
+  if command -v timeout >/dev/null; then
+    grep -m1 -q -F "$want" <(timeout 10 "$hc" events --terminal "$HC_TERMINAL_ID" --json)
+  else # senza timeout (per esempio macOS): controlla ogni 0,2 s per 10 s
+    for i in $(seq 50); do
+      "$hc" get "$HC_TERMINAL_ID" --json | grep -q -F "$want" && break
+      sleep 0.2
+    done
+  fi
+  re=$("$hc" get "$HC_TERMINAL_ID" --json |
+    sed -nE 's/.*"herdr-desktop-android\.re":"((\\.|[^"\\])*)".*/\1/p' | sed -e 's/\\"/"/g' -e 's/\\\\/\\/g')
+  case $re in
+    "{\"id\":\"$id\",\"ok\":true"*) echo "$re" ;;
+    "{\"id\":\"$id\""*) echo "$re" >&2; return 1 ;;
+    *) "$hc" label "$HC_TERMINAL_ID" "herdr-desktop-android.do=" >/dev/null
+       echo '{"ok":false,"error":"timeout","message":"nessuna risposta dall'"'"'app"}' >&2; return 1 ;;
+  esac
+}
+```
+
+Esempi:
+
+```bash
+hda space.new '{"name":"Web","folder":"/srv/web"}'   # {"id":"…","ok":true,"result":{"space":"sp…","tab":"tb…","terminal":"t9"}}
+hda pane.split '{"direction":"right","argv":["htop"]}' # divide il pane dell'agente
+hda agent.focus "{\"terminal\":\"$HC_TERMINAL_ID\"}"   # mostra questo agente nell'app
+```
+
+La funzione stampa la risposta ed esce con 0 se `ok` è vero, altrimenti stampa l'errore (`unsupported`, `invalid_args`, `not_found`, `no_window`, `conflict`, `failed`) ed esce con 1. Se in 10 secondi nessun dispositivo risponde (app chiusa, nessuna finestra sulla macchina per selezioni e focus) toglie la richiesta, stampa l'errore `timeout` ed esce con 1. Dove manca `timeout` di coreutils (per esempio macOS) controlla la risposta ogni 0,2 secondi. Le etichette sono leggibili da chi legge il terminale: non mettere segreti negli argomenti.
+
 ## Prerequisiti
 
 - JDK 21 (per esempio OpenJDK 21 della distribuzione).

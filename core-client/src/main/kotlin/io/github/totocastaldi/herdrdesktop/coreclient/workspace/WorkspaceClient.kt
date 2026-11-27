@@ -27,28 +27,11 @@ class WorkspaceClient(internal val rpc: CoreRpc, internal val ids: IdGenerator =
      * Another client of the app may place the labelled terminal itself before the write (`Workspace.shows`):
      * then the document is left as it is.
      */
-    suspend fun createSpace(folder: String? = null): WorkspaceSnapshot {
-        val spaceId = ids.next(SPACE_PREFIX)
-        val tabId = ids.next(TAB_PREFIX)
-        val terminal = terminals.runShell(folder, spaceId, tabId)
-        return endOnFailure(terminal) {
-            val space = Space(spaceId, tabs = listOf(newTab(tabId, terminal.address)))
-            document.update { if (it.shows(terminal.address)) it else WorkspaceEdits.addSpace(it, space) }
-        }
-    }
+    suspend fun createSpace(folder: String? = null): WorkspaceSnapshot = startSpace(NewTerminal(folder)).snapshot
 
     /** New tab at the end of [spaceId], running the core's shell in [folder] (see [WorkspaceNames.newTabFolder]). */
-    suspend fun createTab(spaceId: String, folder: String?): WorkspaceSnapshot {
-        val tabId = ids.next(TAB_PREFIX)
-        val terminal = terminals.runShell(folder, spaceId, tabId)
-        return endOnFailure(terminal) {
-            val tab = newTab(tabId, terminal.address)
-            document.update { ws ->
-                check(ws.space(spaceId) != null) { "Space $spaceId no longer exists" }
-                if (ws.shows(terminal.address)) ws else WorkspaceEdits.addTab(ws, spaceId, tab)
-            }
-        }
-    }
+    suspend fun createTab(spaceId: String, folder: String?): WorkspaceSnapshot =
+        startTab(spaceId, NewTerminal(folder)).snapshot
 
     suspend fun renameSpace(spaceId: String, name: String) =
         document.update { WorkspaceEdits.renameSpace(it, spaceId, name) }

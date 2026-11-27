@@ -29,13 +29,19 @@ class CoreTerminals(private val rpc: CoreRpc) {
     }
 
     /**
-     * Starts the core's shell in [folder] (the core's default when null) for tab [tabId] of space [spaceId]:
-     * labelled with their ids, with the app's own labels so that the desktop app does not adopt it, and as
-     * started by this app.
+     * Starts [argv] (the core's shell when empty) in [folder] (the core's default when null) for tab [tabId]
+     * of space [spaceId]: labelled with their ids, with the app's own labels so that the desktop app does not
+     * adopt it, and as started by this app.
      */
-    suspend fun runShell(folder: String?, spaceId: String, tabId: String): TerminalInfo {
+    suspend fun runShell(
+        folder: String?,
+        spaceId: String,
+        tabId: String,
+        argv: List<String> = emptyList()
+    ): TerminalInfo {
         val params = buildJsonObject {
             if (!folder.isNullOrBlank()) put("cwd", folder)
+            if (argv.isNotEmpty()) put("argv", JsonArray(argv.map(::JsonPrimitive)))
             putJsonObject("labels") {
                 put(APP_LABEL, APP_LABEL_VALUE)
                 put(SPACE_LABEL, spaceId)

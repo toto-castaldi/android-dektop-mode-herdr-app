@@ -19,10 +19,11 @@ Add a topic by copying `_TEMPLATE.md` to `<topic>.md` (lowercase kebab-case); sp
 | Terminale | libghostty-vt via JNI nel modulo `terminal`, renderer proprio in Compose ridisegnato al vsync | Stesso emulatore dell'app desktop e di herdr-core, sequenze degli agenti comprese; dettagli e alternative in ADR-001 |
 | Segreti | Chiavi SSH nell'Android Keystore | Le chiavi private non lasciano il dispositivo (REQ-NFR-001) |
 | Quality gate | ktlint, detekt, compilazione Kotlin, test JUnit su JVM, build dell'APK | Controlli rapidi senza dispositivo; i test sul dispositivo sono separati |
+| Comandi degli agenti | Etichette `herdr-desktop-android.do`/`.re` sul terminale dell'agente, claim a compare-and-set sul documento `herdr-desktop-android.claims` (SPIKE-004) | Solo core e `hc` già presenti, esecuzione unica con più dispositivi, nessun server intermedio (REQ-AGT-003) |
 | Licenza | Apache-2.0 | Stessa licenza di Herdr; esclude dipendenze GPL incluse nell'app |
 
 ## Open decisions
 
 Decisions still to be closed and the backlog items that will close them:
 
-- Canale e forma dei comandi degli agenti verso l'app (equivalente di `herdr-app do` per agenti su core remoti): SPIKE-004 raccomanda etichette `herdr-desktop-android.do`/`.re` sul terminale dell'agente con claim a compare-and-set su un documento del core (`docs/spikes/SPIKE-004-comandi-agenti.md`); il design viene registrato da US-015, che implementa i comandi.
+Nessuna.

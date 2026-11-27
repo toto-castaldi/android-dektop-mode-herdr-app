@@ -14,6 +14,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+/** The machine has no session: nothing can be done on its core. */
+class NotConnectedException(machineId: String) : IllegalStateException("Machine $machineId is not connected")
+
 /** Spaces and tabs of a machine as the app shows them. */
 sealed interface WorkspaceState {
     /** The machine is not connected: nothing is shown, nothing is changed. */
@@ -98,19 +101,37 @@ class WorkspaceManager(
      * not connected is left alone.
      */
     fun perform(machineId: String, action: suspend WorkspaceClient.() -> WorkspaceSnapshot) = scope.launch {
+        try {
+            act(machineId) { action() to Unit }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (
+            @Suppress("TooGenericExceptionCaught", "SwallowedException") e: Exception
+        ) {
+            // Already reported in the state by act.
+        }
+    }
+
+    /**
+     * Like [perform], but waits for [action] and returns its result (agent commands, REQ-AGT-003): the
+     * document it returns is published as for [perform], a failure is reported in the state and thrown.
+     * Throws [NotConnectedException] when the machine has no session.
+     */
+    suspend fun <T> act(machineId: String, action: suspend WorkspaceClient.() -> Pair<WorkspaceSnapshot, T>): T =
         lock(machineId).withLock {
-            val rpc = sessions.value[machineId] ?: return@withLock
+            val rpc = sessions.value[machineId] ?: throw NotConnectedException(machineId)
             val client = WorkspaceClient(rpc, ids)
             val state = flow(machineId)
             // A session replaced or closed meanwhile no longer speaks for the machine.
             val current = { sessions.value[machineId] === rpc }
             try {
-                val acted = client.action()
+                val (acted, result) = client.action()
                 var terminals = client.terminals.list()
                 // Terminals that agents placed in the app's spaces, or took out of them (REQ-WS-003).
                 val (snapshot, labelled) = client.adopt(acted, terminals)
                 if (labelled) terminals = client.terminals.list()
                 if (current()) state.value = WorkspaceState.Ready(snapshot.workspace, terminals)
+                result
             } catch (e: CancellationException) {
                 throw e
             } catch (
@@ -118,9 +139,9 @@ class WorkspaceManager(
             ) {
                 // RPC errors, a dropped session (ProtocolException, IOException) or a vanished space.
                 if (current()) fail(state, e.message ?: e.javaClass.simpleName)
+                throw e
             }
         }
-    }
 
     /** Moves the app's spaces into its document; a failure is retried at the next session. */
     private suspend fun WorkspaceClient.moveOwnSpaces() {

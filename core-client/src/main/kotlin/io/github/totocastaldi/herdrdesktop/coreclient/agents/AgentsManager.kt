@@ -35,7 +35,10 @@ data class Placement(val spaceId: String?, val tabId: String?)
  * turns Done into Idle.
  */
 class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, private val scope: CoroutineScope) {
-    private val snapshots = MutableStateFlow<Map<String, AgentSnapshot>>(emptyMap())
+    private val snapshotsState = MutableStateFlow<Map<String, AgentSnapshot>>(emptyMap())
+
+    /** By machine id, every terminal of its core with its labels, as the events keep it (agents' commands). */
+    val snapshots: StateFlow<Map<String, AgentSnapshot>> = snapshotsState.asStateFlow()
     private val followers = mutableMapOf<String, Pair<CoreRpc, Job>>()
 
     /** Per machine and viewer (one per window), the terminals on screen. */
@@ -114,7 +117,7 @@ class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, priva
     }
 
     private fun publish(machineId: String, snapshot: AgentSnapshot?) {
-        snapshots.update { if (snapshot == null) it - machineId else it + (machineId to snapshot) }
+        snapshotsState.update { if (snapshot == null) it - machineId else it + (machineId to snapshot) }
         agentsState.update { all ->
             if (snapshot == null) {
                 all - machineId
