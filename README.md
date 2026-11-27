@@ -54,6 +54,9 @@ adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.workspac
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.agHost=<host> \
   -Pandroid.testInstrumentationRunnerArguments.agUser=<utente>                    # sidebar degli agenti e peek su un core reale (agPort, agHostKey, agDisplay, agDeleteKey)
+adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.agents.AdoptionE2ETest \
+  -e adHost <host> -e adUser <utente> \
+  io.github.totocastaldi.herdrdesktop.test/androidx.test.runner.AndroidJUnitRunner   # terminali avviati dagli agenti negli spazi (adPort, adHostKey, adDisplay; adClaude=true con Claude Code nel pane)
 ./gradlew :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=io.github.totocastaldi.herdrdesktop.WindowsE2ETest   # finestre su monitor esterno in Desktop Mode (winDisplay; con wsHost, wsUser e wsHostKey anche due finestre su un core reale; wsKey=write crea solo la chiave). Con am instrument -w, senza disinstallare
 ./gradlew installDebug                                                            # installa l'APK di debug sul dispositivo

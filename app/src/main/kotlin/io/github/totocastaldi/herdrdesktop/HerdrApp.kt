@@ -58,7 +58,7 @@ class AppContainer(app: Application) {
     val workspaces = WorkspaceManager(connections.sessions, scope)
 
     /** Agents of the connected machines and their states, from the cores' events. */
-    val agents = AgentsManager(connections.sessions, scope)
+    val agents = AgentsManager(connections.sessions, scope).also { workspaces.follow(it.placements) }
 
     /**
      * Told about every frame drawn by a terminal pane; set only by the measurements of REQ-NFR-003

@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "User Story",
   "priority": "P1",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "us/US-013-terminali-avviati-dagli-agenti",
   "dependencies": [
     "US-012",
     "US-006",
@@ -29,5 +30,8 @@
   ],
   "remarks": [
     "Criteri riscritti sulle etichette herdr-desktop-android.space/.tab dopo la separazione dall'app desktop (US-014)."
-  ]
+  ],
+  "outcome": "Adozione dei terminali per etichette (WorkspaceAdoption.kt, WorkspaceManager.adopt dopo ogni azione e follow sugli eventi via AgentsManager.placements): herdr-desktop-android.space di uno spazio noto + .tab di una sua tab -> nuovo pane accanto all'ultimo; senza .tab o con tab sconosciuta -> nuova tab (con l'id dell'etichetta se libero), poi etichette dell'app scritte e herdr.space/.tab tolte come con Tieni come tab; spazio sconosciuto e herdr.space/.tab ignorati; pane il cui terminale vivo perde .space tolto dal documento senza kill. Design aggiornato (integrations.md). Test unitari: WorkspaceAdoptionTest (12 casi su FakeCore, compresi sessione dopo app chiusa e rilettura su eventi), AgentsManagerTest placements. Verificato sul Pixel 11 Pro in Desktop Mode (display 10) con herdr-core 0.1.20 reale (AdoptionE2ETest): la shell di un pane legge HC_TERMINAL_ID e le etichette di spazio e tab, avvia worker con hc run --label (nuova tab e nuovo pane nella tab), hc send/hc wait funzionano, togliere l'etichetta toglie i pane lasciando i terminali vivi; con adClaude=true Claude Code (claude -p) in un pane avvia il worker, che compare in una nuova tab, e lo coordina con hc send e hc wait. Logcat: l'app non logga chiavi né contenuto dei terminali (solo il messaggio d'errore del TestRunner di un tentativo fallito del test). Nessuna nuova dipendenza.",
+  "changelog": "Added: i terminali avviati dagli agenti con le etichette di uno spazio dell'app compaiono in quello spazio, in un pane o in una nuova tab",
+  "closed_at": "2026-11-27"
 }

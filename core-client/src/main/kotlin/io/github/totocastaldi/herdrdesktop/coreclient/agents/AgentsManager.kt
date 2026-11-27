@@ -25,6 +25,9 @@ data class AgentView(
     val parent: String?
 )
 
+/** The app's space and tab labels of a terminal, null when missing. */
+data class Placement(val spaceId: String?, val tabId: String?)
+
 /**
  * Agents of the app's spaces on every connected machine (REQ-AGT-001): for each session it subscribes to
  * the core's events, keeps the snapshot up to date and takes a fresh one at every new session. The shown
@@ -44,6 +47,14 @@ class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, priva
 
     /** Agents by machine id, in the core's order; a machine without a session has none. */
     val agents: StateFlow<Map<String, List<AgentView>>> = agentsState.asStateFlow()
+
+    private val placementsState = MutableStateFlow<Map<String, Map<String, Placement>>>(emptyMap())
+
+    /**
+     * By machine id, the app's space and tab labels of every live terminal (REQ-WS-003): they change when an
+     * agent starts a terminal in a space of the app or takes one out of it, so that the spaces can follow.
+     */
+    val placements: StateFlow<Map<String, Map<String, Placement>>> = placementsState.asStateFlow()
 
     init {
         scope.launch { sessions.collect(::onSessions) }
@@ -111,8 +122,17 @@ class AgentsManager(private val sessions: StateFlow<Map<String, CoreRpc>>, priva
                 all + (machineId to snapshot.agents.map { it.view(machineId) })
             }
         }
+        placementsState.update { all ->
+            if (snapshot == null) all - machineId else all + (machineId to snapshot.placements())
+        }
         markSeen(machineId)
     }
+
+    private fun AgentSnapshot.placements(): Map<String, Placement> = records.values.filter { it.live }
+        .associate {
+            it.address to
+                Placement(it.labels[AgentRecord.APP_SPACE_LABEL], it.labels[AgentRecord.APP_TAB_LABEL])
+        }
 
     /** Writes `herdr.seen=<turn>` for the agents on screen whose label is missing or lower, once per turn. */
     private fun markSeen(machineId: String) {

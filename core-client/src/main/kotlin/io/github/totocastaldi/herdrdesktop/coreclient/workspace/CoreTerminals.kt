@@ -91,7 +91,7 @@ class CoreTerminals(private val rpc: CoreRpc) {
 
         /** Space and tab of a terminal, by their ids in the app's document. */
         const val SPACE_LABEL = AgentRecord.APP_SPACE_LABEL
-        const val TAB_LABEL = "herdr-desktop-android.tab"
+        const val TAB_LABEL = AgentRecord.APP_TAB_LABEL
 
         /** The desktop app's space and tab labels: never put on the app's terminals (REQ-WS-001). */
         const val DESKTOP_SPACE_LABEL = "herdr.space"
