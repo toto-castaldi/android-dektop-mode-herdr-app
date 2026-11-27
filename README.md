@@ -70,6 +70,38 @@ adb shell am instrument -w -e class io.github.totocastaldi.herdrdesktop.agents.A
 
 L'APK di debug è in `app/build/outputs/apk/debug/app-debug.apk`.
 
+## Build dogfood
+
+Per usare l'app sul dispositivo mentre si sviluppano e testano le build di debug c'è la variante `dogfood`: ottimizzata con R8, non debuggabile, firmata con una chiave propria e con application id `io.github.totocastaldi.herdrdesktop.dogfood`, nome "Herdr Dogfood" e icona arancione. Si installa accanto alla build di debug: reinstallare o testare la build di debug non la tocca, e le sue macchine, chiavi e host key confermate restano separate.
+
+1. Creare una volta la chiave di firma, fuori dal repository (per esempio in `~/.config/herdr-desktop/`, con permessi `600`):
+
+   ```bash
+   mkdir -p ~/.config/herdr-desktop && chmod 700 ~/.config/herdr-desktop
+   keytool -genkeypair -keystore ~/.config/herdr-desktop/dogfood.jks -storetype PKCS12 -alias dogfood \
+     -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Herdr Desktop dogfood"
+   ```
+
+   e un file di proprietà `~/.config/herdr-desktop/dogfood-signing.properties` (permessi `600`), con `storeFile` relativo alla cartella del file:
+
+   ```properties
+   storeFile=dogfood.jks
+   storePassword=<password>
+   keyAlias=dogfood
+   keyPassword=<password>
+   ```
+
+2. Indicare il file a Gradle in `~/.gradle/gradle.properties`: `herdr.dogfood.signing=/home/<utente>/.config/herdr-desktop/dogfood-signing.properties`.
+3. **Fare un backup** di `dogfood.jks` e del file di proprietà: senza la stessa chiave l'aggiornamento richiede di disinstallare la build dogfood, e con essa si perdono le chiavi del Keystore e le macchine configurate.
+4. Compilare e installare, o aggiornare quando si decide di farlo:
+
+   ```bash
+   ./gradlew :app:assembleDogfood
+   adb install -r app/build/outputs/apk/dogfood/app-dogfood.apk
+   ```
+
+Senza `herdr.dogfood.signing` solo `assembleDogfood` si ferma con un messaggio; il quality gate e le build di debug non ne hanno bisogno. Keystore e file di proprietà sono esclusi da `.gitignore` (`*.jks`, `*.keystore`, `keystore.properties`, `*-signing.properties`). Per non toccare la build dogfood, sul dispositivo si usano `adb install -r` della build di debug e `am instrument -w` (o `connectedDebugAndroidTest`, che disinstalla solo la build di debug).
+
 ## Struttura
 
 - `app/` — applicazione Android: UI Compose e Desktop Mode.

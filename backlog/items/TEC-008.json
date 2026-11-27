@@ -6,7 +6,8 @@
   "module": "MOD-001",
   "type": "Task",
   "priority": "P1",
-  "status": "Todo",
+  "status": "Done",
+  "branch": "task/TEC-008-build-dogfood-firmata",
   "dependencies": [],
   "design_references": [
     "design/configuration"
@@ -18,5 +19,8 @@
     "Sul Pixel 11 Pro, dopo adb install -r della build debug e un'esecuzione dei test strumentali, la app dogfood resta installata con macchine, chiavi e host key confermate intatte e si ricollega al core: l'outcome dice come è stato verificato.",
     "README e design/configuration descrivono come creare la chiave di firma, compilare, installare e aggiornare la build dogfood; keystore, password e file di proprietà della firma sono esclusi da .gitignore e assenti da file, commit e log.",
     "Il logcat della variante dogfood non contiene chiavi, password, passphrase né contenuto dei terminali."
-  ]
+  ],
+  "outcome": "Build type dogfood in :app (initWith release, R8 minify e shrink delle risorse, non debuggabile, applicationIdSuffix .dogfood, nome 'Herdr Dogfood' e icona adattiva arancione da app/src/dogfood), firmata da un file di proprietà fuori dal repository indicato da herdr.dogfood.signing; senza chiave solo preDogfoodBuild fallisce con un messaggio, il quality gate passa con e senza chiave. app/proguard-rules.pro tiene intatto lo stack SSH (con R8 pieno l'handshake falliva con protocol error, visto sul Pixel). Verificato sul Pixel 11 Pro in Desktop Mode (monitor esterno): APK firmato (apksigner) e non debuggabile (dumpsys flags), installato accanto alla build debug; aggiunta una macchina remota con la chiave dell'app nel Keystore, confermata la host key (impronta uguale a ssh-keyscan), collegata a herdr-core 0.1.20, aperto uno spazio con terminale funzionante (poi chiuso); aggiornamento con adb install -r della dogfood senza perdita di dati; poi adb install -r della build debug e del test APK e am instrument -w di MainActivityTest e WindowsTest (5 test OK): la dogfood resta installata e, dopo force-stop e riavvio, mostra la stessa macchina e chiave e si ricollega senza richiesta di host key, con lo stato degli spazi letto dal core. Logcat del processo dogfood: solo id macchina e nomi di stato, nessuna chiave, password, host o contenuto dei terminali. README e design/configuration descrivono chiave, compilazione, installazione, aggiornamento e backup della chiave; *.jks, *.keystore, keystore.properties e *-signing.properties in .gitignore.",
+  "changelog": "Added: build dogfood firmata e ottimizzata, installabile accanto alla build di sviluppo con nome e icona propri",
+  "closed_at": "2026-11-27"
 }

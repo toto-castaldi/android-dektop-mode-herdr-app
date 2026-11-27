@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Launcher icon of the dogfood build, distinct from the debug build (system default icon). -->
+    <application
+        android:icon="@mipmap/ic_launcher_dogfood"
+        android:roundIcon="@mipmap/ic_launcher_dogfood" />
+
+</manifest>

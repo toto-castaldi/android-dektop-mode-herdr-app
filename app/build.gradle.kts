@@ -1,4 +1,5 @@
 import io.github.totocastaldi.herdrdesktop.gradle.LegalAssets
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -9,6 +10,13 @@ plugins {
 val legalAssets = tasks.register<LegalAssets>("legalAssets") {
     files.from(rootProject.layout.projectDirectory.files("LICENSE", "NOTICE"))
 }
+
+// Signing of the dogfood build: a properties file outside the repository (storeFile, storePassword, keyAlias,
+// keyPassword), named by the Gradle property herdr.dogfood.signing, e.g. in ~/.gradle/gradle.properties.
+val dogfoodSigningFile: File? =
+    providers.gradleProperty("herdr.dogfood.signing").orNull?.let { file(it) }?.takeIf { it.isFile }
+val dogfoodSigning: Properties? =
+    dogfoodSigningFile?.let { f -> Properties().apply { f.inputStream().use { load(it) } } }
 
 androidComponents {
     onVariants { variant ->
@@ -33,8 +41,46 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (dogfoodSigning != null) {
+            create("dogfood") {
+                storeFile = dogfoodSigningFile!!.resolveSibling(dogfoodSigning.getProperty("storeFile"))
+                storePassword = dogfoodSigning.getProperty("storePassword")
+                keyAlias = dogfoodSigning.getProperty("keyAlias")
+                keyPassword = dogfoodSigning.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        // Optimized, signed build installed beside the debug one, so workers can reinstall and test the debug app
+        // while the user keeps working with this one (own application id, name and icon).
+        create("dogfood") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".dogfood"
+            versionNameSuffix = "-dogfood"
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            matchingFallbacks += "release"
+            signingConfig = signingConfigs.findByName("dogfood")
+        }
+    }
+
     buildFeatures {
         compose = true
+    }
+}
+
+// Without the signing key the dogfood build stops with a clear message; debug builds and the gate are unaffected.
+if (dogfoodSigning == null) {
+    tasks.matching { it.name == "preDogfoodBuild" }.configureEach {
+        doFirst {
+            throw GradleException(
+                "Dogfood signing not configured: set herdr.dogfood.signing to the signing properties file (README)."
+            )
+        }
     }
 }
 
