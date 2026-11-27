@@ -84,7 +84,7 @@ class WorkspaceClient(internal val rpc: CoreRpc, internal val ids: IdGenerator =
         return snapshot
     }
 
-    private fun newTab(tabId: String, terminal: String): Tab =
+    internal fun newTab(tabId: String, terminal: String): Tab =
         WorkspaceEdits.singlePaneTab(tabId, ids.next(PANE_PREFIX), terminal)
 
     /** Runs [block]; if it fails, the just started [terminal] is ended so that no terminal is left without a tab. */

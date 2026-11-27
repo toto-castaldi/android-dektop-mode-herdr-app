@@ -153,6 +153,9 @@
     <string name="agents_none">Nessun agente sulle macchine collegate.</string>
     <string name="agents_where">%1$s · %2$s</string>
     <string name="agents_no_pane">%1$s · %2$s · senza pane</string>
+    <string name="peek_title">Peek · %1$s · %2$s</string>
+    <string name="peek_keep">Tieni come tab</string>
+    <string name="peek_close">Chiudi</string>
     <string name="agent_working">Working</string>
     <string name="agent_blocked">Blocked</string>
     <string name="agent_done">Done</string>

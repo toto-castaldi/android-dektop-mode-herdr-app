@@ -67,3 +67,18 @@ private fun Workspace.changePanes(spaceId: String, tabId: String, change: (PaneN
         }
     }
 )
+
+/**
+ * Keeps the running terminal [address] (an agent shown in peek, REQ-AGT-002) as a new tab at the end of
+ * [spaceId]: nothing is started or ended. The tab is written first, then the terminal gets the app's space and
+ * tab labels; a document that already shows it is left as it is.
+ */
+suspend fun WorkspaceClient.keepAsTab(spaceId: String, address: String): WorkspaceSnapshot {
+    val tab = newTab(ids.next(WorkspaceClient.TAB_PREFIX), address)
+    val snapshot = document.update { ws ->
+        check(ws.space(spaceId) != null) { "Space $spaceId no longer exists" }
+        if (ws.shows(address)) ws else WorkspaceEdits.addTab(ws, spaceId, tab)
+    }
+    snapshot.workspace.paneOf(address)?.let { terminals.place(address, it.spaceId, it.tabId) }
+    return snapshot
+}

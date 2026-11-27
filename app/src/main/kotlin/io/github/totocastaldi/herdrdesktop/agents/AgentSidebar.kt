@@ -35,12 +35,21 @@ import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
 /** Request to bring a pane to the front; a new instance every time, so selecting the same agent again works. */
 class PaneFocus(val machineId: String, val location: PaneLocation)
 
+/**
+ * Request to show [address] of [machineId] in peek over the current tab (REQ-AGT-002); a new instance every
+ * time, so selecting the same agent again opens it again.
+ */
+class PeekRequest(val machineId: String, val address: String, val name: String)
+
 /** One row of the sidebar: the agent, its machine's name and its pane, if it has one. */
 class AgentRow(val agent: AgentView, val machineName: String, val pane: PaneLocation?)
 
-/** Agents of every connected machine with their state (REQ-AGT-001); selecting one with a pane opens it. */
+/**
+ * Agents of every connected machine with their state (REQ-AGT-001); selecting one with a pane brings it to the
+ * front, selecting one without a pane opens it in peek (REQ-AGT-002).
+ */
 @Composable
-fun AgentSidebar(container: AppContainer, onOpen: (PaneFocus) -> Unit) {
+fun AgentSidebar(container: AppContainer, onOpen: (PaneFocus) -> Unit, onPeek: (PeekRequest) -> Unit) {
     val agents by container.agents.agents.collectAsState()
     val machines by container.machines.machines.collectAsState()
     val rows = machines.flatMap { machine ->
@@ -48,7 +57,15 @@ fun AgentSidebar(container: AppContainer, onOpen: (PaneFocus) -> Unit) {
         val workspace = (state as? WorkspaceState.Ready)?.workspace
         agents[machine.id].orEmpty().map { AgentRow(it, machine.name, workspace?.paneOf(it.address)) }
     }
-    AgentSidebarContent(rows) { row -> row.pane?.let { onOpen(PaneFocus(row.agent.machineId, it)) } }
+    AgentSidebarContent(rows) { row ->
+        val agent = row.agent
+        val pane = row.pane
+        if (pane != null) {
+            onOpen(PaneFocus(agent.machineId, pane))
+        } else {
+            onPeek(PeekRequest(agent.machineId, agent.address, agent.name))
+        }
+    }
 }
 
 @Composable
@@ -72,7 +89,7 @@ private fun AgentEntry(row: AgentRow, onSelect: (AgentRow) -> Unit) {
     val indent = if (agent.parent != null) 12.dp else 0.dp
     Column(
         Modifier.fillMaxWidth()
-            .clickable(enabled = row.pane != null) { onSelect(row) }
+            .clickable { onSelect(row) }
             .padding(start = indent, top = 2.dp, bottom = 2.dp)
             .testTag("agent-${agent.machineId}-${agent.address}")
     ) {

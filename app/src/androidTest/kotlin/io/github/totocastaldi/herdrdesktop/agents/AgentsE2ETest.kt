@@ -2,7 +2,9 @@ package io.github.totocastaldi.herdrdesktop.agents
 
 import android.app.ActivityOptions
 import android.content.Intent
+import android.view.KeyCharacterMap
 import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -21,8 +23,11 @@ import io.github.totocastaldi.herdrdesktop.coreclient.connection.MachineStatus
 import io.github.totocastaldi.herdrdesktop.coreclient.connection.status
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.Machine
 import io.github.totocastaldi.herdrdesktop.coreclient.machine.MachineAuth
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.CoreTerminals
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.PaneLayout
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.Workspace
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceClient
+import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceCodec
 import io.github.totocastaldi.herdrdesktop.coreclient.workspace.WorkspaceState
 import io.github.totocastaldi.herdrdesktop.workspace.E2eSpaces
 import java.io.File
@@ -34,17 +39,19 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The agents sidebar against a real herdr-core (REQ-AGT-001): `-e agHost <host> -e agUser <user>
- * [-e agPort <port>]`; skipped without them. The test key `e2e-agents` (public part written to
- * `agents-e2e.pub` in the app's external files directory) must be authorized on the host, ideally with a forced
- * command that reaches a separate core session (`HC_SESSION`). Programs report their status with OSC 7501
- * (`printf` in the shell of a tab, and a worker started by it); the test ends the terminals it started.
+ * The agents sidebar and the peek against a real herdr-core (REQ-AGT-001, REQ-AGT-002):
+ * `-e agHost <host> -e agUser <user> [-e agPort <port>]`; skipped without them. The test key `e2e-agents`
+ * (public part written to `agents-e2e.pub` in the app's external files directory) must be authorized on the
+ * host, ideally with a forced command that reaches a separate core session (`HC_SESSION`). Programs report
+ * their status with OSC 7501 (`printf` in the shell of a tab, and a worker started by it); the test ends the
+ * terminals it started.
  * `-e agHostKey SHA256:…` checks the presented host key before confirming it.
  * `-e agDisplay <id>` opens the app on that display (Desktop Mode); `-e agPauseMillis <ms>` holds each step on
  * screen; `-e agDeleteKey true` deletes the test key at the end; `-e agKey write` only creates a new test key
@@ -141,6 +148,67 @@ class AgentsE2ETest {
         step()
     }
 
+    /**
+     * A worker without a pane opens in peek over the current tab (REQ-AGT-002): the user answers it there, closing
+     * the peek leaves the tab and the worker as they were, "keep as tab" makes it a new tab of the space with the
+     * app's labels only, and the desktop app's document is never written.
+     */
+    @Test
+    fun workerWithoutPaneOpensInPeekAndCanBeKeptAsTab() {
+        assumeTrue("agHost and agUser not given", host != null && user != null)
+        val target = connect()
+        val desktopBefore = desktopVersion(target)
+        rule.onNodeWithText(text(R.string.workspace_new_space)).performClick()
+        awaitWorkspace(target) { it.spaces.size == 1 }
+        val space = workspaceOf(target).spaces.single()
+        val tab = space.tabs.single()
+        val shell = tab.terminals.single()
+
+        // A worker of the tab's shell, waiting for an answer: Blocked, only in the sidebar.
+        val line = "${osc("state=blocked:app=e2e-peek")}; read _; ${osc("state=working:app=e2e-peek")}; sleep 600"
+        val child = startWorker(target, shell, line).also { worker = it }
+        awaitRow(target, child, AgentState.BLOCKED)
+        step()
+
+        // Peek over the current tab; what is typed reaches the worker, which goes on working.
+        rule.onNodeWithTag(tag(target, child)).performClick()
+        rule.onNodeWithTag("peek").assertExists()
+        rule.onNodeWithTag("pane-${PaneLayout.leaves(tab.root).single().id}").assertExists()
+        rule.waitForIdle()
+        step()
+        // Keys to the app's window only (the peek has its focus), never to whatever window has the system focus.
+        rule.onNodeWithTag("peek-terminal").performClick()
+        rule.onNodeWithTag("peek-terminal").assertIsFocused()
+        typeInApp("ok\n")
+        awaitRow(target, child, AgentState.WORKING)
+        step()
+
+        // Closing the peek: the same tab, the worker still running and still without a pane.
+        rule.onNodeWithTag("peek-close").performClick()
+        rule.onNodeWithTag("peek").assertDoesNotExist()
+        rule.onNodeWithTag("pane-${PaneLayout.leaves(tab.root).single().id}").assertExists()
+        assertEquals(listOf(tab), workspaceOf(target).spaces.single().tabs)
+        assertEquals("live", stateOf(target, child))
+        step()
+
+        // Kept as tab: a new tab of the space shows it, the peek closes and nothing of the desktop app changes.
+        rule.onNodeWithTag(tag(target, child)).performClick()
+        rule.onNodeWithTag("peek-keep").performClick()
+        awaitWorkspace(target) { ws -> ws.space(space.id)?.tabs?.size == 2 }
+        val kept = workspaceOf(target).space(space.id)!!.tabs[1]
+        assertEquals(listOf(child), kept.terminals)
+        rule.waitUntil(TIMEOUT_MILLIS) { labelsOf(target, child)[CoreTerminals.TAB_LABEL] == kept.id }
+        val labels = labelsOf(target, child)
+        assertEquals(space.id, labels[CoreTerminals.SPACE_LABEL])
+        assertTrue(CoreTerminals.DESKTOP_SPACE_LABEL !in labels && CoreTerminals.DESKTOP_TAB_LABEL !in labels)
+        rule.waitForIdle()
+        rule.onNodeWithTag("peek").assertDoesNotExist()
+        rule.onNodeWithTag("pane-${PaneLayout.leaves(kept.root).single().id}").assertExists()
+        assertEquals("live", stateOf(target, child))
+        assertEquals(desktopBefore, desktopVersion(target))
+        step()
+    }
+
     private fun connect(): Machine {
         // A machine left by an interrupted run of this test.
         container.machines.machines.value.filter { it.name == NAME }.forEach {
@@ -184,16 +252,44 @@ class AgentsE2ETest {
     /** Shell command printing an OSC 7501 report with these fields. */
     private fun osc(fields: String) = "printf '\\033]7501;$fields\\007'"
 
-    /** Starts, as a child of [parent], a program that reports an error and stays. */
-    private fun startWorker(m: Machine, parent: String): String {
+    /** Starts, as a child of [parent], [line]: by default a program that reports an error and stays. */
+    private fun startWorker(
+        m: Machine,
+        parent: String,
+        line: String = "${osc("state=error:app=e2e-worker:msg=$BROKEN_BASE64")}; sleep 600"
+    ): String {
         val params = buildJsonObject {
-            put("line", "${osc("state=error:app=e2e-worker:msg=$BROKEN_BASE64")}; sleep 600")
+            put("line", line)
             put("parent", parent)
             // Notes about the child would be typed into the parent and answer its `read`.
             put("no_notify", true)
         }
         val result = runBlocking { rpc(m).call("terminal.run", params) } as JsonObject
         return result.getValue("address").jsonPrimitive.content
+    }
+
+    private fun stateOf(m: Machine, terminal: String): String? {
+        val result = runBlocking { rpc(m).call("terminal.get", buildJsonObject { put("terminal", terminal) }) }
+        return result.jsonObject["state"]?.jsonPrimitive?.content
+    }
+
+    /** Version of the desktop app's document, which the app must never write. */
+    private fun desktopVersion(m: Machine): String {
+        val params = buildJsonObject { put("name", WorkspaceCodec.DESKTOP_DOC_NAME) }
+        return runBlocking { rpc(m).call("doc.get", params) }.jsonObject["version"].toString()
+    }
+
+    /**
+     * Sends ASCII [text] as key events of a virtual keyboard to the app's window, through the same pre-IME path
+     * a physical keyboard takes (the terminal reads keys there).
+     */
+    private fun typeInApp(text: String) {
+        val map = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD)
+        val events = checkNotNull(map.getEvents(text.toCharArray())) { "not typeable: $text" }
+        checkNotNull(scenario).onActivity { activity ->
+            val view = activity.window.decorView
+            events.forEach { if (!view.dispatchKeyEventPreIme(it)) view.dispatchKeyEvent(it) }
+        }
     }
 
     private fun labelsOf(m: Machine, terminal: String): Map<String, String> {
