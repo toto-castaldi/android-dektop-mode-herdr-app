@@ -7,6 +7,7 @@
 import json
 import os
 import queue
+import shutil
 import subprocess
 import sys
 import threading
@@ -18,13 +19,15 @@ DOC = "herdr-desktop-android.do"
 
 mode, count, timeout, out = sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), sys.argv[4]
 me = os.environ["HC_TERMINAL_ID"]
+# A core started over a non-interactive ssh session may not have ~/.local/bin in its PATH.
+HC = shutil.which("hc") or os.path.expanduser("~/.local/bin/hc")
 
 
 class Connection:
     """One `hc connect` in plain mode; after events.subscribe it only carries events, so calls use another."""
 
     def __init__(self):
-        self.p = subprocess.Popen(["hc", "connect"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+        self.p = subprocess.Popen([HC, "connect"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
                                   bufsize=1)
         self.next_id = 0
         self.call("hello", {"generation": 1})
@@ -79,7 +82,7 @@ results = []
 def label_request(rid, action):
     value = json.dumps({"id": rid, "action": action, "args": {}})
     if mode == "labels-cli":
-        subprocess.run(["hc", "label", me, f"{DO}={value}"], check=True, capture_output=True)
+        subprocess.run([HC, "label", me, f"{DO}={value}"], check=True, capture_output=True)
     else:
         core.call("terminal.label", {"terminal": me, "labels": {DO: value}})
 
@@ -134,8 +137,8 @@ def wait_for(ids, sent):
 
 
 SHELL = (
-    'hc label "$HC_TERMINAL_ID" "$1" >/dev/null && '
-    'grep -m1 -q -F "$2" <(timeout "$3" hc events --terminal "$HC_TERMINAL_ID" --json)'
+    '"$4" label "$HC_TERMINAL_ID" "$1" >/dev/null && '
+    'grep -m1 -q -F "$2" <(timeout "$3" "$4" events --terminal "$HC_TERMINAL_ID" --json)'
 )
 
 
@@ -143,7 +146,7 @@ def shell_round(rid):
     value = json.dumps({"id": rid, "action": "probe", "args": {}}, separators=(",", ":"))
     needle = '"%s":"{\\"id\\":\\"%s\\"' % (RE, rid)
     t0 = time.monotonic()
-    done = subprocess.run(["bash", "-c", SHELL, "sh", f"{DO}={value}", needle, str(int(timeout))]).returncode == 0
+    done = subprocess.run(["bash", "-c", SHELL, "sh", f"{DO}={value}", needle, str(int(timeout)), HC]).returncode == 0
     return {"id": rid, "first_ms": round((time.monotonic() - t0) * 1000, 1) if done else None, "by": []}
 
 
